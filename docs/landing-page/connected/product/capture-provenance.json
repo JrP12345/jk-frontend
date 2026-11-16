@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-24T17:17:05.710Z",
+  "capturedAt": "2026-11-09T14:56:16.802Z",
   "tool": "Playwright 1.64.1",
   "dataset": {
     "source": "landing-demo.mjs; entirely fictional, loopback only",
@@ -12,6 +12,60 @@
     "storage": "In-memory API responses; no database changes"
   },
   "captures": [
+    {
+      "name": "discovery-desktop",
+      "route": "/browse",
+      "role": "anonymous",
+      "viewport": {
+        "width": 1040,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 0,
+        "width": 1040,
+        "height": 860
+      },
+      "asset": "/landing/product/discovery-desktop.webp",
+      "bytes": 29256,
+      "sha256": "ae0f09731413d2b1c2f1a10f1bc3d13e72f16ad036c81c91d3e8fcd3281b0a55",
+      "errors": [],
+      "consoleErrors": [],
+      "unknown": [],
+      "blockedWrites": [],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/public/locations"
+      ],
+      "visibleText": "Clinics & hospitals near you\nSelect an option...\nAll cities\nPune\nAll cities\nSearch\nFilters\nClear all\nFacility type\nClinic\nHospital\nDiagnostic center\nSpecialty\nDermatology\nGeneral Medicine\nPediatrics\nBooking options\nOnline booking\nOpening hours\nOpen now\nOpen 24 hours\nDistance\nWithin\nAny distance\nAny\n25 km\n50 km\n\nChoose your location to filter by distance.\n\nUse my location\n\nHours describe the facility. Appointment times are checked after you open it.\n\n2 locations found\n2 facilities found\n\nAll cities\n\nSelect an option...\nTop rated\nLowest fee\nTop rated\nMap\nAC\nAster Grove Clinic\nClosed\n\nGeneral Medicine · Pediatrics\n\nDemonstration address · Baner, Pune\n\nBook appointment\nAE\nAster Grove East\nClosed\n\nGeneral Medicine · Dermatology\n\nDemonstration address · Kalyani Nagar, Pune\n\nBook appointment"
+    },
+    {
+      "name": "discovery-mobile",
+      "route": "/browse",
+      "role": "anonymous",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 0,
+        "width": 420,
+        "height": 860
+      },
+      "asset": "/landing/product/discovery-mobile.webp",
+      "bytes": 34782,
+      "sha256": "521878bbd4184683dd25bea9bff1d9e9651b3062049ccea536ba5f7c358eb324",
+      "errors": [],
+      "consoleErrors": [],
+      "unknown": [],
+      "blockedWrites": [],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/public/locations"
+      ],
+      "visibleText": "Clinics & hospitals near you\nSelect an option...\nAll cities\nPune\nAll cities\nSearch\nFilters\nOpen now\nOnline booking\n2 locations found\n2 facilities found\n\nAll cities\n\nSelect an option...\nTop rated\nLowest fee\nTop rated\nMap\nAC\nAster Grove Clinic\nClosed\n\nGeneral Medicine · Pediatrics\n\nDemonstration address · Baner, Pune\n\nBook appointment\nAE\nAster Grove East\nClosed\n\nGeneral Medicine · Dermatology\n\nDemonstration address · Kalyani Nagar, Pune\n\nBook appointment"
+    },
     {
       "name": "booking-desktop",
       "route": "/doctor/mira-shah?location=aster-grove",
@@ -27,10 +81,15 @@
         "height": 860
       },
       "asset": "/landing/product/booking-desktop.webp",
-      "bytes": 47174,
-      "sha256": "7a719edb25653d749fa00f5b94e6aabe038fc1b8e7b8008b52898f7ec27cfb89",
+      "bytes": 40934,
+      "sha256": "bcc4f192e014a10b6809d4159d3d1dc9d835516a979ffc5588f82a37379355ea",
       "errors": [],
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-YmE0ZDkyZGYtYzA5Mi00MDYxLTliMmEtNDljMjIzNjQ3Y2E3''. Either the 'unsafe-inline' keyword, a hash ('sha256-vqIDFHRyRoa0m/m06xn7S5icw/aUpbAk5pnCo9zMmwo='), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-YmE0ZDkyZGYtYzA5Mi00MDYxLTliMmEtNDljMjIzNjQ3Y2E3''. Either the 'unsafe-inline' keyword, a hash ('sha256-1o4iKbEb/pa9vWb4SsM6DDNN/cL0GmRdOKphQ7AKPJ4='), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-YmE0ZDkyZGYtYzA5Mi00MDYxLTliMmEtNDljMjIzNjQ3Y2E3''. Either the 'unsafe-inline' keyword, a hash ('sha256-1o4iKbEb/pa9vWb4SsM6DDNN/cL0GmRdOKphQ7AKPJ4='), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-YmE0ZDkyZGYtYzA5Mi00MDYxLTliMmEtNDljMjIzNjQ3Y2E3''. Either the 'unsafe-inline' keyword, a hash ('sha256-1o4iKbEb/pa9vWb4SsM6DDNN/cL0GmRdOKphQ7AKPJ4='), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked."
+      ],
       "unknown": [],
       "blockedWrites": [],
       "simulatedInitializations": [],
@@ -40,7 +99,7 @@
         "GET /api/public/doctors/333333333333333333333333/slots",
         "GET /api/public/locations/aster-grove-east"
       ],
-      "visibleText": "Browse locations\n/\nAster Grove Clinic\n/\nDr. Mira Shah\n\nDOCTOR PROFILE\n\nD\nDr. Mira Shah\nShare\n\nGeneral Medicine\n\nMBBS, MD\n12 years of experience\n\nConsultations in English, Hindi\n\nCheck appointment times\nPractice locations\n\nFees and booking options can vary by location.\n\nAster Grove Clinic\n\nClinic\n\nDemonstration address · Baner, Pune\n\n₹600\nView location details\nSelected location\nAster Grove East\n\nClinic\n\nDemonstration address · Kalyani Nagar, Pune\n\n₹600\nView location details\nCheck times at this location\n\nONLINE APPOINTMENTS\n\nSelect Date & Time\n\nAster Grove Clinic · Pune\n\n1. Date & Time\n2. Patient Details\nDR\n\nDr. Mira Shah\n\nGeneral Medicine\n\n₹600\nAvailability updated\n1. CHOOSE DATE\nShift: 09:00 AM – 05:00 PM\nMON\nOct 26\nTUE\nOct 27\nWED\nOct 28\nTHU\nOct 29\nFRI\nOct 30\nSAT\nOct 31\n2. SELECT TIME SLOT\nSelected: 10:30 AM\nMORNING (BEFORE 12:00 PM)\n10:00 AM\n10:15 AM\n10:30 AM\n10:45 AM\n11:00 AM\n11:15 AM\nContinue to Details"
+      "visibleText": "Browse locations\n/\nAster Grove Clinic\n/\nDr. Mira Shah\nMS\nDr. Mira Shah\n\nGeneral Medicine\n\nMBBS, MD\n\nConsultations in English, Hindi\n\nExperience\n12 years\nConsultation fee\n₹600\nBooking\nCheck availability\nPractice locations\n\nFees and booking options can vary by location.\n\nAster Grove Clinic\n\nDemonstration address · Baner, Pune\n\nSelected location\n₹600\nAster Grove East\n\nDemonstration address · Kalyani Nagar, Pune\n\nCheck times at this location\n₹600\nBook a visit\n\nAster Grove Clinic · Pune\n\nSelect Date & Time\n\n1. Date & Time\n2. Patient Details\nAvailability updated\nNovember 2026\nShift: 09:00 AM – 05:00 PM\nWed\n11\nToday\nThu\n12\nTomorrow\nFri\n13\nSat\n14\nMon\n16\nTue\n17\n2. Select Time Slot\nSelected: 10:30 AM\nMorning (Before 12:00 PM)\n10:00 AM\n10:15 AM\n10:30 AM\n10:45 AM\n11:00 AM\n11:15 AM\nConsultation fee\n₹600\nContinue to Details"
     },
     {
       "name": "booking-mobile",
@@ -57,10 +116,15 @@
         "height": 800
       },
       "asset": "/landing/product/booking-mobile.webp",
-      "bytes": 39402,
-      "sha256": "87d012f73a41a563ef7225bc1a1bd7ca87dde41e8a8e40175b0ad1e003dc60e9",
+      "bytes": 36628,
+      "sha256": "71f7edc2632846e40729bf5b50f616a37a646ecb5ce1f28d8b032b6331c141f3",
       "errors": [],
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-Y2ViMTdlYzAtOWFiOS00ZjhjLTgwOGEtZDUzZjg0N2JiNzk4''. Either the 'unsafe-inline' keyword, a hash ('sha256-vqIDFHRyRoa0m/m06xn7S5icw/aUpbAk5pnCo9zMmwo='), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-Y2ViMTdlYzAtOWFiOS00ZjhjLTgwOGEtZDUzZjg0N2JiNzk4''. Either the 'unsafe-inline' keyword, a hash ('sha256-1o4iKbEb/pa9vWb4SsM6DDNN/cL0GmRdOKphQ7AKPJ4='), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-Y2ViMTdlYzAtOWFiOS00ZjhjLTgwOGEtZDUzZjg0N2JiNzk4''. Either the 'unsafe-inline' keyword, a hash ('sha256-1o4iKbEb/pa9vWb4SsM6DDNN/cL0GmRdOKphQ7AKPJ4='), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.",
+        "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-Y2ViMTdlYzAtOWFiOS00ZjhjLTgwOGEtZDUzZjg0N2JiNzk4''. Either the 'unsafe-inline' keyword, a hash ('sha256-1o4iKbEb/pa9vWb4SsM6DDNN/cL0GmRdOKphQ7AKPJ4='), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked."
+      ],
       "unknown": [],
       "blockedWrites": [],
       "simulatedInitializations": [],
@@ -70,7 +134,7 @@
         "GET /api/public/doctors/333333333333333333333333/slots",
         "GET /api/public/locations/aster-grove-east"
       ],
-      "visibleText": "Browse locations\n/\nAster Grove Clinic\n/\nDr. Mira Shah\n\nDOCTOR PROFILE\n\nD\nDr. Mira Shah\nShare\n\nGeneral Medicine\n\nMBBS, MD\n12 years of experience\n\nConsultations in English, Hindi\n\nCheck appointment times\nPractice locations\n\nFees and booking options can vary by location.\n\nAster Grove Clinic\n\nClinic\n\nDemonstration address · Baner, Pune\n\n₹600\nView location details\nSelected location\nAster Grove East\n\nClinic\n\nDemonstration address · Kalyani Nagar, Pune\n\n₹600\nView location details\nCheck times at this location\n\nONLINE APPOINTMENTS\n\nSelect Date & Time\n\nAster Grove Clinic · Pune\n\n1. Date & Time\n2. Patient Details\nDR\n\nDr. Mira Shah\n\nGeneral Medicine\n\n₹600\nAvailability updated\n1. CHOOSE DATE\nShift: 09:00 AM – 05:00 PM\nMON\nOct 26\nTUE\nOct 27\nWED\nOct 28\nTHU\nOct 29\nFRI\nOct 30\nSAT\nOct 31\n2. SELECT TIME SLOT\nSelected: 10:30 AM\nMORNING (BEFORE 12:00 PM)\n10:00 AM\n10:15 AM\n10:30 AM\n10:45 AM\n11:00 AM\n11:15 AM\nContinue to Details"
+      "visibleText": "Browse locations\n/\nAster Grove Clinic\n/\nDr. Mira Shah\nMS\nDr. Mira Shah\n\nGeneral Medicine\n\nMBBS, MD\n\nConsultations in English, Hindi\n\nExperience\n12 years\nConsultation fee\n₹600\nBooking\nCheck availability\nPractice locations\n\nFees and booking options can vary by location.\n\nAster Grove Clinic\n\nDemonstration address · Baner, Pune\n\nSelected location\n₹600\nAster Grove East\n\nDemonstration address · Kalyani Nagar, Pune\n\nCheck times at this location\n₹600\nBook a visit\n\nAster Grove Clinic · Pune\n\nSelect Date & Time\n\n1. Date & Time\n2. Patient Details\nAvailability updated\nNovember 2026\nShift: 09:00 AM – 05:00 PM\nWed\n11\nToday\nThu\n12\nTomorrow\nFri\n13\nSat\n14\nMon\n16\nTue\n17\n2. Select Time Slot\nSelected: 10:30 AM\nMorning (Before 12:00 PM)\n10:00 AM\n10:15 AM\n10:30 AM\n10:45 AM\n11:00 AM\n11:15 AM\nConsultation fee\n₹600\nContinue to Details"
     },
     {
       "name": "reception-desktop",
@@ -267,8 +331,8 @@
         "GET /api/onboarding/organization/preferences",
         "GET /api/appointments/555555555555555555555555",
         "GET /api/modules",
-        "GET /api/onboarding/locations",
         "POST /api/encounters",
+        "GET /api/onboarding/locations",
         "GET /api/patients/444444444444444444444444/clinical-notes/history",
         "GET /api/soap-templates",
         "GET /api/encounters/555555555555555555555555/orders"
@@ -291,7 +355,7 @@
       },
       "asset": "/landing/product/doctor-mobile.webp",
       "bytes": 34844,
-      "sha256": "1391c1e836c74b5b2e6a10b951e2f544fd3b62219d75f1eba9e9c65a163d6870",
+      "sha256": "b44d5bb15eca467ff7a728847f8449475a4765db69f7192c40fcc005ebce9166",
       "errors": [],
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
@@ -333,8 +397,8 @@
         "height": 800
       },
       "asset": "/landing/product/billing-desktop.webp",
-      "bytes": 30188,
-      "sha256": "32bd239fa72d215420503ffb61af0b4ea7dba7ed605d936c99218023555fa662",
+      "bytes": 30182,
+      "sha256": "d531f21d3fc030ea7f4f56a2e58dc185e5fc18c888d249cad641da659f12836c",
       "errors": [],
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
@@ -549,8 +613,8 @@
       "visibleText": "Aster Grove Practice\nActive\nPune\nOverview\nDetails & branding\nMembers\nLocations\nSubscription\nConfiguration\nConfiguration\nEveryday workflow\n\nChoose the usual starting point. Full registration, clinical documentation and billing stay available.\n\nPatient entry\nSelect an option...\nFull registration (current default)\nEssential details — search, name and contact\nFull registration (current default)\nConsultation starting view\nSelect an option...\nFull clinical workspace (current default)\nFocused visit — optional notes and medicine\nFull clinical workspace (current default)\n\nFocused visits can finish without a SOAP note. Saved clinical drafts must still be signed in the full editor. Fee, invoice, payment and permission rules stay in effect.\n\nQueue announcements\n\nBell and spoken language for staff calling patients from the queue. Saved for all staff and locations in this organization.\n\nBell sound\nSelect an option...\nClassic Reception Bell\nHospital Ding-Dong\nSoft Digital Synth Chime\nElevator Arrival Tone\nGentle Brass Gong\nModern High-Beep\nMarimba Double Strike\nMute / Silent Mode\nClassic Reception Bell\nAnnouncement language\nSelect an option...\nVoice off\nEnglish\nHindi\nEnglish and Hindi\nEnglish\nPreview announcement\n\nPreview plays a sample token on this device.\n\nSave preferences\nOrganization modules\n\nCore modules are enabled during provisioning. Required modules stay enabled. Root controls optional modules.\n\nPractice essentials\n\ndashboard · Required\n\ndashboard\n\nappointments · Required\n\nappointments\n\nconsultations · Required\n\nconsultations\n\npatients · Required\n\npatients\n\nnotifications · Required\n\nnotifications\n\ncrm · Required\n\ncrm\n\nbilling · Required\n\nbilling\n\nservice-catalog · Required\n\nservice-catalog\n\npharmacy · Required\n\npharmacy\n\nlaboratory · Required\n\nlaboratory\n\nradiology · Required\n\nradiology\n\nanalytics · Required\n\nanalytics\n\ninsurance · Required\n\ninsurance\n\nteleconsultation · Required\n\nteleconsultation\n\nfeedback · Required\n\nfeedback\n\nqueue · Required\n\nqueue\n\nstaff · Required\n\nstaff\n\nlocations · Required\n\nlocations\n\nshifts · Required\n\nshifts\n\nsettings · Required\n\nsettings\n\naudit · Required\n\naudit\nExtended modules\n\nNo matching modules.\n\nOrganization delivery settings\n\nDelivery settings for this workspace.\n\nMeta WhatsApp Business Cloud Gateway\nActive\nWhatsApp Cloud API\n\nOfficial Meta Cloud API for patient booking links, live queue tracker, and post-visit digital Rx handoffs.\n\nTop-Up Credits\nSave Settings\nAVAILABLE CREDITS\n382\nCredits\n\n1 Credit = 1 Billable WhatsApp Not"
     },
     {
-      "name": "notifications-desktop",
-      "route": "/dashboard/notifications",
+      "name": "pharmacy-desktop",
+      "route": "/dashboard/pharmacy",
       "role": "admin",
       "viewport": {
         "width": 1360,
@@ -562,9 +626,9 @@
         "width": 1094,
         "height": 800
       },
-      "asset": "/landing/product/notifications-desktop.webp",
-      "bytes": 29332,
-      "sha256": "b6d343759cbbeecb2ad107864efe167cd26183616a6179bd77cbed171b50ce1c",
+      "asset": "/landing/product/pharmacy-desktop.webp",
+      "bytes": 28356,
+      "sha256": "6a64790b49d1d38f95bcf46cf173c96243ed171b38ccfcad3dc9488e10ecf02b",
       "errors": [],
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
@@ -578,16 +642,18 @@
         "GET /api/auth/me",
         "GET /api/auth/workspaces",
         "GET /api/notifications/unread-count",
-        "GET /api/notifications",
+        "GET /api/onboarding/locations",
         "GET /api/onboarding/organization/preferences",
         "GET /api/modules",
-        "GET /api/onboarding/locations"
+        "GET /api/pharmacy/locations/222222222222222222222222/capabilities",
+        "GET /api/medicines",
+        "GET /api/pharmacy/pending-prescriptions"
       ],
-      "visibleText": "Notifications\n\n3 unread notifications\n\nNew notification\nAll\nUnread\nMark all read\nSelect an option...\nAll categories\nAccount activity\nPatient care\nTasks\nSecurity\nSystem\nBilling\nTeam\nOrganization\nAll categories\nNotification inbox\n\t\nNotification\n\t\nReceived\n\t\nActions\n\n\n\t\nPatient care\nUnread\nAnaya Sen checked in\n\nToken 13 · Dr. Mira Shah · Aster Grove Clinic\n\n\t\nOct 24, 9:59 AM\nUnread\n\t\n\n\n\t\nBilling\nUnread\nPayment recorded for Anaya Sen\n\nDEMO-1021 · ₹600 · Consultation invoice settled\n\n\t\nOct 24, 9:54 AM\nUnread\n\t\n\n\n\t\nPatient care\nUnread\nTara Menon booked an appointment\n\n10:45 AM · General Medicine · Confirmation recorded\n\n\t\nOct 24, 9:49 AM\nUnread\n\t\n\n\n\t\nTeam\nDr. Leena Iyer’s clinic session is scheduled\n\nDermatology · Aster Grove Clinic · 09:00 AM–01:00 PM\n\n\t\nOct 24, 9:44 AM\nRead\n\t\n\n\n\t\nSystem\nClinic activity summary is available\n\nReview today’s appointments, collections and location activity.\n\n\t\nOct 24, 9:39 AM\nRead\n\t\n\n1–5 of 5"
+      "visibleText": "Pharmacy\n\nMedicine stock, prescriptions and batch alerts\n\nAdd medicine\nSelect an option...\nAll locations\nAster Grove Clinic\nAster Grove East\nAster Grove Clinic\nInventory\n5\nDispense\n1\nAlerts\nSelect an option...\nAll stock\nLow stock\nOut of stock\nCatalog expired\nAll stock\nMedicine\n\t\nCatalog batch\n\t\nStock\n\t\nCatalog expiry\n\t\nRetail\n\t\n\n\nParacetamol\nIllustrative catalogue entry · 500 mg\n1 strip = 10 tablet\n\t\nDEMO-P01\n\t\n180\n\t\n1 Jun 2028\n\t\n₹18.00\n\t\n\n\nOral rehydration salts\nIllustrative catalogue entry · 21 g\n1 sachet = 1 piece\n\t\nDEMO-O02\n\t\n72\n\t\n1 Mar 2028\n\t\n₹24.00\n\t\n\n\nVitamin C\nIllustrative catalogue entry · 500 mg\n1 strip = 10 tablet\n\t\nDEMO-V03\n\t\n120\n\t\n1 Sept 2028\n\t\n₹60.00\n\t\n\n\nCalcium supplement\nIllustrative catalogue entry · 500 mg\n1 strip = 10 tablet\n\t\nDEMO-C04\n\t\n48\n\t\n1 Apr 2028\n\t\n₹85.00\n\t\n\n\nAntiseptic solution\nIllustrative catalogue entry · 100 ml\n1 bottle = 100 ml\n\t\nDEMO-A05\n\t\n16 (low)\n\t\n1 Jul 2028\n\t\n₹42.00\n\t\n\n5 medicines shown of 5\n\nStock on this page"
     },
     {
-      "name": "notifications-mobile",
-      "route": "/dashboard/notifications",
+      "name": "pharmacy-mobile",
+      "route": "/dashboard/pharmacy",
       "role": "admin",
       "viewport": {
         "width": 420,
@@ -599,9 +665,9 @@
         "width": 420,
         "height": 800
       },
-      "asset": "/landing/product/notifications-mobile.webp",
-      "bytes": 26598,
-      "sha256": "42971cbbb616c669bdbd9a1055b71a69c3a6230470c75f00c60f6a96a34624c0",
+      "asset": "/landing/product/pharmacy-mobile.webp",
+      "bytes": 29940,
+      "sha256": "8442b32b6005424ceb16f7542655181ada3f6a87468c113becedcaa9b8158aa8",
       "errors": [],
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
@@ -615,68 +681,57 @@
         "GET /api/auth/me",
         "GET /api/auth/workspaces",
         "GET /api/notifications/unread-count",
-        "GET /api/notifications",
+        "GET /api/onboarding/locations",
         "GET /api/onboarding/organization/preferences",
         "GET /api/modules",
-        "GET /api/onboarding/locations"
+        "GET /api/pharmacy/locations/222222222222222222222222/capabilities",
+        "GET /api/medicines",
+        "GET /api/pharmacy/pending-prescriptions"
       ],
-      "visibleText": "Notifications\n\n3 unread notifications\n\nNew\nAll\nUnread\nMark all read\nSelect an option...\nAll categories\nAccount activity\nPatient care\nTasks\nSecurity\nSystem\nBilling\nTeam\nOrganization\nSelect page\nPatient care\nUnread\nAnaya Sen checked in\n\nToken 13 · Dr. Mira Shah · Aster Grove Clinic\n\nOct 24, 9:59 AM\nMark read\nBilling\nUnread\nPayment recorded for Anaya Sen\n\nDEMO-1021 · ₹600 · Consultation invoice settled\n\nOct 24, 9:54 AM\nMark read\nPatient care\nUnread\nTara Menon booked an appointment\n\n10:45 AM · General Medicine · Confirmation recorded\n\nOct 24, 9:49 AM\nMark read\nTeam\nDr. Leena Iyer’s clinic session is scheduled\n\nDermatology · Aster Grove Clinic · 09:00 AM–01:00 PM\n\nOct 24, 9:44 AM\nRead\nSystem\nClinic activity summary is available\n\nReview today’s appointments, collections and location activity.\n\nOct 24, 9:39 AM\nRead\n\n1–5 of 5"
-    },
-    {
-      "name": "discovery-desktop",
-      "route": "/browse",
-      "role": "anonymous",
-      "viewport": {
-        "width": 1040,
-        "height": 1000
-      },
-      "clip": {
-        "x": 0,
-        "y": 0,
-        "width": 1040,
-        "height": 860
-      },
-      "asset": "/landing/product/discovery-desktop.webp",
-      "bytes": 28472,
-      "sha256": "157ff8f007f13d737055687688da6a783f96e4b2638664bbb2567771c8e54ede",
-      "errors": [],
-      "consoleErrors": [],
-      "unknown": [],
-      "blockedWrites": [],
-      "simulatedInitializations": [],
-      "requests": [
-        "GET /api/public/locations"
-      ],
-      "visibleText": "2 locations available\n\nCare specialty\nSelect an option...\nAll Care\nDermatology\nGeneral Medicine\nPediatrics\nAll Care\nSort by\nSelect an option...\nTop rated\nLowest fee\nTop rated\nAster Grove Clinic\nPune\nDemonstration address · Baner\nclinic@example.test\nDirections\nView facility\nAster Grove East\n\nClinic\n\nPune\nDemonstration address · Kalyani Nagar\nclinic@example.test\nDirections\nView facility"
-    },
-    {
-      "name": "discovery-mobile",
-      "route": "/browse",
-      "role": "anonymous",
-      "viewport": {
-        "width": 420,
-        "height": 1000
-      },
-      "clip": {
-        "x": 0,
-        "y": 0,
-        "width": 420,
-        "height": 860
-      },
-      "asset": "/landing/product/discovery-mobile.webp",
-      "bytes": 38864,
-      "sha256": "f494d4f51eacd1ab90431cdafd82d39fed8976b64088cb4019957bef9e42d718",
-      "errors": [],
-      "consoleErrors": [],
-      "unknown": [],
-      "blockedWrites": [],
-      "simulatedInitializations": [],
-      "requests": [
-        "GET /api/public/locations"
-      ],
-      "visibleText": "2 locations\n\nCare specialty\nSelect an option...\nAll Care\nDermatology\nGeneral Medicine\nPediatrics\nAll Care\nSort by\nSelect an option...\nTop rated\nLowest fee\nTop rated\nAster Grove Clinic\nPune\nDemonstration address · Baner\nclinic@example.test\nDirections\nView facility\nAster Grove East\n\nClinic\n\nPune\nDemonstration address · Kalyani Nagar\nclinic@example.test\nDirections\nView facility"
+      "visibleText": "Pharmacy\nAdd medicine\nSelect an option...\nAll locations\nAster Grove Clinic\nAster Grove East\nAster Grove Clinic\nInventory\n5\nDispense\n1\nAlerts\nSelect an option...\nAll stock\nLow stock\nOut of stock\nCatalog expired\nAll stock\nParacetamol\nIllustrative catalogue entry · 500 mg\n1 strip = 10 tablet\nBatch DEMO-P01\nStock\n180\nRetail\n₹18.00\nCatalog expiry\n1 Jun 2028\nOral rehydration salts\nIllustrative catalogue entry · 21 g\n1 sachet = 1 piece\nBatch DEMO-O02\nStock\n72\nRetail\n₹24.00\nCatalog expiry\n1 Mar 2028\nVitamin C\nIllustrative catalogue entry · 500 mg\n1 strip = 10 tablet\nBatch DEMO-V03\nStock\n120\nRetail\n₹60.00\nCatalog expiry\n1 Sept 2028\nCalcium supplement\nIllustrative catalogue entry · 500 mg\n1 strip = 10 tablet\nBatch DEMO-C04\nStock\n48\nRetail\n₹85.00\nCatalog expiry\n1 Apr 2028\nAntiseptic solution\nIllustrative catalogue entry · 100 ml\n1 bottle = 100 ml\nBatch DEMO-A05\nStock\n16 (low)\nRetail\n₹42.00\nCatalog expiry\n1 Jul 2028\n\n5 medicines shown of 5\n\nStock on this page"
     }
   ],
-  "blockedWrites": [],
-  "simulatedInitializations": []
+  "blockedWrites": [
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit",
+    "POST /api/public/track-visit"
+  ],
+  "simulatedInitializations": [
+    "POST /api/encounters",
+    "POST /api/encounters"
+  ],
+  "refreshes": [
+    {
+      "capturedAt": "2026-11-11T09:27:09.133Z",
+      "tool": "Playwright 1.64.1",
+      "dataset": {
+        "source": "landing-demo.mjs; entirely fictional, loopback only",
+        "clock": "2026-10-24T04:30:00.000Z",
+        "doctors": 3,
+        "patients": 8,
+        "appointments": 8,
+        "invoices": 5,
+        "locations": 2,
+        "storage": "In-memory API responses; no database changes"
+      },
+      "names": [
+        "discovery-desktop",
+        "discovery-mobile",
+        "booking-desktop",
+        "booking-mobile"
+      ],
+      "note": "Public headers refreshed after simplifying Browse navigation and adding direct practice setup entry."
+    }
+  ]
 }

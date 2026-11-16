@@ -14,6 +14,7 @@ const subscriptions = async () => {
 };
 
 beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   vi.spyOn(billingService, "adminGetPlans").mockResolvedValue([plan]);
   vi.spyOn(billingService, "adminGetSubscriptions").mockResolvedValue([trial, active]);
   vi.spyOn(billingService, "adminGetPaymentReviews").mockResolvedValue([]);
@@ -26,6 +27,22 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("Platform billing workspace", () => {
+  it("creates a published pharmacy product plan with INR rates and explicit trial terms", async () => {
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Create plan", exact: true }));
+    const dialog = screen.getByRole("dialog", { name: "Create plan" });
+    fireEvent.click(within(dialog).getByRole("combobox", { name: "Plan pricing model" }));
+    fireEvent.click(screen.getByRole("option", { name: "Location products — clinics and pharmacies" }));
+    fireEvent.change(within(dialog).getByLabelText("Plan Name *"), { target: { value: "Synthetic pharmacy product" } });
+    fireEvent.change(within(dialog).getByLabelText("Slug Identifier *"), { target: { value: "synthetic-pharmacy" } });
+    fireEvent.change(within(dialog).getByLabelText("Plan Summary & Value Proposition"), { target: { value: "Synthetic configured pharmacy trial" } });
+    fireEvent.change(within(dialog).getByLabelText("Monthly standalone pharmacy (INR)"), { target: { value: "499.99" } });
+    fireEvent.change(within(dialog).getByLabelText("Default Trial Days"), { target: { value: "7" } });
+    fireEvent.click(within(dialog).getByRole("switch", { name: "Publish independent pharmacy signup" }));
+    fireEvent.submit(within(dialog).getByLabelText("Plan Name *").closest("form")!);
+    await waitFor(() => expect(billingService.adminUpsertPlan).toHaveBeenCalledWith(expect.objectContaining({ commercialFamily: "location_products", legacyTier: "starter", currency: "INR", trialDays: 7, selfServicePharmacy: true, commercialPricing: expect.objectContaining({ revision: 1, monthly: expect.objectContaining({ pharmacyPaise: 49999 }) }) })));
+    expect(within(dialog).queryByLabelText("Monthly Price (INR) *")).not.toBeInTheDocument();
+  });
   it("supports keyboard navigation across all three billing sections without saving", async () => {
     mount();
     expect(screen.getByRole("status", { name: "Loading platform billing" })).toBeInTheDocument();

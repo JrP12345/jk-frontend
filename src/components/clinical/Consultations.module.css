@@ -40,16 +40,11 @@
 .empty { min-height: 16rem; border: 1px solid var(--border); border-radius: .875rem; background: var(--surface); padding: 1.5rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .625rem; text-align: center; }
 .empty h2 { font-size: .875rem; font-weight: 600; }
 .empty p { font-size: .8125rem; color: var(--text-muted); max-width: 28rem; }
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); overflow: hidden; }
-.stats > span { padding: .5rem .75rem; display: flex; flex-direction: column; font-size: .6875rem; color: var(--text-muted); border-right: 1px solid var(--border); }
-.stats > span:last-child { border: 0; }
-.stats strong { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
 .financial { font-size: .75rem; color: var(--text-muted); }
 .links { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem 1rem; font-size: .75rem; color: var(--accent); }
 .links :where(a, button) { min-height: 44px; display: inline-flex; align-items: center; font-size: .75rem; }
 .loading { display: flex; flex-direction: column; gap: .625rem; min-height: 16rem; }
 .loading > span { display: block; min-height: 8rem; border-radius: .875rem; }
-.loadingLabel { color: var(--text-muted); font-size: .75rem; }
 @media (min-width: 640px) { .header h1 { font-size: 1.5rem; } .filters { padding: .75rem; } .headerActions button { padding-inline: .875rem; } }
 @media (min-width: 900px) { .visit { grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: .875rem; padding: .875rem 1rem; } .visitActions { grid-column: auto; border: 0; padding: 0; justify-content: flex-end; max-width: 23rem; } .visitActions button { flex: 0 1 auto; min-width: 8rem; } .filtersRow { display: flex; align-items: center; gap: .75rem; } .filtersRow .tabs { flex: 1; } .search { flex: 0 1 20rem; min-width: 14rem; } }
 @media (max-width: 359px) { .header h1 { font-size: 1.0625rem; } .headerActions { gap: .125rem; } .headerActions button { font-size: .75rem; padding-inline: .5rem; } }

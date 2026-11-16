@@ -107,7 +107,7 @@ function FormattedMarkdown({ content }: { content: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Floating AI Copilot Widget Component
 // ─────────────────────────────────────────────────────────────────────────────
-export function FloatingAICopilot({ initiallyOpen = false }: { initiallyOpen?: boolean } = {}) {
+export function FloatingAICopilot({ initiallyOpen = false, embedded = false }: { initiallyOpen?: boolean; embedded?: boolean } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuthStore();
@@ -312,9 +312,10 @@ export function FloatingAICopilot({ initiallyOpen = false }: { initiallyOpen?: b
   return (
     <>
       {/* Floating Trigger Button (Bottom Right - with clearance for mobile bottom nav) */}
-      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6 right-4 sm:right-6 z-45">
+      <div className={embedded ? undefined : "fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6 right-4 sm:right-6 z-45"}>
         <div className="relative group">
           <button
+            data-copilot-trigger
             onClick={() => setIsOpen(!isOpen)}
             className={`relative w-12 h-12 sm:w-13 sm:h-13 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 shadow-xl ${
               isOpen

@@ -60,6 +60,22 @@ const note = { id: key(901), revision: 1, status: 'draft', subjective: { chiefCo
 
 export function fixture(url, role = 'admin', method = 'GET', scene = '') {
   const p = url.pathname.replace(/^\/api/, '');
+  if (scene === 'pharmacy' && p === '/medicines' && method === 'GET') {
+    const base = baseFixture(url, role, method, scene).data[0];
+    return list([
+      ['Paracetamol', '500 mg', 180, 'DEMO-P01', '2028-06-01', 18],
+      ['Oral rehydration salts', '21 g', 72, 'DEMO-O02', '2028-03-01', 24],
+      ['Vitamin C', '500 mg', 120, 'DEMO-V03', '2028-09-01', 60],
+      ['Calcium supplement', '500 mg', 48, 'DEMO-C04', '2028-04-01', 85],
+      ['Antiseptic solution', '100 ml', 16, 'DEMO-A05', '2028-07-01', 42],
+    ].map(([name, strength, stock, batchNumber, expiryDate, price], index) => ({ ...base,
+      id: key(2001 + index), _id: key(2001 + index), name, genericName: 'Illustrative catalogue entry', strength,
+      currentStock: stock, stock, stockQuantity: stock, batchNumber, expiryDate, price, sellingPrice: price,
+      unitPrice: price, scheduleType: 'general', costPrice: Math.round(price * .65), reorderLevel: 20,
+      category: index === 1 ? 'other' : index === 4 ? 'syrup' : 'tablet',
+      unitDefinition: { version: 1, baseUnit: index === 1 ? 'piece' : index === 4 ? 'ml' : 'tablet', packUnit: index === 1 ? 'sachet' : index === 4 ? 'bottle' : 'strip', unitsPerPack: index === 1 ? 1 : index === 4 ? 100 : 10 },
+    })));
+  }
   if (method === 'POST' && p === '/encounters') return data({ id: ids.visit, patientId: ids.patient, appointmentId: ids.visit, locationId: ids.location, status: 'in-progress', encounterType: 'opd' });
   if (method === 'POST' && p === '/auth/refresh') return data({ user: users[role] || users.admin });
   if (!['GET', 'HEAD'].includes(method)) return undefined;

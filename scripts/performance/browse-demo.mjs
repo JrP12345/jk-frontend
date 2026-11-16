@@ -8,7 +8,7 @@ const cover = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www
 const logo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect width="56" height="56" rx="12" fill="#1f5c52"/><text x="28" y="35" font-family="sans-serif" font-size="23" text-anchor="middle" fill="#f6f2e8">AG</text></svg>');
 export const browseCases = [
   { ...base, name: 'Aster Grove Clinic', image_url: cover, images: ['/unused-directory-gallery.svg'], logo_url: logo, specialties: ['General Medicine', 'Family Medicine'], doctorCount: 1, doctors: [doctor], doctorsSummary: [doctor], phone: '+91 00000 00000', email: 'hello@example.test', address: '204, Demonstration Medical Centre, Baner Road', city: 'Pune' },
-  { ...base, id: 'hospital', slug: 'river-hospital', name: 'River Hospital and Specialist Care', facilityType: 'hospital', address: 'Riverside Avenue', city: 'Pune', specialties: ['Pediatrics', 'General Medicine'], doctorCount: 3, doctors, doctorsSummary: doctors, minFee: 500, rating: 4.7, reviewsCount: 21, logo_url: '/brand/ekavyu-mark.svg?v=brand-5' },
+  { ...base, id: 'hospital', slug: 'river-hospital', name: 'River Hospital and Specialist Care', facilityType: 'hospital', address: 'Riverside Avenue', city: 'Pune', specialties: ['Pediatrics', 'General Medicine'], doctorCount: 3, doctors, doctorsSummary: doctors, minFee: 500, rating: 4.7, reviewsCount: 21, logo_url: '/brand/ekavyu-symbol-black.svg?v=brand-6' },
   { ...base, id: 'paused', slug: 'orchard-clinic', name: 'Orchard Clinic', doctorCount: 1, doctors: [doctor], doctorsSummary: [doctor], onlineBookingAvailable: false, bookingStatus: 'contact_location', city: 'Surat', phone: '', email: '' },
   { ...base, id: 'phone', slug: 'cedar-clinic', name: 'Cedar Clinic', doctorCount: 1, doctors: [doctor], doctorsSummary: [{ ...doctor, feeType: 'free', fees: 0 }], onlineBookingAvailable: false, bookingStatus: 'contact_location', phone: '0000000000', city: 'Surat' },
   { ...base, id: 'diagnostic', slug: 'valley-diagnostics', name: 'Valley Diagnostics', facilityType: 'diagnostic_center', doctorCount: 0, doctors: [], doctorsSummary: [], onlineBookingAvailable: true, bookingStatus: 'no_doctors', city: 'Pune' },
@@ -26,15 +26,3 @@ export const facilityProfile = {
   amenities: ['Step-free entrance', 'Patient waiting area'], images: [cover, cover],
   doctors: doctors.map((doctor, index) => ({ ...doctor, timings: '', working_days: '', description: '', image_url: '', fees: [500, 600, 700][index], feeType: index === 2 ? 'post_consultation' : 'fixed' })),
 };
-
-export function filterBrowseCases(url, mode) {
-  if (mode === 'empty') return [];
-  let rows = mode === 'single' ? [browseCases[0]] : browseCases;
-  const query = url.searchParams.get('search')?.toLowerCase();
-  const city = url.searchParams.get('city');
-  const specialty = url.searchParams.get('specialization');
-  if (query) rows = rows.filter(row => `${row.name} ${row.city} ${row.doctorsSummary.map(doc => `${doc.name} ${doc.specialization}`).join(' ')}`.toLowerCase().includes(query));
-  if (city) rows = rows.filter(row => row.city === city);
-  if (specialty) rows = rows.filter(row => row.doctorsSummary.some(doc => doc.specialization === specialty));
-  return rows;
-}

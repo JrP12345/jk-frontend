@@ -1,11 +1,15 @@
 import api from "@/lib/api";
 
+export interface ProductRates { clinicPaise: number; pharmacyPaise: number; pharmacyAddonPaise: number; extraDoctorPaise: number; additionalPharmacyPaise?: number | null }
+export interface CommercialPricing { revision: number; monthly: ProductRates; annual?: ProductRates | null; taxMode: "inclusive" | "exclusive"; taxRateBps: number; includedDoctors: number; doctorsPerAdditionalClinic: number }
+
 export interface SaaSPlan {
   id: string;
   name: string;
   slug: string;
   legacyTier?: "starter" | "professional" | "enterprise";
   commercialFamily?: "location_products";
+  commercialPricing?: CommercialPricing;
   description: string;
   monthlyPrice: number;
   annualPrice: number;
@@ -51,7 +55,7 @@ export interface SubscriptionInfo {
 
 export interface ProductPlan extends SaaSPlan {
   commercialFamily: "location_products";
-  commercialPricing: { revision: number; annual?: unknown };
+  commercialPricing: CommercialPricing;
 }
 export interface ProductQuoteInput {
   planId: string; priceRevision: number; billingCycle: "monthly" | "annual"; doctorSeats: number;
@@ -272,8 +276,8 @@ export const billingService = {
     return res.data.data;
   },
 
-  async adminActivateSubscription(subscriptionId: string, planSlug: string, billingCycle: "monthly" | "annual", reason: string) {
-    const res = await api.post(`/admin/billing/subscriptions/${subscriptionId}/activate`, { planSlug, billingCycle, reason });
+  async adminActivateSubscription(subscriptionId: string, planSlug: string, billingCycle: "monthly" | "annual", reason: string, product?: { quoteToken: string; grantKind: "manual" | "trial" }) {
+    const res = await api.post(`/admin/billing/subscriptions/${subscriptionId}/activate`, { planSlug, billingCycle, reason, ...product });
     return res.data.data;
   },
 

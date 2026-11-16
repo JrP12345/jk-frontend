@@ -1,37 +1,60 @@
 # Ekavyu homepage and public entry
 
-Current implementation, 24 October 2026. This guide replaces the superseded landing-page design and refinement reports.
+Current implementation: **11 November 2026**. The homepage now presents three audiences under **Care, connected.** Existing application workflows and authentication are preserved.
 
-## Current page and ownership
+## Visitor paths
 
-The headline is **Find your doctor. Manage your clinic day.** Patients reach `/browse`; clinics inspect real product evidence and request assisted setup at `/onboarding?mode=new_org`. Existing auth-aware homepage redirects, private tracker handling and public configured plans remain authoritative. Setup requests do not instantly activate an organization.
+| Audience | Destination | Actual next step |
+| --- | --- | --- |
+| Patients | `/browse` | Explore providers and their available booking/contact options |
+| Clinic and hospital teams | `/onboarding?mode=new_org` | Request assisted setup; review and provisioning are separate |
+| Pharmacy teams | `/pharmacy-start` | View eligible published trials, verify business email and continue branch setup |
+| Existing users | `/login` | Existing authentication and workspace selection |
 
-The design uses coordinated cream surfaces in light mode and neutral charcoal surfaces in dark mode, with forest, emerald and sage as brand accents. The application's system sans-serif, editorial serif accents, numbered chapters and CSS appointment sculpture connect the sections. The subtle gold background essence is static CSS with no image or animation cost. The shared logo uses the supplied transparent, path-based SVG. The sculpture is explicitly conceptual. Actual product evidence below it follows fictional Anaya Sen and Dr. Mira Shah at Aster Grove Clinic through discovery, reception, queues, consultation, billing and supported communications. No runtime 3D library or live dashboard is embedded in the landing page.
+## Structure and visual direction
 
-`src/app/page.tsx` owns content and metadata. `HomeNavigation`, `HomePricing`, the shared public plan cards and logo/theme controls remain reused components. `LivingAppointment` explains stages; `ProductScreenshots` provides native selection buttons, responsive lazy images, fixed frames and a missing-image fallback. `PatientDiscovery`, `ClinicExperience` and `Communications` supply the screenshot definitions. Styles live in `home.module.css`; state colors change immediately to avoid transient low contrast. The social image is regenerated with `npm run brand:social`.
+Navigation, real-product hero, three audience choices, patient journey, clinic workspace, pharmacy workspace, audience-specific setup, configured clinic plans, practical FAQ, closing actions, and grouped footer. Development notices and repeated demonstration labels have been removed from the public interface.
 
-## Feature truth and demonstration data
+System sans-serif replaces serif accents. Ivory and charcoal use the shared semantic palette, supported by forest, emerald and restrained gold. Messaging evidence is part of the clinic journey. The desktop clinic preview has workflow navigation alongside it. Below 900px, patient evidence appears before the visit steps. Phones use a compact landscape hero preview, vertical audience choices, fully visible clinic screen selectors and horizontal comparison for multiple plans.
 
-Patient discovery, booking options, walk-ins, reception, doctor queue, consultation notes, invoice states, team notifications and organization WhatsApp delivery views are implemented. Access follows roles, locations, enabled modules and plans. Booking confirmation can depend on payment and provider setup.
+`src/app/page.tsx` owns server-rendered content, metadata and the preserved auth redirect. `src/app/home/` contains navigation, `HomeAction` (shared button link appearance), `HomePricing`, reusable `ProductScreenshots`, and patient/clinic/pharmacy screen definitions. `home.module.css` owns landing-only layout, responsive rules, dark appearance, reduced motion and forced colours. Shared plan cards, theme controls and logo are reused. The social image is generated with `npm run brand:social`.
 
-WhatsApp requires a configured sender, recorded consent, recipient authorization, applicable plan access, approved templates and shared-mode credits. Supported workflows include status-appropriate booking updates, configured turn alerts, staff-triggered delay alerts and completed-visit prescription sharing. Accepted, delivered and read are distinct states. Do not promise a booking chatbot, automatic 24-hour reminders, SMS fallback, guaranteed delivery or clinical outcomes. Relevant backend authorities are `AppointmentCommunicationEvents`, `PatientCommunicationPolicy`, `WhatsAppSendPolicy`, `PrescriptionCommunicationService`, `PaymentReceiptEvents`, and the queue/WhatsApp management controllers.
+Public actions and screen selectors reuse `Button` and `buttonClassName`; pricing also reuses `Card`, `Breadcrumbs`, `Skeleton`, `cn` and the currency formatter. CSS modules retain page composition and responsive layouts. The clinic screen selector supplies local semantic colors for its forest background without changing the shared button contract. Booking, setup, pharmacy and messaging requirements remain in the public copy.
 
-`scripts/performance/landing-demo.mjs` defines an isolated fictional practice: 3 doctors, 2 locations, 8 patients/appointments, 5 invoices, 3 schedules, a SOAP draft and notification/delivery examples. Summary totals derive from its invoices. Contacts use `example.test`, phone placeholders are non-routable and message recipients are masked. Snapshots show successive illustrative stages, rather than a live event stream.
+No runtime 3D, remote fonts, new application dependencies, hardcoded prices, new integrations or unrelated workflow edits were introduced.
 
-`capture-connected-product.mjs` renders the actual app with Playwright and a loopback-only in-memory API. It blocks external services and writes, closes real-time sockets and simulates only the encounter provider's initialization in memory. It never seeds a database, saves/signs a note, sends a message or records payment. Public pages use the real server/browser clock; authenticated captures use the fixed illustrative day. Analytics POST attempts are blocked and retained in provenance.
+The 11 November pricing refinement gives a single published plan a full-width desktop composition and a stacked phone card. Multiple plans keep the responsive comparison layout. The shared card CSS preserves readable spacing inside the landing page; the full pricing route reuses it and omits care search. [Current previews and scoped verification](public-pages-review.md#11-november-refinement). The four discovery/booking captures affected by public navigation were refreshed; the manifest records this batch separately. Earlier lab/performance measurements remain dated baselines.
 
-The actual routes captured are `/browse`, `/doctor/mira-shah?location=aster-grove`, `/dashboard/appointments`, `/dashboard/queue`, `/dashboard/consultations/555555555555555555555555`, `/dashboard/billing`, `/dashboard`, organization configuration's Connection and delivery panel, and `/dashboard/notifications`. The 24 October brand refresh and subsequent Browse card refinement produced eighteen desktop/mobile WebPs, totaling 582,006 bytes. Served assets are under `public/landing/product/`; original captures and SHA-256 provenance are under `docs/landing-page/connected/product/`.
+## Feature truth
 
-## Verification and retained evidence
+A saved booking is not necessarily confirmed; requirements vary by provider. A setup request does not instantly activate a clinic. Tools depend on plans, modules, roles and location assignments.
 
-The brand correction passed focused `ekavyuTheme`, `homepage`, `homeExperience`, service-worker privacy and PWA recovery tests; the theme file has 20 cases, including neutral-dark and warm-light surface regressions. Scoped lint and the final Next production build passed. The [nine-scenario Playwright results](landing-page/connected/review/results.json) cover desktop/tablet, 390px/320px mobile, reduced motion, disabled WebGL/JavaScript, slow mobile and dark mode. Desktop, mobile and dark desktop were rechecked after the final clinic-section/banner CSS correction. All nine screenshot alternatives loaded, menu Escape restored focus, native keyboard controls worked, anchors resolved, no overflow/page errors occurred and Axe found zero default/changed-state violations. Gradient backgrounds retain manual contrast-review flags. Eight additional login/dashboard views across both themes and two widths passed; the static coming-soon page passed at both widths. [Six conversion-route checks](landing-page/connected/journeys/journeys.json) previously passed without submitting forms.
+WhatsApp needs a configured sender, recorded consent, recipient authorization, applicable access, approved templates and shared-mode credits. Accepted, delivered and read differ; there is no booking chatbot or delivery guarantee.
 
-The [compact Lighthouse measurements](landing-page/connected/lighthouse-summary.json) retain both the corrected final samples and earlier diagnostic observations. Final desktop performance was 100; mobile was 87/91/93 (median 91). Accessibility/best-practices were 100; CLS was zero. Mobile LCP remained 3.04–3.23 seconds, above 2.5 seconds. Local SEO was 66 because indexing is intentionally blocked. These are local lab results, not field Core Web Vitals, a backend E2E test or deployment approval. Full HTML reports and superseded design captures are not source artifacts.
+Pharmacy operating, issuer and professional requirements apply. Published pharmacy trials are separate from the public clinic catalogue. The page does not establish live operating approval.
 
-- Final page: [desktop](landing-page/connected/review/desktop-full.png), [mobile](landing-page/connected/review/mobile-full.png), [tablet](landing-page/connected/review/tablet-full.png), [dark desktop](landing-page/connected/review/dark-desktop-full.png).
-- Real product: [consultation](landing-page/connected/product/doctor-desktop.png), [queue](landing-page/connected/product/queue-desktop.png), [billing](landing-page/connected/product/billing-desktop.png), [WhatsApp](landing-page/connected/product/whatsapp-desktop.png), [notifications](landing-page/connected/product/notifications-desktop.png), [capture provenance](landing-page/connected/product/capture-provenance.json).
-- Harness setup and commands: [performance tools](../scripts/performance/README.md).
+All pictured people, records, amounts and delivery states are fictional. No customer testimonials, adoption statistics, certifications, clinical outcomes or placeholder legal destinations were invented.
 
-The user's Enblox/Hello references and public Pinterest studies informed whitespace, hierarchy and concentrated depth, without copying UI/assets: [healthcare composition](https://www.pinterest.com/pin/1114640976525252579/), [editorial typography](https://www.pinterest.com/pin/702913454372533688/), [dimensional light](https://www.pinterest.com/pin/561613016042120971/). Research images are not application assets.
+## Assets and capture safety
 
-Live booking, payment, activation, provider communications, assistive-technology certification and user research were not exercised. Dynamic plans, screenshot switching and mobile-menu interaction require JavaScript; default evidence and ordinary links remain accessible without it.
+WebPs: `public/landing/product/`. Original PNGs and SHA-256 provenance: `docs/landing-page/connected/product/`.
+
+The 9 November monochrome-brand update refreshed all **18 captures**: discovery, booking, reception, queue, doctor, billing, overview, WhatsApp and pharmacy, each at desktop/mobile sizes. PNG hashes and WebP byte counts match the current manifest. Source artwork and header composition are documented in [the design system](design-system.md#assets-installation-and-print). Earlier full-page review screenshots below predate the logo replacement; their layout findings remain dated evidence.
+
+`landing-demo.mjs` provides fictional practice/pharmacy records. `capture-connected-product.mjs` renders the actual application through a loopback-only in-memory API, blocks external services and writes, and simulates only known initialization responses. It allows development HMR but closes application real-time sockets. Future-date booking selection keeps captures valid after the current morning. Capture cleanup runs even if artifact writing fails.
+
+Use `PRODUCT_CAPTURE_SCREENS`, `PRODUCT_CAPTURE_OUTPUT` and `PRODUCT_CAPTURE_ASSETS` for scoped captures and ignored review output.
+
+## Reference-led refinement — 9 November
+
+The [design review](landing-page/refinement-review-2026-11-09.md) records the critical audit, references and access limitations, implemented decisions, current screenshots and verification. This pass makes the copy concrete, removes a repetitive section, balances clinic imagery, improves tablet/patient ordering and finishes the footer.
+
+**Current checks passed:** changed-file lint, 20 focused tests, production build with TypeScript, eight production browser scenarios and eight read-only entry journeys. Axe reported zero violations and zero incomplete checks in default/changed states. Six image-recovery cases and a JavaScript-disabled FAQ fragment check also passed.
+
+The [current Lighthouse samples](landing-page/connected/lighthouse-refinement-2026-11-09.json) scored desktop/mobile performance **100/94**, accessibility and best practices **100**, with CLS **0**. Mobile LCP was **2.97s**, still above target. Local SEO was 66 solely because this preview is intentionally blocked from indexing. These are local lab measurements, not field performance.
+
+Current previews: [desktop](landing-page/connected/review/desktop-full.png), [768px tablet](landing-page/connected/review/tablet-full.png), [390px mobile](landing-page/connected/review/mobile-full.png), [dark desktop](landing-page/connected/review/dark-desktop-full.png). [Current browser results](landing-page/connected/review/refinement-results.json) and [recovery results](landing-page/connected/review/refinement-failure-states.json) record the final review. Raw output: `.next/brand-handoff/refinement-final/`.
+
+`review-connected-landing.mjs` exercises the current page. `landing-journeys.mjs` follows actual care, pricing, assisted setup and pharmacy links without submitting forms. `landing-review.mjs --lighthouse` combines browser QA and Lighthouse; `--lighthouse-only` avoids repeating a passing browser review. Audit dependencies stay outside the application.
+
+The October reports retain their original dates and are not current performance evidence. Live transactions, external-provider delivery, professional operating approval, assistive-technology certification and deployment were not exercised.

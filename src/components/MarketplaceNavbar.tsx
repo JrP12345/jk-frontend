@@ -1,7 +1,7 @@
 "use client";
 
 import LoadingImage from "@/components/ui/LoadingImage";
-import { useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import Link from "next/link";
 import { NavigationPending } from "@/components/ui/RouteProgress";
@@ -14,7 +14,7 @@ import { Menu, Search, X } from "lucide-react";
 import { getAvatarInitials } from "@/components/ui/Avatar";
 import marketplace from "./MarketplaceLayout.module.css";
 
-export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp = false, searchSlot, navigationSlot }: { brand?: { name: string; logoUrl?: string | null; href: string }; showSearch?: boolean; showSignUp?: boolean; searchSlot?: ReactNode; navigationSlot?: ReactNode }) {
+export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp = false, showProviderRequest = false, searchSlot, navigationSlot }: { brand?: { name: string; logoUrl?: string | null; href: string }; showSearch?: boolean; showSignUp?: boolean; showProviderRequest?: boolean; searchSlot?: ReactNode; navigationSlot?: ReactNode }) {
   const { user, logout, isAuthenticated, isLoading, isLoggingOut } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -28,6 +28,14 @@ export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp
   const menuRef = useRef<HTMLDivElement>(null);
   useOverlayFocus(isMobileMenuOpen, menuRef, () => setIsMobileMenuOpen(false));
   const isRealUser = isAuthenticated && !!user && (user.role as string) !== "guest";
+  const careNavigation = navigationSlot;
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const dismissOnDesktop = () => { if (window.innerWidth >= 768) setIsMobileMenuOpen(false); };
+    window.addEventListener("resize", dismissOnDesktop);
+    return () => window.removeEventListener("resize", dismissOnDesktop);
+  }, [isMobileMenuOpen]);
 
   const handleLogout = async () => {
     setIsMobileMenuOpen(false);
@@ -50,12 +58,13 @@ export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp
             <LoadingImage src={brand.logoUrl} alt="" fallback={brand.name.slice(0, 1)} className="h-9 w-9 shrink-0 rounded-lg border border-border bg-surface object-contain sm:h-10 sm:w-10" />
           ) : <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-base font-bold text-accent sm:h-10 sm:w-10">{brand.name.slice(0, 1)}</span>}
           <span className="min-w-0"><span className="block max-w-[9rem] truncate text-sm font-bold text-text sm:max-w-[18rem]">{brand.name}</span><span className="block text-[10px] text-text-secondary">Appointments powered by Ekavyu</span></span>
-        </Link> : <Link href="/browse" prefetch={false} className="shrink-0">
+        </Link> : <Link href="/" aria-label="Ekavyu home" prefetch={false} className="shrink-0">
           <NavigationPending />
-          <EkavyuLogo size={showSignUp ? "md" : "sm"} layout={showSignUp ? "horizontal" : "stacked"} className={searchSlot ? "[&>span>span]:normal-case [&>span>span]:tracking-tight" : showSignUp ? "[&>span>span]:normal-case [&>span>span]:tracking-tight [&>span]:hidden sm:[&>span]:flex" : ""} />
+          <EkavyuLogo size="sm" />
         </Link>}
 
-        {navigationSlot && <nav aria-label="Discover care" className="hidden min-w-0 flex-1 items-center gap-5 px-6 text-sm md:flex">{navigationSlot}</nav>}
+        {careNavigation && <nav aria-label="Discover care" className="hidden min-w-0 flex-1 items-center gap-5 px-6 text-sm md:flex">{careNavigation}</nav>}
+        {showProviderRequest && <nav aria-label="Practice setup" className="hidden min-w-0 flex-1 items-center px-6 text-sm md:flex"><Link href="/onboarding?mode=new_org" prefetch={false} className="inline-flex min-h-11 items-center font-medium text-accent hover:underline">List your practice</Link></nav>}
         {searchSlot && <div className={marketplace.directorySearch}>{searchSlot}</div>}
         {showSearch && searchForm("mx-3 hidden min-w-0 max-w-xl flex-1 items-center rounded-full border border-border bg-surface focus-within:ring-2 focus-within:ring-focus-ring md:flex")}
         <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
@@ -105,10 +114,10 @@ export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp
             )}
           </div>
 
-          {/* Guests have one destination, so keep it visible without a menu. */}
+          {/* The compact menu keeps patient access and practice setup reachable on phones. */}
           <div className="flex items-center gap-1.5 md:hidden">
             {!isMobileMenuOpen && <div role="group" aria-label="Mobile appearance" className="inline-flex h-11 w-11 shrink-0 items-center justify-center"><ModeSwitcher variant="icon" /></div>}
-            {isLoggingOut ? <span role="status" className="text-xs text-text-secondary">Signing out…</span> : isLoading ? <span aria-hidden="true" className="h-11 w-[70px] shrink-0 animate-pulse rounded-xl border border-border/40 bg-surface-alt/60" /> : isRealUser ? <button
+            {isLoggingOut ? <span role="status" className="text-xs text-text-secondary">Signing out…</span> : isLoading ? <span aria-hidden="true" className="h-11 w-[70px] shrink-0 animate-pulse rounded-xl border border-border/40 bg-surface-alt/60" /> : isRealUser || showProviderRequest ? <button
               type="button"
               onClick={toggleMobileMenu}
               aria-expanded={isMobileMenuOpen}
@@ -119,13 +128,13 @@ export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp
               <Menu className="h-5 w-5" strokeWidth={1.75} />
             </button> : <Link href="/login" prefetch={false} className={`inline-flex min-h-11 items-center justify-center rounded-xl px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${showSignUp ? "min-w-[70px] border border-border bg-surface text-text hover:bg-surface-hover" : "bg-primary text-brand-mist hover:bg-primary-hover"}`}><NavigationPending />Sign in</Link>}
           </div>
-          {showSignUp && isLoading && !isLoggingOut && <span aria-hidden="true" className="hidden min-[400px]:block h-11 w-[78px] shrink-0 animate-pulse rounded-xl border border-border/40 bg-surface-alt/60" />}
-          {showSignUp && !isRealUser && !isLoading && !isLoggingOut && <Link href="/register" prefetch={false} className="hidden min-[400px]:inline-flex min-h-11 min-w-[78px] items-center justify-center rounded-xl bg-primary px-3.5 text-sm font-semibold text-brand-mist hover:bg-primary-hover"><NavigationPending />Sign Up</Link>}
+          {showSignUp && isLoading && !isLoggingOut && <span aria-hidden="true" className={`${showProviderRequest ? "hidden md:block" : "hidden min-[400px]:block"} h-11 w-[78px] shrink-0 animate-pulse rounded-xl border border-border/40 bg-surface-alt/60`} />}
+          {showSignUp && !isRealUser && !isLoading && !isLoggingOut && <Link href="/login?mode=register" prefetch={false} className={`${showProviderRequest ? "hidden md:inline-flex" : "hidden min-[400px]:inline-flex"} min-h-11 min-w-[78px] items-center justify-center rounded-xl bg-primary px-3.5 text-sm font-semibold text-brand-mist hover:bg-primary-hover`}><NavigationPending />Sign Up</Link>}
         </div>
       </div>
 
       {/* Mobile Drawer Dropdown & Backdrop */}
-      {isMobileMenuOpen && isRealUser && (
+      {isMobileMenuOpen && (isRealUser || showProviderRequest) && (
         <>
           <div
             className="overlay-backdrop md:hidden fixed inset-0 top-16 z-30"
@@ -138,6 +147,8 @@ export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp
             <button type="button" aria-label="Close navigation" onClick={() => setIsMobileMenuOpen(false)} className="min-h-11 min-w-11 flex items-center justify-center text-text-secondary rounded-xl hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"><X className="h-4 w-4" /></button>
           </div>
           <div className="p-3 space-y-2 flex flex-col">
+            {showProviderRequest && <Link href="/onboarding?mode=new_org" prefetch={false} onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-accent hover:bg-surface-hover">List your practice</Link>}
+            {!isRealUser && <><Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-text hover:bg-surface-hover">Sign in</Link><Link href="/login?mode=register" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-text hover:bg-surface-hover">Create patient account</Link></>}
             {pathname !== "/browse" && <Link
               href="/browse"
               prefetch={false}

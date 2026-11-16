@@ -32,6 +32,44 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Dashboard location navigation", () => {
+  it("uses the pharmacy loading layout during session verification without mounting private content", () => {
+    router.pathname = "/dashboard/pharmacy";
+    useAuthStore.setState({ user: null, isLoading: true, isAuthenticated: false });
+    const mounted = vi.fn();
+    function PrivateChild() { mounted(); return <p>Private counter</p>; }
+    render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><PrivateChild /></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    expect(screen.getAllByRole("status", { name: "Loading pharmacy" })).toHaveLength(1);
+    expect(screen.queryByRole("status", { name: "Loading dashboard" })).not.toBeInTheDocument();
+    expect(screen.getByRole("main")).toHaveAttribute("data-pharmacy-compact", "true");
+    expect(mounted).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Scan barcode or search products")).not.toBeInTheDocument();
+  });
+  it.each([true, false])("preserves standard dashboard navigation with compact pharmacy gutters (pharmacy=%s)", pharmacy => {
+    router.pathname = "/dashboard/pharmacy";
+    useAuthStore.setState({ user: { id: "owner", name: "Owner", email: "owner@example.test", role: "admin", organization_id: "organization", ...(pharmacy ? { workspaceProfile: "pharmacy" as const } : {}), permissions: ["MANAGE_ORGANIZATION"] } });
+    render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><p>Counter content</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    const main = screen.getByRole("main");
+    if (pharmacy) {
+      expect(main).toHaveAttribute("data-pharmacy-compact", "true");
+      expect(document.getElementById("dashboard-navigation")).toHaveClass("lg:static");
+      expect(screen.getByRole("button", { name: "Toggle Navigation Drawer" })).toHaveClass("lg:hidden");
+      fireEvent.click(screen.getByRole("button", { name: "Toggle Navigation Drawer" }));
+      expect(screen.getByRole("dialog", { name: "Workspace navigation" })).toHaveAttribute("aria-modal", "true");
+      fireEvent.click(screen.getByRole("button", { name: "Close menu drawer" }));
+      expect(screen.queryByRole("dialog", { name: "Workspace navigation" })).not.toBeInTheDocument();
+    } else {
+      expect(main).not.toHaveAttribute("data-pharmacy-compact");
+      expect(document.getElementById("dashboard-navigation")).toHaveClass("lg:static");
+    }
+  });
+  it.each(["/dashboard/pharmacy", "/dashboard/consultations"])("keeps %s private during an auth outage and offers only pharmacy draft preparation where applicable", path => {
+    router.pathname = path; useAuthStore.setState({ user: null, isAuthenticated: false, authError: "Session verification is unavailable." });
+    const mounted = vi.fn(); function PrivateChild() { mounted(); return <p>Private records</p>; }
+    render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><PrivateChild /></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    expect(mounted).not.toHaveBeenCalled();
+    if (path === "/dashboard/pharmacy") expect(screen.getByRole("link", { name: "Prepare cached pharmacy draft" })).toHaveAttribute("href", "/pharmacy-offline.html");
+    else expect(screen.queryByRole("link", { name: "Prepare cached pharmacy draft" })).not.toBeInTheDocument();
+  });
   it("hides private children during an outage and re-verifies the session before recovery", async () => {
     useAuthStore.setState({ user: null, isAuthenticated: false, authError: "Session verification is unavailable." });
     const mounted = vi.fn();
@@ -60,6 +98,12 @@ describe("Dashboard location navigation", () => {
     expect(screen.getAllByRole("link", { name: "Pharmacy Inventory" })[0]).toHaveAttribute("href", "/dashboard/pharmacy");
     expect(screen.queryByRole("link", { name: "Patients" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Billing" })).not.toBeInTheDocument();
+  });
+  it("keeps counter-only navigation focused on sales on desktop and mobile", () => {
+    useAuthStore.setState({ user: { id: "seller", name: "Seller", email: "seller@example.test", role: "pharmacy_counter_sales", workspaceProfile: "pharmacy", organization_id: "organization", permissions: ["VIEW_LOCATIONS", "PHARMACY_SELL", "PHARMACY_COLLECT_PAYMENT", "PHARMACY_CLOSE_TILL"] } });
+    render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><p>Counter</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    expect(screen.getAllByRole("link", { name: "Counter sales" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: /Locations|Branches|Team|Staff|Organization|Pharmacy Inventory/ })).not.toBeInTheDocument();
   });
   it('shows a patient relationship entry in the platform root menu', () => {
     useAuthStore.setState({ user: { id: 'root', name: 'Root', email: 'root@example.test', role: 'root' } });

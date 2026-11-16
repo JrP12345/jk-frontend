@@ -53,11 +53,11 @@ function normalizeUser(user: User): User {
   return { ...user, impersonatedBy: user.impersonatedBy?.id ? user.impersonatedBy : null };
 }
 
-function resetScopedData() {
+function resetScopedData(previousScope: string, scope: string, transient = false) {
   useLocationStore.getState().reset();
   useModuleStore.getState().reset();
   aiSDK.cancelAllStreams();
-  if (typeof window !== "undefined") window.dispatchEvent(new Event("auth-context-change"));
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("auth-context-change", { detail: { previousScope, scope, transient } }));
 }
 
 /** Suspend private screens while the server changes the effective session. */
@@ -216,7 +216,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 useAuthStore.subscribe((state, previous) => {
   if (authScopeKey(state.user) === authScopeKey(previous.user)) return;
   authRevision++;
-  resetScopedData();
+  resetScopedData(authScopeKey(previous.user), authScopeKey(state.user), Boolean(previous.user && !state.user && state.authError && !state.isLoggingOut));
 });
 
 // Listen for cross-tab context changes (active org or logout)

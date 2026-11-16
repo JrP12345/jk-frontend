@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import LocationError from "@/app/browse/[slug]/error";
 import DoctorError from "@/app/doctor/[slug]/error";
+vi.mock("@/components/MarketplaceNavbar", () => ({ default: () => <nav aria-label="Discover care" /> }));
 
 it.each([LocationError, DoctorError])("offers segment recovery without exposing server error details", ErrorScreen => {
   const retry = vi.fn();

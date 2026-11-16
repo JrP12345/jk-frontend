@@ -3,7 +3,8 @@
 .canvas:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -3px; }
 .canvas :global(.leaflet-control-zoom) { overflow: hidden; border: 1px solid var(--input-border); border-radius: var(--radius-control); box-shadow: var(--s-shadow-xs); }
 .canvas :global(.leaflet-control-zoom a) { width: 44px; height: 44px; line-height: 44px; background: var(--surface-elevated); color: var(--text-primary); border-color: var(--border); }
-.canvas :global(.leaflet-control-attribution) { max-width: calc(100% - 16px); margin: 0 4px 4px 0; background: var(--surface-elevated); color: var(--text-secondary); font-size: 10px; white-space: nowrap; }
+.canvas :global(.leaflet-bottom.leaflet-right) { width: calc(100% - 16px); }
+.canvas :global(.leaflet-control-attribution) { max-width: 100%; margin: 0 4px 4px 0; background: var(--surface-elevated); color: var(--text-secondary); font-size: 10px; white-space: normal; overflow-wrap: anywhere; }
 .canvas :global(.leaflet-control-attribution a) { display: inline; color: var(--accent); text-decoration: underline; }
 .canvas :global(.leaflet-tile-pane) { filter: saturate(.65); }
 :global(.dark) .canvas :global(.leaflet-tile-pane) { filter: brightness(.65) saturate(.6); }

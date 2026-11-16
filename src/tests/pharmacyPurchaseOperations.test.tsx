@@ -101,3 +101,103 @@ it("ignores a late confirmation after the account changes", async () => {
   await act(async () => { finish(response({ purchaseId: "purchase", requestKey, payablePaise: 118 })); });
   expect(changed).not.toHaveBeenCalled(); expect(screen.queryByText(/Supplier payable posted:/)).not.toBeInTheDocument(); expect(sessionStorage.length).toBe(1);
 });
+
+it("continues from confirmed posting to prefilled receiving with a fresh revision and a separate receipt identity", async () => {
+  api.get.mockImplementation(async (url: string) => url.includes("/parties/") ? response({ id: "supplier", revision: 5 }) : url.includes("/receipts?") ? response({ items: [], nextCursor: null }) : response({ ...posted, revision: 4, receiptProgress: [{ lineId: "source-line-0001", billedBaseUnits: 1, freeBaseUnits: 0, costPaise: 25 }] }));
+  mount(); await review(); fireEvent.click(screen.getByRole("button", { name: "Post saved supplier invoice" }));
+  await screen.findByText(/Supplier payable posted:/); const postingKey = api.post.mock.calls[0][2].headers["Idempotency-Key"];
+  fireEvent.click(screen.getByRole("button", { name: "Continue to receiving" }));
+  await screen.findByRole("dialog", { name: "Receive purchase delivery" });
+  expect(api.get).toHaveBeenCalledWith("/pharmacy/purchases/purchase?locationId=branch");
+  expect(screen.getByLabelText("Received billed base units 1")).toHaveValue(2);
+  expect(screen.getByLabelText("Received free base units 1")).toHaveValue(1);
+  expect(screen.getByLabelText("Printed batch 1")).toHaveValue("");
+  expect(screen.getByLabelText("Actual delivery reference")).toHaveValue("");
+  expect(sessionStorage.length).toBe(0); expect(changed).not.toHaveBeenCalled(); expect(api.post).toHaveBeenCalledTimes(1);
+  api.post.mockImplementation(async (_url: string, _body: unknown, config: { headers: { "Idempotency-Key": string } }) => response({ purchaseId: "purchase", receiptId: "received", requestKey: config.headers["Idempotency-Key"] }));
+  receipt(); fireEvent.click(screen.getByRole("button", { name: "Record purchase delivery" })); await screen.findByText("Delivery recorded.");
+  expect(api.post.mock.calls[1][1]).toMatchObject({ expectedRevision: 4, lines: [{ billedBaseUnits: 2, freeBaseUnits: 1 }] });
+  expect(api.post.mock.calls[1][2].headers["Idempotency-Key"]).not.toBe(postingKey);
+});
+
+it("retains confirmed posting on a failed refresh and retries the read without another posting command", async () => {
+  mount(); await review(); fireEvent.click(screen.getByRole("button", { name: "Post saved supplier invoice" })); await screen.findByText(/Supplier payable posted:/);
+  const reference = sessionStorage.getItem(sessionStorage.key(0)!);
+  api.get.mockRejectedValueOnce(new Error("refresh offline")); fireEvent.click(screen.getByRole("button", { name: "Continue to receiving" })); await screen.findByText("refresh offline");
+  expect(sessionStorage.getItem(sessionStorage.key(0)!)).toBe(reference); expect(screen.getByText(/Supplier payable posted:/)).toBeInTheDocument();
+  api.get.mockResolvedValueOnce(response(posted)); fireEvent.click(screen.getByRole("button", { name: "Continue to receiving" }));
+  await screen.findByLabelText("Actual delivery reference"); expect(api.post).toHaveBeenCalledTimes(1); expect(changed).not.toHaveBeenCalled();
+});
+
+it("rejects incomplete receipt progress without discarding the confirmed post reference", async () => {
+  mount(); await review(); fireEvent.click(screen.getByRole("button", { name: "Post saved supplier invoice" })); await screen.findByText(/Supplier payable posted:/);
+  api.get.mockResolvedValueOnce(response({ ...posted, receiptProgress: [] })); fireEvent.click(screen.getByRole("button", { name: "Continue to receiving" }));
+  await screen.findByText(/Purchase quantities or receipt progress are incomplete/);
+  expect(sessionStorage.length).toBe(1); expect(screen.queryByLabelText("Actual delivery reference")).not.toBeInTheDocument(); expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+it("can recover a confirmed post on a reopened posted purchase and continue at the same current revision", async () => {
+  const view = mount(); await review(); api.post.mockRejectedValueOnce(new Error("timeout")); fireEvent.click(screen.getByRole("button", { name: "Post saved supplier invoice" })); await screen.findByText("timeout");
+  const requestKey = api.post.mock.calls[0][2].headers["Idempotency-Key"]; view.unmount();
+  api.get.mockImplementation(async (url: string) => url.includes("/operations/") ? response({ purchaseId: "purchase", requestKey, payablePaise: 118 }) : url.includes("/receipts?") ? response({ items: [], nextCursor: null }) : response(posted));
+  mount(posted); fireEvent.click(screen.getByRole("button", { name: "Check purchase result" })); await screen.findByText(/Supplier payable posted:/);
+  fireEvent.click(screen.getByRole("button", { name: "Continue to receiving" })); await screen.findByLabelText("Actual delivery reference");
+  expect(sessionStorage.length).toBe(0); expect(api.post).toHaveBeenCalledTimes(1); expect(changed).not.toHaveBeenCalled();
+});
+
+it("prefills remaining billed and free quantities for every unfinished source line", async () => {
+  const second = { ...posted.lines[0], lineId: "source-line-0002", medicineSnapshot: { name: "Second product", genericName: "Synthetic" } };
+  mount({ ...posted, lines: [...posted.lines, second], receiptProgress: [{ lineId: "source-line-0001", billedBaseUnits: 1, freeBaseUnits: 1, costPaise: 25 }, { lineId: second.lineId, billedBaseUnits: 0, freeBaseUnits: 0, costPaise: 0 }] });
+  expect(screen.getByLabelText("Received billed base units 1")).toHaveValue(2); expect(screen.getByLabelText("Received free base units 1")).toHaveValue(0);
+  expect(screen.getByLabelText("Received billed base units 2")).toHaveValue(3); expect(screen.getByLabelText("Received free base units 2")).toHaveValue(1);
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+it("blocks aggregate overreceipts across split lots before dispatching", async () => {
+  mount(posted); receipt(); fireEvent.click(screen.getByRole("button", { name: "Add delivery lot" }));
+  change("Received billed base units 2", "2"); change("Printed batch 2", "SECOND-BATCH"); change("Printed expiry 2", "2099-12");
+  fireEvent.click(screen.getByRole("button", { name: "Record purchase delivery" })); await screen.findByText(/Delivery lots exceed the remaining billed or free quantity/);
+  expect(api.post).not.toHaveBeenCalled(); expect(sessionStorage.length).toBe(0);
+  change("Received billed base units 2", "1"); fireEvent.click(screen.getByRole("button", { name: "Record purchase delivery" }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+  expect(api.post.mock.calls[0][1].lines).toMatchObject([{ billedBaseUnits: 2, freeBaseUnits: 1 }, { billedBaseUnits: 1, freeBaseUnits: 0 }]);
+});
+
+it("omits fully received products and prevents another receipt when nothing remains", async () => {
+  api.get.mockResolvedValue(response({ items: [{ id: "receipt", deliveryReference: "COMPLETE-DELIVERY", receivedAt: "2026-10-20T10:00:00Z", lines: [] }], nextCursor: null }));
+  mount({ ...posted, receiptProgress: [{ lineId: "source-line-0001", billedBaseUnits: 3, freeBaseUnits: 1, costPaise: 100 }] });
+  await screen.findByText("COMPLETE-DELIVERY"); expect(screen.getByText(/All invoice quantities have been received/)).toHaveAttribute("role", "status");
+  expect(screen.queryByRole("button", { name: "Record purchase delivery" })).not.toBeInTheDocument(); expect(screen.getByRole("region", { name: "Recorded purchase deliveries" })).toBeInTheDocument();
+});
+
+it("ignores a continuation response after the account changes and preserves the confirmed post reference", async () => {
+  const view = mount(); await review(); fireEvent.click(screen.getByRole("button", { name: "Post saved supplier invoice" })); await screen.findByText(/Supplier payable posted:/);
+  let finish!: (value: unknown) => void; api.get.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue to receiving" }));
+  view.unmount(); useAuthStore.setState({ user: null }); await act(async () => { finish(response(posted)); });
+  expect(sessionStorage.length).toBe(1); expect(changed).not.toHaveBeenCalled(); expect(api.post).toHaveBeenCalledTimes(1);
+});
+
+it("does not offer continuation without receiving authority", async () => {
+  mount(purchase, true, false); await review(); fireEvent.click(screen.getByRole("button", { name: "Post saved supplier invoice" })); await screen.findByText(/Supplier payable posted:/);
+  expect(screen.queryByRole("button", { name: "Continue to receiving" })).not.toBeInTheDocument(); expect(screen.getByRole("button", { name: "Done with purchase operation" })).toBeEnabled();
+});
+
+it("keeps receipt retries frozen and does not guess the original delivery quantities after reload", async () => {
+  api.post.mockRejectedValueOnce(new Error("receipt timeout")); const view = mount(posted); receipt();
+  fireEvent.click(screen.getByRole("button", { name: "Record purchase delivery" })); await screen.findByText("receipt timeout");
+  const first = api.post.mock.calls[0]; api.post.mockRejectedValueOnce(new Error("still offline"));
+  fireEvent.click(screen.getByRole("button", { name: "Retry same purchase operation" })); await screen.findByText("still offline"); expect(api.post.mock.calls[1]).toEqual(first);
+  view.unmount(); mount(posted);
+  expect(screen.getByLabelText("Received billed base units 1")).toHaveValue(0); expect(screen.getByLabelText("Received free base units 1")).toHaveValue(0);
+  expect(screen.getByText(/Check the result before another operation/)).toBeInTheDocument(); expect(api.post).toHaveBeenCalledTimes(2);
+});
+
+it("does not discard another purchase reference if it changes while continuing", async () => {
+  mount(); await review(); fireEvent.click(screen.getByRole("button", { name: "Post saved supplier invoice" })); await screen.findByText(/Supplier payable posted:/);
+  let finish!: (value: unknown) => void; api.get.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue to receiving" })); const key = sessionStorage.key(0)!;
+  sessionStorage.setItem(key, JSON.stringify({ kind: "receipt", key: "another-operation-key" }));
+  await act(async () => { finish(response(posted)); }); await screen.findByText(/Purchase reference changed/);
+  expect(JSON.parse(sessionStorage.getItem(key)!).key).toBe("another-operation-key"); expect(screen.queryByLabelText("Actual delivery reference")).not.toBeInTheDocument(); expect(api.post).toHaveBeenCalledTimes(1);
+});

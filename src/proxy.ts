@@ -3,6 +3,13 @@ import type { NextRequest } from "next/server";
 import { canIndexPublicSite, isPreviewHost } from "@/lib/siteUrl";
 
 function nextWithContentSecurityPolicy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  if (path === "/pharmacy-offline.html" || path === "/pharmacy-offline.css" || /^\/pharmacy-offline\/[a-zA-Z]+\.js$/.test(path)) {
+    const response = NextResponse.next();
+    response.headers.set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return response;
+  }
   // Next reads the nonce from the forwarded request CSP and adds it to its own
   // framework scripts. Keep the nonce request-scoped; a static nonce is not a
   // security control.
@@ -22,6 +29,7 @@ function nextWithContentSecurityPolicy(request: NextRequest) {
     styleDirective,
     "img-src 'self' blob: data: https: https://*.razorpay.com",
     "font-src 'self' data:",
+    "worker-src 'self'",
     `connect-src ${connectSources}`,
     "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://www.google.com/maps/embed",
     "frame-ancestors 'self'",
@@ -39,7 +47,6 @@ function nextWithContentSecurityPolicy(request: NextRequest) {
   });
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("x-nonce", nonce);
-  const path = request.nextUrl.pathname;
   const publicPage = path === "/" || path === "/pricing" || path === "/browse" || path.startsWith("/browse/") || path.startsWith("/doctor/");
   if (!publicPage || !canIndexPublicSite() || isPreviewHost(request.nextUrl.hostname)) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");

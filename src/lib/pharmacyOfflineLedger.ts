@@ -1,0 +1,625 @@
+import { canPrintPharmacyInvoice, type IssuedPharmacyInvoice } from "./pharmacyInvoice";
+import { pharmacyNumberPrefix, type PharmacyNumberFormat } from "./pharmacyInvoiceNumberFormat";
+import { validateOfflineLedgerPricing, type OfflinePricedLine } from "./pharmacyOfflinePricing";
+import { yieldPharmacyBackgroundWork } from "./pharmacyBackgroundWork";
+import { PHARMACY_CALCULATION_ENGINE_SHA256 } from "./generated/pharmacyCalculation";
+import { protectOfflineKey, openProtectedOfflineKey, type ProtectedOfflineKey } from "./pharmacyOfflineCrypto";
+import type { OfflinePreparedData } from "./pharmacyOfflinePreparation";
+import { verifyOfflineCheckoutGrant, type VerifiedOfflineCheckoutGrant, type OfflineServerSigner } from "./pharmacyOfflineGrant";
+import { buildOfflinePharmacyDocument, PHARMACY_OFFLINE_DOCUMENT_SHA256 } from "./generated/pharmacyOfflineDocument";
+import type { OfflineRecoveryBackup } from "./pharmacyOfflineBackup";
+
+/** Protected financial ledger for the separately activated prepared counter.
+ * Provisioning MUST verify the signed preparation and exclusive branch/series
+ * assignment. New issuance also requires the pinned checkout grant and PC key.
+ * Unlike preparation drafts, issued evidence never expires or falls back to RAM.
+ */
+export interface OfflineLedgerScope { organizationId: string; locationId: string; deviceId: string }
+export interface OfflineNumberLease {
+  id: string; prefix: string; financialYear: string; next: number; last: number;
+  validFrom: string; validUntil: string;
+  format?: PharmacyNumberFormat & { configurationRevision: number };
+}
+export interface OfflineLedgerLot {
+  id: string; medicineId: string; quantity: number; revision: number;
+  batchNumber: string; expiryValue: string; expiryPrecision: "month" | "date";
+  sellingPricePaise: number; mrpPaise: number;
+}
+export interface OfflineLedgerSeed {
+  lease: OfflineNumberLease; lots: OfflineLedgerLot[]; calculationEngineSha256: string;
+  /** Trusted caller must verify the signed paged preparation before provisioning. */
+  prepared?: OfflinePreparedData; devicePublicKey?: JsonWebKey;
+}
+export interface OfflineLedgerSale {
+  commandId: string; leaseId: string; actorId: string;
+  invoice: Omit<IssuedPharmacyInvoice, "invoiceNumber">;
+  lines: Array<OfflinePricedLine & { allocations: Array<{ lotId: string; quantity: number; expectedRevision: number }> }>;
+  payment: { manualConfirmed: true; cashTenderedPaise: number; shiftId: string; drawerCode: string };
+}
+export interface OfflineCartIntent {
+  commandId: string; actorId: string; lines: Array<{ lineId: string; medicineId: string; quantity: number; discountPaise: number }>;
+  invoiceDiscountPaise: number; roundOffPaise: number; cashTenderedPaise: number;
+}
+export interface OfflineDraftCart { cart: Array<{ lineId: string; medicineId: string; quantity: string; discount: string }>; invoiceDiscount: string; tender: string }
+export interface OfflineCounterDraft extends OfflineDraftCart { version: 1; held?: OfflineDraftCart[] }
+export interface OfflineLedgerReceipt {
+  version: 1 | 2; authorityId?: string; manifestDigest?: string; documentEngineSha256?: string; previousDigest?: string | null;
+  products?: Array<{ medicineId: string; before: number; after: number; revision: number }>;
+  scope: OfflineLedgerScope; commandId: string; leaseId: string; calculationEngineSha256: string;
+  sequence: number; requestDigest: string; invoice: IssuedPharmacyInvoice;
+  lines: OfflineLedgerSale["lines"];
+  payment: OfflineLedgerSale["payment"] & { collectedPaise: number; changePaise: number; evidenceMode: "staff_confirmed_manual" };
+  stock: Array<{ lotId: string; before: number; after: number; revision: number }>;
+}
+interface Sealed { id: string; revision: number; iv: Uint8Array<ArrayBuffer>; ciphertext: ArrayBuffer }
+export interface OfflineLedgerStop { authorityId: string; sequence: number; lastDigest: string | null; stoppedAt: string; reviewReference: string; confirmed: true; proof: string }
+interface Head { lease: OfflineNumberLease; lastIssuedAt: string | null; calculationEngineSha256: string;
+  prepared?: boolean; documentEngineSha256?: string; grant?: VerifiedOfflineCheckoutGrant; lastDigest?: string | null; stopped?: OfflineLedgerStop; activeCommandId?: string; reviewRequired?: boolean }
+interface PreparedRecord { data: OfflinePreparedData; publicKey: JsonWebKey }
+interface ProductBalance { medicineId: string; quantity: number; revision: number }
+interface ProtectedKeyRecord { id: string; revision: number; wrapped: ProtectedOfflineKey; attempts: number; lockUntil: number }
+export interface StoredOfflineReceipt { receipt: OfflineLedgerReceipt; digest: string; deviceSignature?: string }
+type StoredReceipt = StoredOfflineReceipt;
+export interface OfflineLedgerAcknowledgement { commandId: string; digest: string; invoiceNumber: string; serverInvoiceId: string }
+
+const DB_NAME = "ekavyu-pharmacy-issued-ledger", MAX_LINES = 200, MAX_LOTS = 50000;
+const id = (value: unknown): value is string => typeof value === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(value);
+const whole = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) >= 0;
+function reject(message: string): never { throw new Error(message); }
+const instant = (value: string) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+
+/** Canonical JSON binds retries to the exact original evidence, not property order. */
+export function offlineLedgerCanonical(value: unknown): string {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "number" && Number.isFinite(value)) return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${Array.from(value, offlineLedgerCanonical).join(",")}]`;
+  if (typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype)
+    return `{${Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => `${JSON.stringify(k)}:${offlineLedgerCanonical(v)}`).join(",")}}`;
+  return reject("Offline evidence contains unsupported values.");
+}
+async function digest(value: unknown) {
+  return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(offlineLedgerCanonical(value))))).map(n => n.toString(16).padStart(2, "0")).join("");
+}
+function indiaDate(at: string) { return new Date(Date.parse(at) + 330 * 60000).toISOString().slice(0, 10); }
+function fiscal(at: string) {
+  const date = indiaDate(at), year = Number(date.slice(0, 4)), start = Number(date.slice(5, 7)) >= 4 ? year : year - 1;
+  return { label: `${start}-${String(start + 1).slice(-2)}`, code: `${String(start).slice(-2)}${String(start + 1).slice(-2)}` };
+}
+export function validateOfflineNumberLease(lease: OfflineNumberLease) {
+  if (!lease || !id(lease.id) ||
+      !whole(lease.next) || lease.next < 1 || !whole(lease.last) || lease.last >= 10 ** (lease.format?.digits ?? 6) || lease.next > lease.last ||
+      !instant(lease.validFrom) || !instant(lease.validUntil) || lease.validFrom >= lease.validUntil ||
+      fiscal(lease.validFrom).label !== lease.financialYear || fiscal(lease.validUntil).label !== lease.financialYear) reject("Offline invoice-number allocation needs review.");
+  if (lease.format) {
+    if (!whole(lease.format.configurationRevision) || lease.format.configurationRevision < 1 || pharmacyNumberPrefix(lease.format, lease.financialYear) !== lease.prefix)
+      reject("Offline invoice-number allocation needs review.");
+  } else if (!/^I[A-Z0-9]{4}[0-9]{4}\/$/.test(lease.prefix) || lease.prefix.slice(5, 9) !== fiscal(lease.validFrom).code) reject("Offline invoice-number allocation needs review.");
+}
+export function offlineInvoiceNumber(lease: OfflineNumberLease, at: string, lastIssuedAt: string | null) {
+  validateOfflineNumberLease(lease);
+  if (!instant(at) || at < lease.validFrom || at > lease.validUntil || lastIssuedAt !== null && at < lastIssuedAt)
+    reject("Offline billing authorization has expired or the device clock moved backwards. Reconnect before billing.");
+  return `${lease.prefix}${String(lease.next).padStart(lease.format?.digits ?? 6, "0")}`;
+}
+function validateLot(lot: OfflineLedgerLot) {
+  const expiry = lot.expiryPrecision === "month" ? `${lot.expiryValue}-01` : lot.expiryValue;
+  if (!lot || !id(lot.id) || !id(lot.medicineId) || !whole(lot.quantity) || !whole(lot.revision) || lot.revision >= Number.MAX_SAFE_INTEGER || !lot.batchNumber?.trim() || lot.batchNumber.length > 100 ||
+      !["month", "date"].includes(lot.expiryPrecision) || !/^\d{4}-\d{2}-\d{2}$/.test(expiry) ||
+      !Number.isFinite(Date.parse(`${expiry}T00:00:00Z`)) || new Date(`${expiry}T00:00:00Z`).toISOString().slice(0, 10) !== expiry ||
+      !whole(lot.sellingPricePaise) || !whole(lot.mrpPaise) || lot.sellingPricePaise > lot.mrpPaise) reject("Offline stock snapshot needs review.");
+}
+function request<T>(req: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, fail) => { req.onsuccess = () => resolve(req.result); req.onerror = () => fail(req.error); });
+}
+function completion(tx: IDBTransaction) {
+  return new Promise<void>((resolve, fail) => { tx.oncomplete = () => resolve(); tx.onabort = () => fail(tx.error ?? new Error("Offline ledger transaction aborted; nothing was saved.")); tx.onerror = () => { /* onabort owns rejection */ }; });
+}
+function openDatabase() {
+  if (typeof indexedDB === "undefined" || !crypto?.subtle) return Promise.reject(new Error("Durable offline storage is unavailable. Nothing was saved."));
+  return new Promise<IDBDatabase>((resolve, fail) => {
+    const opening = indexedDB.open(DB_NAME, 2);
+    let blocked = false;
+    opening.onupgradeneeded = () => {
+      for (const name of ["keys", "records", "outbox", "issued"]) if (!opening.result.objectStoreNames.contains(name)) opening.result.createObjectStore(name, { keyPath: "id" });
+    };
+    opening.onerror = () => fail(opening.error);
+    opening.onblocked = () => { blocked = true; fail(new Error("Close the other offline billing window before upgrading storage.")); };
+    opening.onsuccess = () => {
+      if (blocked) { opening.result.close(); return; }
+      opening.result.onversionchange = () => opening.result.close();
+      resolve(opening.result);
+    };
+  });
+}
+
+/** All identity values are required. Record IDs use a digest, not patient/branch labels. */
+export async function createPharmacyOfflineLedger(scope: OfflineLedgerScope, authorityId?: string) {
+  if (!scope || !id(scope.organizationId) || !id(scope.locationId) || !id(scope.deviceId)) reject("Offline ledger scope is incomplete.");
+  if (authorityId !== undefined && !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(authorityId)) reject("Invalid offline session identity.");
+  const owner = { organizationId: scope.organizationId, locationId: scope.locationId, deviceId: scope.deviceId }, prefix = await digest(authorityId ? { ...owner, authorityId } : owner), db = await openDatabase();
+  const keyId = prefix, headId = `${prefix}:head`, preparedId = `${prefix}:prepared`, stockId = (lotId: string) => `${prefix}:stock:${lotId}`;
+  const productId = (medicineId: string) => `${prefix}:product:${medicineId}`;
+  const saleId = (commandId: string) => `${prefix}:sale:${commandId}`, ackId = (commandId: string) => `${prefix}:ack:${commandId}`;
+  const intentId = (commandId: string) => `${prefix}:intent:${commandId}`;
+  const pendingId = (sequence: number) => `${prefix}:${String(sequence).padStart(9, "0")}`;
+  let liveKey: CryptoKey | null = null, lastAccess = 0, generation = 0, preparedCache: PreparedRecord | null = null;
+  let productIndex = new Map<string, OfflinePreparedData["products"][number]>(), lotIndex = new Map<string, OfflinePreparedData["lots"]>();
+  const activeWrites = new Set<IDBTransaction>();
+  const lock = () => { generation++; liveKey = null; lastAccess = 0; preparedCache = null; productIndex.clear(); lotIndex.clear(); for (const tx of activeWrites) { try { tx.abort(); } catch { /* Already committed/aborted. */ } } };
+  async function read<T>(store: string, recordId: string): Promise<T | undefined> {
+    const tx = db.transaction(store, "readonly"), done = completion(tx);
+    const [value] = await Promise.all([request(tx.objectStore(store).get(recordId)), done]); return value as T | undefined;
+  }
+  async function key() {
+    const now = Date.now();
+    if (!liveKey || now < lastAccess || now - lastAccess > 15 * 60 * 1000) { lock(); return reject("Unlock this offline ledger before billing or reading saved bills."); }
+    lastAccess = now; return liveKey;
+  }
+  async function seal(recordId: string, revision: number, value: unknown, encryptionKey: CryptoKey): Promise<Sealed> {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: new TextEncoder().encode(`${recordId}:${revision}`) }, encryptionKey,
+      new TextEncoder().encode(offlineLedgerCanonical(value)));
+    return { id: recordId, revision, iv, ciphertext };
+  }
+  async function unseal<T>(record: Sealed, encryptionKey: CryptoKey): Promise<T> {
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: record.iv, additionalData: new TextEncoder().encode(`${record.id}:${record.revision}`) }, encryptionKey, record.ciphertext);
+    return JSON.parse(new TextDecoder().decode(plain)) as T;
+  }
+  async function saved(commandId: string, encryptionKey: CryptoKey) {
+    const record = await read<Sealed>("records", saleId(commandId));
+    return record ? unseal<StoredReceipt>(record, encryptionKey) : undefined;
+  }
+  /** No await/crypto/network inside the transaction: completion is the only Save acknowledgement. */
+  async function write(stores: string[], work: (tx: IDBTransaction, abort: (message: string) => void) => void) {
+    const tx = db.transaction(stores, "readwrite", { durability: "strict" }), done = completion(tx);
+    activeWrites.add(tx);
+    let reason: Error | undefined;
+    const abort = (message: string) => { reason = new Error(message); tx.abort(); };
+    try { work(tx, abort); } catch (failure) { reason = failure instanceof Error ? failure : new Error("Offline ledger write failed."); tx.abort(); }
+    try { await done; } catch (failure) { throw reason ?? failure; } finally { activeWrites.delete(tx); }
+  }
+  async function prepared(encryptionKey: CryptoKey) {
+    if (preparedCache) return preparedCache;
+    const readingGeneration = generation;
+    const row = await read<Sealed>("records", preparedId);
+    if (!row) return null;
+    const source = await unseal<PreparedRecord>(row, encryptionKey), products = new Map<string, OfflinePreparedData["products"][number]>(), lots = new Map<string, OfflinePreparedData["lots"]>();
+    source.data.products.forEach(product => products.set(product.id, product));
+    for (let index = 0; index < source.data.lots.length; index++) {
+      const lot = source.data.lots[index], group = lots.get(lot.medicineId) ?? []; group.push(lot); lots.set(lot.medicineId, group);
+      if (index % 200 === 199) await yieldPharmacyBackgroundWork();
+    }
+    // Frozen preparation is indexed once per unlock, never decrypted/scanned on
+    // each quantity edit or each Save. All financial plaintext leaves RAM on lock.
+    if (readingGeneration !== generation) reject("Offline preparation was locked during loading.");
+    preparedCache = source; productIndex = products; lotIndex = lots; return source;
+  }
+  async function signature(privateKey: CryptoKey | undefined, message: string, encryptionKey: CryptoKey) {
+    if (!privateKey || privateKey.type !== "private" || privateKey.extractable !== false || privateKey.algorithm.name !== "ECDSA") reject("The original non-exportable billing PC key is required.");
+    const source = await prepared(encryptionKey);
+    if (!source) reject("The original enrolled PC key is missing.");
+    const data = new TextEncoder().encode(message), signed = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, privateKey!, data);
+    const publicKey = await crypto.subtle.importKey("jwk", source!.publicKey, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+    if (!await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, publicKey, signed, data)) reject("This is not the originally enrolled PC key.");
+    return btoa(String.fromCharCode(...new Uint8Array(signed))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  return {
+    close() { lock(); db.close(); },
+    lock,
+    async exists() { return Boolean(await read<ProtectedKeyRecord>("keys", keyId)); },
+    async checkoutState() {
+      const encryptionKey = await key(), record = await read<Sealed>("records", headId);
+      if (!record) reject("Original offline ledger is missing.");
+      const head = await unseal<Head>(record!, encryptionKey);
+      return { active: Boolean(head.grant && !head.stopped && !head.reviewRequired), reviewRequired: Boolean(head.reviewRequired), policyCurrent: head.calculationEngineSha256 === PHARMACY_CALCULATION_ENGINE_SHA256 && (!head.prepared || head.documentEngineSha256 === PHARMACY_OFFLINE_DOCUMENT_SHA256), stopped: head.stopped ?? null, validUntil: head.lease.validUntil, next: head.lease.next, last: head.lease.last };
+    },
+    /** A financial sync conflict permanently holds new issuance in this session.
+     * Recovery/import and terminal reconciliation remain available. */
+    async suspendIssuance() {
+      try {
+        const encryptionKey = await key(), operationGeneration = generation;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const record = await read<Sealed>("records", headId); if (!record) reject("Original ledger requires recovery.");
+          const head = await unseal<Head>(record!, encryptionKey); if (head.reviewRequired) return;
+          const changed = await seal(headId, record!.revision + 1, { ...head, reviewRequired: true }, encryptionKey); let conflict = false;
+          try {
+            await write(["records"], (tx, abort) => { const records = tx.objectStore("records"), check = records.get(headId); check.onsuccess = () => {
+              if (operationGeneration !== generation) { abort("Offline counter was locked."); return; }
+              if (check.result?.revision !== record!.revision) { conflict = true; tx.abort(); return; }
+              records.put(changed);
+            }; }); return;
+          } catch (failure) { if (!conflict) throw failure; }
+        }
+        reject("Concurrent billing prevented recording the review hold. Recover the original session.");
+      } catch (failure) { lock(); throw failure; }
+    },
+    async unlock(passphrase: string) {
+      lock();
+      const attemptGeneration = generation;
+      const stored = await read<ProtectedKeyRecord>("keys", keyId);
+      if (!stored?.wrapped || !Number.isSafeInteger(stored.revision) || !Number.isSafeInteger(stored.attempts) || !Number.isSafeInteger(stored.lockUntil)) reject("This device has no protected offline ledger. Reconnect before billing.");
+      if (stored.lockUntil > Date.now()) reject("Too many unlock attempts. Wait before trying this offline passphrase again.");
+      let unlocked: CryptoKey | undefined;
+      try { unlocked = await openProtectedOfflineKey(stored.wrapped, passphrase, prefix); } catch { /* Persist the failed attempt before responding. */ }
+      if (generation !== attemptGeneration) reject("Offline unlock was cancelled. Unlock this ledger again.");
+      await write(["keys"], (tx, abort) => {
+        const keys = tx.objectStore("keys"), check = keys.get(keyId);
+        check.onsuccess = () => {
+          if ((check.result as ProtectedKeyRecord | undefined)?.revision !== stored.revision) { abort("Another window changed offline unlock state. Retry after checking the original window."); return; }
+          const attempts = unlocked ? 0 : Math.min(stored.attempts + 1, 1000);
+          keys.put({ ...stored, revision: stored.revision + 1, attempts, lockUntil: !unlocked && attempts >= 5 ? Date.now() + Math.min(15 * 60_000, 30_000 * 2 ** Math.min(attempts - 5, 5)) : 0 });
+        };
+      });
+      if (!unlocked) reject("Offline ledger could not be unlocked. Check your passphrase or recover the original backup.");
+      if (generation !== attemptGeneration) reject("Offline unlock was cancelled. Unlock this ledger again.");
+      liveKey = unlocked; lastAccess = Date.now();
+    },
+    /** Trusted provisioning boundary; callers verify the signed preparation first. */
+    async initialize(seed: OfflineLedgerSeed, passphrase: string) {
+      const preparationGeneration = generation;
+      const input = structuredClone(seed);
+      validateOfflineNumberLease(input.lease);
+      if (input.calculationEngineSha256 !== PHARMACY_CALCULATION_ENGINE_SHA256) reject("Offline calculation version differs from the prepared authority. Reconnect before billing.");
+      if (!Array.isArray(input.lots) || input.lots.length > MAX_LOTS || new Set(input.lots.map(lot => lot.id)).size !== input.lots.length) reject("Offline stock snapshot is incomplete or duplicated.");
+      if (input.prepared && (authorityId && input.prepared.authorityId !== authorityId || !input.devicePublicKey || input.devicePublicKey.kty !== "EC" || input.devicePublicKey.crv !== "P-256" || "d" in input.devicePublicKey ||
+          input.prepared.checkoutEnabled !== false || ["organizationId", "locationId", "deviceId"].some(field => input.prepared![field as keyof OfflinePreparedData] !== owner[field as keyof OfflineLedgerScope]) ||
+          offlineLedgerCanonical(input.prepared.lease) !== offlineLedgerCanonical(input.lease) || offlineLedgerCanonical(input.prepared.lots) !== offlineLedgerCanonical(input.lots) ||
+          input.prepared.products.length > 10000 || new Set(input.prepared.products.map(product => product.id)).size !== input.prepared.products.length)) reject("Prepared branch, stock or enrolled device differs.");
+      const { key: encryptionKey, wrapped } = await protectOfflineKey(passphrase, prefix);
+      const head = await seal(headId, 0, { lease: input.lease, lastIssuedAt: null, calculationEngineSha256: input.calculationEngineSha256, ...(input.prepared ? { prepared: true, lastDigest: null, documentEngineSha256: PHARMACY_OFFLINE_DOCUMENT_SHA256 } : {}) } satisfies Head, encryptionKey);
+      // Bound crypto fan-out on older PCs. Provisioning remains all-or-nothing:
+      // no keys, stock or sequence become usable before the final transaction.
+      const lots: Sealed[] = [];
+      for (let offset = 0; offset < input.lots.length; offset += 200) {
+        const page = input.lots.slice(offset, offset + 200); page.forEach(validateLot);
+        lots.push(...await Promise.all(page.map(lot => seal(stockId(lot.id), lot.revision, lot, encryptionKey))));
+        if (offset + 200 < input.lots.length) await yieldPharmacyBackgroundWork();
+      }
+      if (input.prepared) {
+        lots.push(await seal(preparedId, 0, { data: input.prepared, publicKey: input.devicePublicKey! } satisfies PreparedRecord, encryptionKey));
+        for (let offset = 0; offset < input.prepared.products.length; offset += 200) {
+          lots.push(...await Promise.all(input.prepared.products.slice(offset, offset + 200).map(product => seal(productId(product.id), product.stockRevision,
+            { medicineId: product.id, quantity: product.stockQuantity, revision: product.stockRevision } satisfies ProductBalance, encryptionKey))));
+          if (offset + 200 < input.prepared.products.length) await yieldPharmacyBackgroundWork();
+        }
+      }
+      if (generation !== preparationGeneration) reject("Offline preparation was cancelled. Nothing was saved.");
+      await write(["keys", "records"], tx => {
+        tx.objectStore("keys").add({ id: keyId, revision: 0, wrapped, attempts: 0, lockUntil: 0 } satisfies ProtectedKeyRecord);
+        const records = tx.objectStore("records"); records.add(head); lots.forEach(lot => records.add(lot));
+      });
+      if (generation !== preparationGeneration) reject("Offline preparation was locked. Unlock the saved ledger before billing.");
+      liveKey = encryptionKey; lastAccess = Date.now();
+    },
+    async preparation() { const source = await prepared(await key()); return source ? structuredClone(source.data) : null; },
+    async readDraft(): Promise<OfflineCounterDraft | null> {
+      const encryptionKey = await key(), row = await read<Sealed>("records", `${prefix}:draft`);
+      return row ? unseal<OfflineCounterDraft>(row, encryptionKey) : null;
+    },
+    async saveDraft(value: OfflineCounterDraft) {
+      const draft = structuredClone(value), operationGeneration = generation, encryptionKey = await key();
+      const invalid = (cart: OfflineDraftCart) => !cart || !Array.isArray(cart.cart) || cart.cart.length > 100 ||
+        cart.cart.some(line => !id(line.lineId) || !/^[a-f0-9]{24}$/.test(line.medicineId) || typeof line.quantity !== "string" || line.quantity.length > 16 || typeof line.discount !== "string" || line.discount.length > 20) ||
+        typeof cart.invoiceDiscount !== "string" || cart.invoiceDiscount.length > 20 || typeof cart.tender !== "string" || cart.tender.length > 20;
+      if (!draft || draft.version !== 1 || invalid(draft) || draft.held && (!Array.isArray(draft.held) || draft.held.length > 3 || draft.held.some(invalid))) reject("Offline draft is invalid or exceeds its supported bound.");
+      const sealed = await seal(`${prefix}:draft`, 0, draft, encryptionKey);
+      if (operationGeneration !== generation) reject("Offline draft was locked before saving.");
+      await write(["records"], tx => tx.objectStore("records").put(sealed));
+    },
+    async recent(limit = 10) {
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 25) reject("Invalid local receipt history limit.");
+      const encryptionKey = await key(), tx = db.transaction("issued", "readonly"), done = completion(tx), keys: string[] = [];
+      await new Promise<void>((resolve, fail) => {
+        const cursor = tx.objectStore("issued").openCursor(IDBKeyRange.bound(`${prefix}:`, `${prefix}:\uffff`), "prev");
+        cursor.onerror = () => fail(cursor.error);
+        cursor.onsuccess = () => { const row = cursor.result; if (!row || keys.length >= limit) { resolve(); return; } keys.push(row.value.commandId); row.continue(); };
+      });
+      await done;
+      return Promise.all(keys.map(async commandId => await saved(commandId, encryptionKey) ?? reject("Original local history evidence is missing. Recover this PC.")));
+    },
+    async activeSale(): Promise<{ sale: OfflineLedgerSale; saved: StoredReceipt | null } | null> {
+      const encryptionKey = await key(), record = await read<Sealed>("records", headId);
+      if (!record) return null;
+      const head = await unseal<Head>(record, encryptionKey);
+      if (!head.activeCommandId) return null;
+      const intent = await read<Sealed>("records", intentId(head.activeCommandId));
+      if (!intent) reject("The pending local Save intent is missing. Recover this PC before billing.");
+      return { sale: await unseal<OfflineLedgerSale>(intent!, encryptionKey), saved: await saved(head.activeCommandId, encryptionKey) ?? null };
+    },
+    async stageSale(value: OfflineLedgerSale) {
+      const sale = structuredClone(value), encryptionKey = await key(), record = await read<Sealed>("records", headId), operationGeneration = generation;
+      if (!record || !id(sale.commandId) || sale.commandId.length < 8 || new TextEncoder().encode(offlineLedgerCanonical(sale)).length > 2 * 1024 * 1024) reject("The original bounded Save intent is required.");
+      const head = await unseal<Head>(record!, encryptionKey);
+      if (head.reviewRequired) reject("Synchronize and reconcile the original receipt conflict before issuing another bill.");
+      if (!head.grant || head.stopped || head.grant.actorId !== sale.actorId || head.lease.id !== sale.leaseId || head.documentEngineSha256 !== PHARMACY_OFFLINE_DOCUMENT_SHA256) reject("This PC has no current checkout policy for this intent. Synchronize and reconcile its original session.");
+      if (head.activeCommandId) {
+        const prior = await read<Sealed>("records", intentId(head.activeCommandId));
+        if (head.activeCommandId !== sale.commandId || !prior || offlineLedgerCanonical(await unseal<OfflineLedgerSale>(prior, encryptionKey)) !== offlineLedgerCanonical(sale)) reject("Resolve the original pending local Save before creating another bill.");
+        return;
+      }
+      const changed = await seal(headId, record!.revision + 1, { ...head, activeCommandId: sale.commandId }, encryptionKey), intent = await seal(intentId(sale.commandId), 0, sale, encryptionKey);
+      if (operationGeneration !== generation) reject("Local Save was locked before staging.");
+      await write(["records"], (tx, abort) => {
+        const records = tx.objectStore("records"), check = records.get(headId);
+        check.onsuccess = () => {
+          if (generation !== operationGeneration || check.result?.revision !== record!.revision) { abort("Another window changed the ledger. Recover the original local Save."); return; }
+          records.put(changed); records.add(intent);
+        };
+      });
+    },
+    /** Only after the visible cart was durably cleared; a restart before then
+     * recovers the same issued bill instead of billing the stale draft again.
+     */
+    async finishSale(commandId: string, cancelUnissued = false) {
+      if (!id(commandId)) reject("Invalid original local Save reference.");
+      const encryptionKey = await key(), record = await read<Sealed>("records", headId), operationGeneration = generation;
+      if (!record) reject("Original local Save is missing.");
+      const head = await unseal<Head>(record!, encryptionKey);
+      if (!head.activeCommandId) return;
+      if (head.activeCommandId !== commandId) reject("Another local Save is pending. Recover its original reference.");
+      const committed = await saved(commandId, encryptionKey);
+      if (cancelUnissued ? Boolean(committed) : !committed) reject(cancelUnissued ? "This bill was already issued. Clear its saved cart without cancelling the invoice." : "This local Save has not committed. Recover or cancel its original intent.");
+      const changed = await seal(headId, record!.revision + 1, { ...head, activeCommandId: undefined }, encryptionKey);
+      if (operationGeneration !== generation) reject("Local Save recovery was locked.");
+      await write(["records"], (tx, abort) => {
+        const records = tx.objectStore("records"), check = records.get(headId);
+        check.onsuccess = () => {
+          if (generation !== operationGeneration || check.result?.revision !== record!.revision) { abort("The original local Save changed. Recover it again."); return; }
+          records.put(changed); records.delete(intentId(commandId));
+        };
+      });
+    },
+    async prepareSale(value: OfflineCartIntent): Promise<OfflineLedgerSale> {
+      const cart = structuredClone(value), encryptionKey = await key(), source = await prepared(encryptionKey), headRecord = await read<Sealed>("records", headId);
+      if (!source || !headRecord || !id(cart.commandId) || cart.commandId.length < 8 || !Array.isArray(cart.lines) || !cart.lines.length || cart.lines.length > 100 ||
+          new Set(cart.lines.map(line => line.medicineId)).size !== cart.lines.length) reject("The original prepared branch and a valid cart are required.");
+      const head = await unseal<Head>(headRecord!, encryptionKey), issuedAt = new Date().toISOString();
+      if (head.reviewRequired) reject("Synchronize and reconcile the original receipt conflict before issuing another bill.");
+      if (!head.grant || head.stopped || cart.actorId !== head.grant.actorId || issuedAt < head.grant.validFrom || issuedAt > head.grant.validUntil || head.documentEngineSha256 !== PHARMACY_OFFLINE_DOCUMENT_SHA256) reject("Use the original active operator and current prepared policy. Synchronize and reconcile an older session before new billing.");
+      offlineInvoiceNumber(head.lease, issuedAt, head.lastIssuedAt);
+      const lines: OfflineLedgerSale["lines"] = [], documentLines = [];
+      for (const line of cart.lines) {
+        const product = productIndex.get(line.medicineId);
+        if (!product || !id(line.lineId) || line.lineId.length < 8 || !whole(line.quantity) || line.quantity < 1 || !whole(line.discountPaise)) reject("Select a prepared ordinary product and a whole positive quantity.");
+        const candidates = [...(lotIndex.get(line.medicineId) ?? [])].filter(lot => lot.expiryCutoff > issuedAt).sort((a, b) => a.expiryCutoff.localeCompare(b.expiryCutoff) || a.id.localeCompare(b.id));
+        let remaining = line.quantity;
+        const allocations: OfflineLedgerSale["lines"][number]["allocations"] = [], supplied = [];
+        for (const captured of candidates) {
+          if (!remaining) break;
+          if (allocations.length >= 100) reject("This quantity spans too many batches for offline billing.");
+          const record = await read<Sealed>("records", stockId(captured.id));
+          if (!record) reject("Original prepared lot is missing. Recover this PC before billing.");
+          const lot = await unseal<OfflineLedgerLot>(record!, encryptionKey), quantity = Math.min(remaining, lot.quantity);
+          if (!quantity) continue;
+          if (lot.revision !== record!.revision) reject("Owned lot revision differs. Review the original ledger.");
+          allocations.push({ lotId: lot.id, quantity, expectedRevision: lot.revision }); supplied.push({ ...captured, quantity }); remaining -= quantity;
+        }
+        if (remaining) reject("Insufficient unexpired stock assigned to this billing PC.");
+        lines.push({ lineId: line.lineId, medicineId: line.medicineId, discountPaise: line.discountPaise, allocations });
+        documentLines.push({ lineId: line.lineId, product: product!, discountPaise: line.discountPaise, allocations: supplied });
+      }
+      const invoice = buildOfflinePharmacyDocument({ actorId: cart.actorId, issuedAt, financialYear: head.lease.financialYear, issuer: source!.data.issuer,
+        issuerRevision: source!.data.issuerRevision, issuerReviewReference: source!.data.issuerReviewReference, lines: documentLines,
+        invoiceDiscountPaise: cart.invoiceDiscountPaise, roundOffPaise: cart.roundOffPaise });
+      return { commandId: cart.commandId, actorId: cart.actorId, leaseId: head.lease.id, invoice, lines,
+        payment: { manualConfirmed: true, cashTenderedPaise: cart.cashTenderedPaise, shiftId: source!.data.drawer.id, drawerCode: source!.data.drawer.code } };
+    },
+    async activate(value: unknown, signer: OfflineServerSigner) {
+      const encryptionKey = await key(), source = await prepared(encryptionKey), headRecord = await read<Sealed>("records", headId);
+      if (!source || !headRecord) reject("Completely saved preparation is required before activation.");
+      const grant = await verifyOfflineCheckoutGrant(value, source!.data, signer), head = await unseal<Head>(headRecord!, encryptionKey), operationGeneration = generation;
+      if (head.stopped || !head.prepared || head.lastIssuedAt) reject("This ledger cannot be activated again.");
+      if (head.grant) {
+        if (offlineLedgerCanonical(head.grant) !== offlineLedgerCanonical(grant)) reject("The original activation changed.");
+        return;
+      }
+      const changed = await seal(headId, headRecord!.revision + 1, { ...head, grant }, encryptionKey);
+      if (operationGeneration !== generation) reject("Activation was locked. Recover the original grant.");
+      await write(["records"], (tx, abort) => {
+        const records = tx.objectStore("records"), check = records.get(headId);
+        check.onsuccess = () => {
+          if (generation !== operationGeneration || check.result?.revision !== headRecord!.revision) { abort("Ledger changed during activation. Recover the original grant."); return; }
+          records.put(changed);
+        };
+      });
+    },
+    async stop(reviewReference: string, privateKey: CryptoKey): Promise<OfflineLedgerStop> {
+      if (typeof reviewReference !== "string" || reviewReference.trim().length < 3 || reviewReference.length > 500 || /[\p{Cc}\p{Cf}]/u.test(reviewReference)) reject("Enter a reconciliation reference.");
+      const encryptionKey = await key(), headRecord = await read<Sealed>("records", headId);
+      if (!headRecord) reject("Original ledger is missing.");
+      const head = await unseal<Head>(headRecord!, encryptionKey), operationGeneration = generation;
+      if (head.stopped) return head.stopped;
+      if (!head.grant) reject("This preparation has no active checkout grant.");
+      if (head.activeCommandId && !await saved(head.activeCommandId, encryptionKey)) reject("Resolve the pending unissued local Save before permanently stopping this ledger.");
+      const stoppedAt = new Date().toISOString();
+      if (stoppedAt < head.grant!.validFrom || head.lastIssuedAt && stoppedAt < head.lastIssuedAt) reject("Device clock moved backwards; retain the original ledger.");
+      const checkpoint = { authorityId: head.grant!.authorityId, sequence: head.lease.next - 1, lastDigest: head.lastDigest ?? null, stoppedAt, reviewReference: reviewReference.trim(), confirmed: true as const };
+      const proof = await signature(privateKey, `ekavyu.pharmacy.stopped-ledger.v1\n${offlineLedgerCanonical(owner)}\n${offlineLedgerCanonical(checkpoint)}`, encryptionKey);
+      const stopped = { ...checkpoint, proof }, changed = await seal(headId, headRecord!.revision + 1, { ...head, stopped }, encryptionKey);
+      if (operationGeneration !== generation) reject("Reconciliation was locked. Recover the original checkpoint.");
+      await write(["records"], (tx, abort) => {
+        const records = tx.objectStore("records"), check = records.get(headId);
+        check.onsuccess = () => {
+          if (generation !== operationGeneration || check.result?.revision !== headRecord!.revision) { abort("Another Save changed this ledger; stop it again after recovering that sale."); return; }
+          records.put(changed);
+        };
+      });
+      return stopped;
+    },
+    async getLot(lotId: string) {
+      if (!id(lotId)) reject("Invalid offline lot reference.");
+      const encryptionKey = await key(), record = await read<Sealed>("records", stockId(lotId));
+      return record ? unseal<OfflineLedgerLot>(record, encryptionKey) : null;
+    },
+    async getProduct(medicineId: string) {
+      if (!/^[a-f0-9]{24}$/.test(medicineId)) reject("Invalid original product reference.");
+      const encryptionKey = await key(), record = await read<Sealed>("records", productId(medicineId));
+      return record ? unseal<ProductBalance>(record, encryptionKey) : null;
+    },
+    async recover(commandId: string) {
+      if (!id(commandId)) reject("Invalid offline sale reference.");
+      return await saved(commandId, await key()) ?? null;
+    },
+    /** Consistent, encrypted point-in-time export. It contains no exportable PC
+     * signing key, passphrase or writable restore path. A later Save needs a new
+     * backup; export success alone never releases ownership or removes evidence.
+     */
+    async exportRecoveryBackup(): Promise<string> {
+      await key();
+      const exportGeneration = generation, tx = db.transaction(["keys", "records"], "readonly"), done = completion(tx);
+      const [protectedKey, rows] = await Promise.all([request(tx.objectStore("keys").get(keyId)), request(tx.objectStore("records").getAll(IDBKeyRange.bound(`${prefix}:`, `${prefix}:\uffff`))), done]);
+      if (generation !== exportGeneration || !protectedKey?.wrapped || !Array.isArray(rows) || rows.length > 65000) reject("The protected ledger changed or exceeds the recovery export bound.");
+      const records: OfflineRecoveryBackup["records"] = [];
+      let size = 0;
+      for (let offset = 0; offset < rows.length; offset++) {
+        const row = rows[offset] as Sealed, data = new Uint8Array(row.ciphertext); let binary = "";
+        for (let start = 0; start < data.length; start += 8192) binary += String.fromCharCode(...data.subarray(start, start + 8192));
+        const ciphertext = btoa(binary); size += ciphertext.length + row.id.length + 150;
+        if (size > 60 * 1024 * 1024) reject("This preparation exceeds the supported backup size. Retain the original PC and synchronize before closing.");
+        records.push({ id: row.id, revision: row.revision, iv: Array.from(row.iv).map(byte => byte.toString(16).padStart(2, "0")).join(""), ciphertext });
+        if (offset % 200 === 199) await yieldPharmacyBackgroundWork();
+      }
+      if (generation !== exportGeneration) reject("The recovery export was locked before completion.");
+      return JSON.stringify({ version: 1, purpose: "ekavyu.pharmacy.read-only-recovery.v1", scope: owner, ...(authorityId ? { authorityId } : {}), exportedAt: new Date().toISOString(), key: protectedKey.wrapped, records } satisfies OfflineRecoveryBackup);
+    },
+    async commit(value: OfflineLedgerSale, privateKey?: CryptoKey): Promise<StoredReceipt> {
+      // Freeze immediately: input mutation while crypto/IDB is pending cannot change the committed sale.
+      const sale = structuredClone(value);
+      if (!id(sale.commandId) || sale.commandId.length < 8 || !id(sale.leaseId) || !id(sale.actorId) || !Array.isArray(sale.lines) || !sale.lines.length || sale.lines.length > MAX_LINES ||
+          !sale.invoice || sale.invoice.documentVersion !== 2 || sale.invoice.createdBy !== sale.actorId || sale.invoice.customerSnapshot?.anonymous !== true ||
+          !sale.payment || Object.keys(sale.payment).some(key => !["manualConfirmed", "cashTenderedPaise", "shiftId", "drawerCode"].includes(key)) ||
+          sale.payment.manualConfirmed !== true || !whole(sale.payment.cashTenderedPaise) || !/^[a-f0-9]{24}$/i.test(sale.payment.shiftId) || !/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(sale.payment.drawerCode)) reject("Offline sale evidence is incomplete.");
+      if (new TextEncoder().encode(offlineLedgerCanonical(sale)).byteLength > 2 * 1024 * 1024) reject("Offline sale evidence exceeds the supported size.");
+      const requestDigest = await digest(sale), encryptionKey = await key(), previous = await saved(sale.commandId, encryptionKey);
+      const saveGeneration = generation;
+      if (previous) return previous.receipt.requestDigest === requestDigest ? previous : reject("This sale reference already contains different evidence. Do not create another bill.");
+      const headRecord = await read<Sealed>("records", headId);
+      if (!headRecord) reject("Offline invoice-number allocation is missing.");
+      const head = await unseal<Head>(headRecord!, encryptionKey), lease = head.lease;
+      if (head.reviewRequired) reject("Synchronize and reconcile the original receipt conflict before issuing another bill.");
+      if (head.stopped) reject("This ledger is permanently stopped. Synchronize its original receipts before starting another allocation.");
+      if (head.prepared && head.documentEngineSha256 !== PHARMACY_OFFLINE_DOCUMENT_SHA256) reject("The prepared document policy changed. Keep original bills and synchronize this session before new issuance.");
+      if (head.prepared && head.activeCommandId !== sale.commandId) reject("Durably stage this exact local Save before issuing a bill.");
+      if (head.prepared && (!head.grant || sale.actorId !== head.grant.actorId || sale.invoice.issuedAt < head.grant.validFrom || sale.invoice.issuedAt > head.grant.validUntil || sale.lines.length > 100)) reject("Current signed checkout authority is required for this original operator.");
+      if (head.calculationEngineSha256 !== PHARMACY_CALCULATION_ENGINE_SHA256) reject("Offline calculation version changed. Reconnect before billing; previously issued bills remain available.");
+      if (sale.leaseId !== lease.id) reject("Offline device allocation has changed. Reconnect before billing.");
+      const now = Date.now();
+      if (now < Date.parse(lease.validFrom) || now > Date.parse(lease.validUntil) || Math.abs(now - Date.parse(sale.invoice.issuedAt)) > 60000)
+        reject("Offline billing authorization or the device clock needs review. Reconnect before billing.");
+      const invoiceNumber = offlineInvoiceNumber(lease, sale.invoice.issuedAt, head.lastIssuedAt);
+      const invoice: IssuedPharmacyInvoice = { ...sale.invoice, invoiceNumber, ...(lease.format ? { numberingVersion: 3, invoiceSeries: lease.prefix,
+        numberingSnapshot: { ...lease.format, version: 1 as const, prefix: lease.prefix, sequence: lease.next } }
+        : { numberingVersion: 2, invoiceSeries: lease.prefix.slice(1, 5), numberingSnapshot: undefined }) };
+      const total = invoice.calculation?.totals.payablePaise;
+      if (!canPrintPharmacyInvoice(invoice) || !whole(total) || total <= 0 || sale.payment.cashTenderedPaise < total || invoice.status !== "paid" ||
+          invoice.amountPaid !== total / 100 || invoice.balanceDue !== 0 || invoice.financialYear !== lease.financialYear ||
+          invoice.taxDocument.issuedAt !== invoice.issuedAt || sale.lines.length !== invoice.items.length) reject("Offline invoice/payment totals or document evidence need review.");
+      validateOfflineLedgerPricing(invoice, sale.lines);
+      const allocations = sale.lines.flatMap((line, lineIndex) => {
+        if (!id(line.medicineId) || !Array.isArray(line.allocations) || !line.allocations.length || line.allocations.length > 100) reject("Offline stock allocations are incomplete.");
+        return line.allocations.map(allocation => ({ ...allocation, medicineId: line.medicineId, lineIndex }));
+      });
+      if (new Set(allocations.map(row => row.lotId)).size !== allocations.length || allocations.some(row => !id(row.lotId) || !whole(row.quantity) || row.quantity <= 0 || !whole(row.expectedRevision))) reject("Offline stock allocations are invalid or duplicated.");
+      const lots = await Promise.all(allocations.map(async row => {
+        const record = await read<Sealed>("records", stockId(row.lotId));
+        if (!record) return reject("A supplied lot is not assigned to this offline device.");
+        const lot = await unseal<OfflineLedgerLot>(record, encryptionKey); validateLot(lot);
+        const today = indiaDate(invoice.issuedAt), expired = lot.expiryPrecision === "month" ? lot.expiryValue < today.slice(0, 7) : lot.expiryValue < today;
+        if (lot.medicineId !== row.medicineId || record.revision !== row.expectedRevision || lot.revision !== row.expectedRevision || lot.quantity < row.quantity || expired) reject("Offline stock changed, is insufficient or has expired. Review the cart.");
+        return { record, lot, row };
+      }));
+      invoice.items.forEach((item, index) => {
+        const supplied = lots.filter(lot => lot.row.lineIndex === index), captured = item.batches!;
+        // Compare multisets: two receipts may share a printed manufacturer's batch label.
+        const normalize = (rows: Array<{ batchNumber: string; expiryValue: string; expiryPrecision: string; sellingPricePaise: number; mrpPaise: number; quantity: number }>) => rows.map(row => offlineLedgerCanonical(row)).sort();
+        const actual = supplied.map(({ lot, row }) => ({ batchNumber: lot.batchNumber, expiryValue: lot.expiryValue, expiryPrecision: lot.expiryPrecision, sellingPricePaise: lot.sellingPricePaise, mrpPaise: lot.mrpPaise, quantity: row.quantity }));
+        if (supplied.reduce((sum, lot) => sum + lot.row.quantity, 0) !== item.quantity || offlineLedgerCanonical(normalize(actual)) !== offlineLedgerCanonical(normalize(captured))) reject("Offline stock does not match the printed supply evidence.");
+      });
+      const productChanges: Array<{ balance: ProductBalance; after: number }> = [];
+      if (head.prepared) {
+        const source = await prepared(encryptionKey);
+        if (!source || sale.payment.shiftId !== source.data.drawer.id || sale.payment.drawerCode !== source.data.drawer.code) reject("Original owned drawer differs.");
+        const lines = [];
+        for (const line of sale.lines) {
+          const product = productIndex.get(line.medicineId), record = await read<Sealed>("records", productId(line.medicineId));
+          if (!product || !record) reject("This product was not assigned to the offline PC.");
+          const balance = await unseal<ProductBalance>(record!, encryptionKey), quantity = line.allocations.reduce((sum, allocation) => sum + allocation.quantity, 0);
+          if (balance.revision !== record!.revision || balance.quantity < quantity) reject("The original product checkpoint differs.");
+          productChanges.push({ balance, after: balance.quantity - quantity });
+          lines.push({ lineId: line.lineId, product: product!, discountPaise: line.discountPaise,
+            allocations: lots.filter(lot => lot.row.medicineId === line.medicineId).map(({ lot, row }) => ({ ...lot, quantity: row.quantity })) });
+        }
+        const expected = buildOfflinePharmacyDocument({ actorId: sale.actorId, issuedAt: sale.invoice.issuedAt, financialYear: lease.financialYear,
+          issuer: source!.data.issuer, issuerRevision: source!.data.issuerRevision, issuerReviewReference: source!.data.issuerReviewReference, lines,
+          invoiceDiscountPaise: sale.invoice.calculation!.totals.invoiceDiscountPaise, roundOffPaise: sale.invoice.calculation!.totals.roundOffPaise });
+        if (offlineLedgerCanonical(expected) !== offlineLedgerCanonical(sale.invoice)) reject("The bill differs from the originally prepared product, tax or issuer.");
+      }
+      const rawReceipt: OfflineLedgerReceipt = { version: head.prepared ? 2 : 1, ...(head.grant ? { authorityId: head.grant.authorityId, manifestDigest: head.grant.manifestDigest,
+          documentEngineSha256: PHARMACY_OFFLINE_DOCUMENT_SHA256, previousDigest: head.lastDigest ?? null,
+          products: productChanges.map(({ balance, after }) => ({ medicineId: balance.medicineId, before: balance.quantity, after, revision: balance.revision + 1 })) } : {}), scope: owner, commandId: sale.commandId, leaseId: lease.id, calculationEngineSha256: head.calculationEngineSha256, sequence: lease.next, requestDigest, invoice,
+        lines: sale.lines,
+        payment: { ...sale.payment, collectedPaise: total, changePaise: sale.payment.cashTenderedPaise - total, evidenceMode: "staff_confirmed_manual" },
+        stock: lots.map(({ lot, row }) => ({ lotId: lot.id, before: lot.quantity, after: lot.quantity - row.quantity, revision: lot.revision + 1 })) };
+      // Return exactly the JSON evidence that is encrypted. No undefined fields
+      // or mutable references to the store's identity may escape to callers.
+      const receipt = JSON.parse(offlineLedgerCanonical(rawReceipt)) as OfflineLedgerReceipt;
+      const receiptDigest = await digest(receipt);
+      const stored: StoredReceipt = { receipt, digest: receiptDigest, ...(head.grant ? { deviceSignature: await signature(privateKey, `ekavyu.pharmacy.offline-sale.v1\n${head.grant.authorityId}\n${receiptDigest}`, encryptionKey) } : {}) };
+      const [nextHead, receiptRecord, ...changedLots] = await Promise.all([
+        seal(headId, headRecord!.revision + 1, { ...head, lease: { ...lease, next: lease.next + 1 }, lastIssuedAt: invoice.issuedAt, lastDigest: stored.digest } satisfies Head, encryptionKey),
+        seal(saleId(sale.commandId), 0, stored, encryptionKey),
+        ...lots.map(({ lot, row }) => seal(stockId(lot.id), lot.revision + 1, { ...lot, quantity: lot.quantity - row.quantity, revision: lot.revision + 1 }, encryptionKey)),
+        ...productChanges.map(({ balance, after }) => seal(productId(balance.medicineId), balance.revision + 1, { ...balance, quantity: after, revision: balance.revision + 1 }, encryptionKey)),
+      ]);
+      try {
+        if (generation !== saveGeneration || await key() !== encryptionKey) reject("Offline billing was locked. Recover this same sale reference before retrying.");
+        await write(["records", "outbox", "issued"], (tx, abort) => {
+          const records = tx.objectStore("records");
+          const check = records.get(headId);
+          check.onsuccess = () => {
+            try {
+              if (generation !== saveGeneration || (check.result as Sealed | undefined)?.revision !== headRecord!.revision) { abort("Offline lock or another window changed the ledger. Recover the same sale reference before retrying."); return; }
+              records.put(nextHead); records.add(receiptRecord); changedLots.forEach(lot => records.put(lot));
+              tx.objectStore("outbox").add({ id: pendingId(lease.next), commandId: sale.commandId, sequence: lease.next });
+              tx.objectStore("issued").add({ id: pendingId(lease.next), commandId: sale.commandId, sequence: lease.next });
+            } catch { abort("Durable offline storage failed. Nothing was saved; recover the same sale reference before retrying."); }
+          };
+        });
+      } catch (failure) {
+        // Two windows saving the SAME key return the original durable result, never a second number.
+        const raced = await saved(sale.commandId, encryptionKey);
+        if (raced?.receipt.requestDigest === requestDigest) return raced;
+        throw failure;
+      }
+      return stored;
+    },
+    async pending(limit = 50) {
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) reject("Invalid offline synchronization batch size.");
+      const encryptionKey = await key(), tx = db.transaction("outbox", "readonly"), done = completion(tx);
+      const [rows] = await Promise.all([request(tx.objectStore("outbox").getAll(IDBKeyRange.bound(`${prefix}:`, `${prefix}:\uffff`), limit)), done]);
+      return Promise.all((rows as Array<{ commandId: string }>).map(async row => await saved(row.commandId, encryptionKey) ?? reject("Offline sync queue has missing evidence; stop and recover this device.")));
+    },
+    /** Caller must authenticate/validate the server response. Acknowledgement never edits an invoice. */
+    async acknowledge(value: OfflineLedgerAcknowledgement) {
+      const ack = structuredClone(value);
+      if (!id(ack.commandId) || !/^[a-f0-9]{64}$/.test(ack.digest) || !/^[a-f0-9]{24}$/i.test(ack.serverInvoiceId)) reject("Offline synchronization acknowledgement is invalid.");
+      const encryptionKey = await key(), original = await saved(ack.commandId, encryptionKey);
+      if (!original || original.digest !== ack.digest || original.receipt.invoice.invoiceNumber !== ack.invoiceNumber) reject("Server acknowledgement differs from the issued offline bill. Keep it pending for review.");
+      const record = await seal(ackId(ack.commandId), 0, ack, encryptionKey);
+      const checkExisting = async () => {
+        const existing = await read<Sealed>("records", record.id);
+        if (!existing) return false;
+        if (offlineLedgerCanonical(await unseal<OfflineLedgerAcknowledgement>(existing, encryptionKey)) !== offlineLedgerCanonical(ack))
+          reject("This bill already has a different server acknowledgement. Review synchronization.");
+        return true;
+      };
+      if (await checkExisting()) return;
+      try {
+        await write(["records", "outbox"], tx => {
+          tx.objectStore("records").add(record);
+          tx.objectStore("outbox").delete(pendingId(original.receipt.sequence));
+        });
+      } catch (failure) { if (!await checkExisting()) throw failure; }
+    },
+  };
+}

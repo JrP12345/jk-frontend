@@ -15,7 +15,7 @@ import Link from "next/link";
 import api, { getApiUrl } from "@/lib/api";
 import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 import { userFacingError } from "@/lib/userFacingError";
-import { Card, Button, Badge, Skeleton, Modal, DatePicker, useToast, cn, EkavyuIcon, ModeSwitcher } from "@/components/ui";
+import { Card, Button, Badge, Skeleton, Modal, DatePicker, useToast, cn, EkavyuLogo, ModeSwitcher } from "@/components/ui";
 import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Receipt, CreditCard, Pill, Volume2, VolumeX, Smartphone, Copy } from "lucide-react";
 import QRCode from "qrcode";
 
@@ -638,8 +638,7 @@ export default function PublicLiveQueueTracker() {
         <header data-app-header className="bg-surface border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
             <Link href="/browse" aria-label="Browse locations" className="inline-flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
-              <EkavyuIcon className="h-8 w-8" />
-              <span className="text-sm font-bold text-text">Ekavyu</span>
+              <EkavyuLogo size="sm" />
             </Link>
             <div className="flex items-center gap-2">
               <span className="hidden sm:inline text-xs font-medium text-text-secondary">Live tracker</span>
@@ -705,9 +704,8 @@ export default function PublicLiveQueueTracker() {
       <header data-app-header className="sticky top-0 z-40 bg-surface/90  border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <Link href="/browse" aria-label="Ekavyu Live Patient Tracker: Return to locations" className="flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
-            <EkavyuIcon className="h-8 w-8 shadow-xs" />
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-text">Ekavyu</span>{" "}
+              <EkavyuLogo size="sm" />
               <span className="text-[10px] text-text-muted hidden sm:block -mt-0.5">Live Patient Tracker</span>
             </div>
           </Link>

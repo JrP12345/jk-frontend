@@ -1,0 +1,47 @@
+import { calculatePharmacyDocument, PHARMACY_CALCULATION_POLICY } from "./generated/pharmacyCalculation";
+import type { IssuedPharmacyInvoice } from "./pharmacyInvoice";
+
+export interface OfflinePricedLine { lineId: string; medicineId: string; discountPaise: number }
+const fail = (): never => { throw new Error("Offline prices, discounts or tax differ from the captured calculation. Nothing was saved."); };
+const paise = (value: number) => Number.isSafeInteger(value) && value >= 0;
+
+/** Recompute, never trust a document whose fields merely add up. This validates
+ * arithmetic, not product/issuer authorization; signed provisioning is separate.
+ */
+export function validateOfflineLedgerPricing(invoice: Omit<IssuedPharmacyInvoice, "invoiceNumber">, intent: OfflinePricedLine[]) {
+  const claimed = invoice?.calculation, issuer = invoice?.taxDocument?.issuer;
+  if (!claimed || claimed.policy !== PHARMACY_CALCULATION_POLICY || claimed.currency !== "INR" || claimed.priceMode !== "inclusive" ||
+      !issuer || !["regular", "unregistered", "composition"].includes(issuer.registration) ||
+      claimed.taxMode !== (issuer.registration === "regular" ? "sgst" : "none") || !claimed.totals ||
+      !Array.isArray(invoice.items) || !Array.isArray(intent) || invoice.items.length !== intent.length || !intent.length || intent.length > 100 ||
+      intent.some(row => !row || !/^[a-zA-Z0-9_-]{8,100}$/.test(row.lineId) || !row.medicineId || !paise(row.discountPaise)) ||
+      new Set(intent.map(row => row.medicineId)).size !== intent.length) return fail();
+  const input = { policy: PHARMACY_CALCULATION_POLICY, currency: "INR" as const, priceMode: "inclusive" as const,
+    taxMode: issuer.registration === "regular" ? "sgst" as const : "none" as const,
+    invoiceDiscountPaise: claimed.totals.invoiceDiscountPaise, roundOffPaise: claimed.totals.roundOffPaise,
+    lines: invoice.items.map((item, index) => {
+      if (!item || !Number.isSafeInteger(item.quantity) || item.quantity < 1 || !Number.isFinite(item.gstRate) ||
+          !Number.isSafeInteger(item.gstRate * 100) || !Array.isArray(item.batches) || !item.batches.length || item.batches.length > 100) return fail();
+      let gross = BigInt(0), quantity = BigInt(0);
+      for (const lot of item.batches) {
+        if (!Number.isSafeInteger(lot.quantity) || lot.quantity < 1 || !paise(lot.sellingPricePaise) || !paise(lot.mrpPaise) || lot.sellingPricePaise > lot.mrpPaise) return fail();
+        gross += BigInt(lot.quantity) * BigInt(lot.sellingPricePaise); quantity += BigInt(lot.quantity);
+      }
+      if (gross > BigInt(Number.MAX_SAFE_INTEGER) || quantity !== BigInt(item.quantity)) return fail();
+      return { lineId: intent[index].lineId, quantity: item.quantity, gstRateBps: item.gstRate * 100,
+        unitPrice: { numeratorPaise: Number(gross), denominatorUnits: item.quantity }, lineDiscountPaise: intent[index].discountPaise };
+    }) };
+  const computed = calculatePharmacyDocument(input);
+  const details = (claimed as typeof claimed & { lines?: Array<Record<string, unknown>> }).lines;
+  const expectedKind = issuer.registration === "unregistered" ? "ordinary_bill" : issuer.registration === "composition" || input.lines.every(line => line.gstRateBps === 0)
+    ? "bill_of_supply" : input.lines.some(line => line.gstRateBps === 0) ? "invoice_cum_bill_of_supply" : "tax_invoice";
+  const fields = ["baseAmountPaise", "cgstPaise", "sgstPaise", "grossAmountPaise"] as const;
+  if (!Array.isArray(details) || details.length !== computed.lines.length || details.some((row, index) => !row || Object.entries(computed.lines[index]).some(([field, value]) => row[field] !== value)) ||
+      invoice.taxDocument.kind !== expectedKind || invoice.items.some((item, index) => fields.some(field => item[field] !== computed.lines[index][field]) ||
+      item.amount !== computed.lines[index].baseAmountPaise / item.quantity / 100) ||
+      Object.entries(computed.totals).some(([field, value]) => (claimed.totals as unknown as Record<string, unknown>)[field] !== value) ||
+      invoice.subtotal !== computed.totals.baseAmountPaise / 100 || invoice.tax !== (computed.totals.cgstPaise + computed.totals.sgstPaise) / 100 ||
+      invoice.cgstTotal !== computed.totals.cgstPaise / 100 || invoice.sgstTotal !== computed.totals.sgstPaise / 100 || invoice.totalAmount !== computed.totals.payablePaise / 100 ||
+      computed.totals.payablePaise >= 5_000_000) return fail();
+  return computed;
+}

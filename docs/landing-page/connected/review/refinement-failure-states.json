@@ -1,0 +1,72 @@
+[
+  {
+    "scenario": "desktop-light",
+    "audience": "patient",
+    "recoveryFits": true,
+    "retryLoaded": true,
+    "accessibility": {
+      "violations": [],
+      "incomplete": []
+    },
+    "passed": true
+  },
+  {
+    "scenario": "desktop-light",
+    "audience": "clinic",
+    "recoveryFits": true,
+    "retryLoaded": true,
+    "accessibility": {
+      "violations": [],
+      "incomplete": []
+    },
+    "passed": true
+  },
+  {
+    "scenario": "desktop-dark",
+    "audience": "patient",
+    "recoveryFits": true,
+    "retryLoaded": true,
+    "accessibility": {
+      "violations": [],
+      "incomplete": []
+    },
+    "passed": true
+  },
+  {
+    "scenario": "desktop-dark",
+    "audience": "clinic",
+    "recoveryFits": true,
+    "retryLoaded": true,
+    "accessibility": {
+      "violations": [],
+      "incomplete": []
+    },
+    "passed": true
+  },
+  {
+    "scenario": "mobile-dark",
+    "audience": "patient",
+    "recoveryFits": true,
+    "retryLoaded": true,
+    "accessibility": {
+      "violations": [],
+      "incomplete": []
+    },
+    "passed": true
+  },
+  {
+    "scenario": "mobile-dark",
+    "audience": "clinic",
+    "recoveryFits": true,
+    "retryLoaded": true,
+    "accessibility": {
+      "violations": [],
+      "incomplete": []
+    },
+    "passed": true
+  },
+  {
+    "scenario": "no-javascript-messaging-fragment",
+    "passed": true
+  }
+]

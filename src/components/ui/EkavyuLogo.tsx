@@ -2,76 +2,48 @@
 
 import LoadingImage from "@/components/ui/LoadingImage";
 import { cn } from "./utils";
+import styles from "./EkavyuLogo.module.css";
+
+type BrandAppearance = "auto" | "on-light" | "on-dark";
 
 export interface EkavyuLogoProps {
   className?: string;
-  /** Use the square application mark in dense UI. */
   iconOnly?: boolean;
   size?: "sm" | "md" | "lg" | "xl";
-  /** Include the tagline only where the brand has room, such as auth screens. */
+  /** Use the supplied Healthcare Platform descriptor in spacious placements. */
   showTagline?: boolean;
-  /** Place a small, quiet wordmark beneath the symbol. */
   layout?: "horizontal" | "stacked";
+  /** Override automatic theme selection on a permanently light/dark surface. */
+  appearance?: BrandAppearance;
 }
 
-const wordmarkSizeMap = {
-  sm: "text-base max-w-[130px]",
-  md: "text-xl max-w-[170px]",
-  lg: "text-2xl max-w-[220px]",
-  xl: "text-3xl max-w-[280px]",
-};
+const iconSizeMap = { sm: "h-7 w-7", md: "h-10 w-10", lg: "h-14 w-14", xl: "h-20 w-20" };
 
-const iconSizeMap = {
-  sm: "h-7 w-7",
-  md: "h-10 w-10",
-  lg: "h-14 w-14",
-  xl: "h-20 w-20",
-};
-
-/** Transparent path-based vector supplied in the brand handoff. */
-export function EkavyuIcon({ className = "h-10 w-10" }: { className?: string }) {
-  return (
-    <div className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
-      <LoadingImage
-        src="/brand/ekavyu-mark.svg?v=brand-5"
-        alt="Ekavyu"
-        width={512}
-        height={512}
-        loading="eager"
-        fetchPriority="high"
-        loadingEffect={false}
-        className="block h-full w-full object-contain"
-      />
-    </div>
-  );
+function Artwork({ name, width, height }: { name: "symbol" | "wordmark" | "stacked" | "stacked-without-descriptor"; width: number; height: number }) {
+  return <>
+    {(["black", "white"] as const).map(color => <LoadingImage key={color}
+      src={`/brand/ekavyu-${name}-${color}.svg?v=brand-6`}
+      alt="" aria-hidden="true" width={width} height={height} loading="eager" loadingEffect={false}
+      className={cn(styles.artwork, color === "black" ? styles.normal : styles.inverse)}
+    />)}
+  </>;
 }
 
+/** Original kit paths; theme variants switch in CSS before hydration. */
+export function EkavyuIcon({ className = "h-10 w-10", appearance = "auto" }: { className?: string; appearance?: BrandAppearance }) {
+  return <span role="img" aria-label="Ekavyu" data-brand-appearance={appearance} className={cn(styles.icon, styles.appearance, className)}>
+    <Artwork name="symbol" width={352} height={263} />
+  </span>;
+}
 
-/**
- * Full Ekavyu wordmark for headers and spacious authentication/marketing views.
- * Compact headers omit the tagline; spacious views can opt in.
- */
-export default function EkavyuLogo({
-  className = "",
-  iconOnly = false,
-  size = "md",
-  showTagline = false,
-  layout = "horizontal",
-}: EkavyuLogoProps) {
-  if (iconOnly) {
-    return <EkavyuIcon className={cn(iconSizeMap[size], className)} />;
-  }
-
-  const sizeClass = wordmarkSizeMap[size];
+export default function EkavyuLogo({ className = "", iconOnly = false, size = "md", showTagline = false, layout = "horizontal", appearance = "auto" }: EkavyuLogoProps) {
+  if (iconOnly) return <EkavyuIcon className={cn(iconSizeMap[size], className)} appearance={appearance} />;
   const stacked = layout === "stacked";
-
-  return (
-    <div className={cn("inline-flex shrink-0 select-none items-center py-1 text-text", stacked ? "flex-col gap-0.5" : cn("gap-2 font-bold tracking-tight", sizeClass), className)}>
-      <EkavyuIcon className={iconSizeMap[size]} />
-      <span className={cn("flex min-w-0 flex-col", stacked && "items-center text-center")}>
-        <span aria-hidden="true" className={stacked ? cn("font-semibold tracking-[.035em] leading-none", size === "xl" ? "text-base" : size === "lg" ? "text-sm" : "text-[11px]") : "uppercase tracking-[.16em]"}>Ekavyu</span>
-        {showTagline && <span className="text-[10px] sm:text-xs font-medium tracking-normal text-text-secondary">Care That Keeps Moving</span>}
-      </span>
-    </div>
-  );
+  return <span role="img" aria-label="Ekavyu" data-brand-appearance={appearance} data-brand-layout={layout}
+    className={cn(styles.logo, styles.appearance, styles[size], stacked ? styles.stacked : styles.horizontal, showTagline && styles.descriptor, className)}>
+    {stacked || showTagline ? <Artwork name={showTagline ? "stacked" : "stacked-without-descriptor"} width={595} height={showTagline ? 420 : 370} /> : <>
+      <span className={styles.horizontalSymbol}><Artwork name="symbol" width={352} height={263} /></span>
+      <span className={styles.horizontalWordmark}><Artwork name="wordmark" width={574} height={97} /></span>
+    </>}
+  </span>;
 }

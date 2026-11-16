@@ -65,17 +65,17 @@ export interface StaffMember {
   [key: string]: any;
 }
 
-export default function TeamManagement({ organizationId, embedded = false }: { organizationId?: string; embedded?: boolean }) {
+export default function TeamManagement({ organizationId, workspaceProfile, embedded = false }: { organizationId?: string; workspaceProfile?: "clinic" | "pharmacy"; embedded?: boolean }) {
   const user = useAuthStore((state) => state.user);
-  return <TeamWorkspace key={`${organizationId || ""}:${authScopeKey(user)}`} organizationId={organizationId} embedded={embedded} />;
+  return <TeamWorkspace key={`${organizationId || ""}:${workspaceProfile || ""}:${authScopeKey(user)}`} organizationId={organizationId} workspaceProfile={workspaceProfile} embedded={embedded} />;
 }
 
-function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; embedded: boolean }) {
+function TeamWorkspace({ organizationId, workspaceProfile, embedded }: { organizationId?: string; workspaceProfile?: "clinic" | "pharmacy"; embedded: boolean }) {
   const scopedPath = (path: string) => organizationPath(path, organizationId);
   const { toast, dismiss } = useToast();
   const { uploadFile } = useR2Upload();
   const { user } = useAuthStore();
-  const pharmacyOnly = !organizationId || organizationId === user?.organization_id ? isPharmacyWorkspace(user) : false;
+  const pharmacyOnly = workspaceProfile ? workspaceProfile === "pharmacy" : (!organizationId || organizationId === user?.organization_id) && isPharmacyWorkspace(user);
   const { locations: organizationLocations, fetchLocations, activeLocationId } = useOrganizationLocations(organizationId);
   const locations = useMemo(() => organizationLocations.filter(location => location.isActive !== false), [organizationLocations]);
   const canManageStaff = hasAnyPermission(user, "MANAGE_STAFF");
@@ -837,7 +837,7 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
           <div><Button variant="outline" onClick={() => { setMemberChoiceOpen(false); openModal(pharmacyOnly ? "pharmacist" : "doctor"); }}>Create a new account</Button><p className="mt-2 text-sm text-text-muted">{pharmacyOnly ? "Create a pharmacy staff account and assign its branch permissions." : "Register a new team member and configure their clinical profile."}</p></div>
         </div>
       </Modal>
-      {inviteOpen && targetOrganizationId && <InviteOrganizationMember key={targetOrganizationId} organizationId={targetOrganizationId} onClose={() => setInviteOpen(false)} />}
+      {inviteOpen && targetOrganizationId && <InviteOrganizationMember key={targetOrganizationId} organizationId={targetOrganizationId} workspaceProfile={workspaceProfile || (pharmacyOnly ? "pharmacy" : undefined)} onClose={() => setInviteOpen(false)} />}
 
       {embedded ? directory : <Tabs className={styles.workspaceTabs} variant="pills" activeTab={workspaceTab} onChange={setWorkspaceTab} scrollActiveIntoView={false} tabs={[
         { id: "directory", label: "Staff", badge: readingStaff ? undefined : allStaffMembers.length, content: directory },

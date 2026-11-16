@@ -10,9 +10,9 @@ import { organizationPath } from "@/services/organization.service";
 import { isPharmacyWorkspace } from "@/lib/workspaceProfile";
 
 /** Use the existing acceptance workflow for both new and existing identities. */
-export function InviteOrganizationMember({ organizationId, onClose }: { organizationId: string; onClose: () => void }) {
+export function InviteOrganizationMember({ organizationId, workspaceProfile, onClose }: { organizationId: string; workspaceProfile?: "clinic" | "pharmacy"; onClose: () => void }) {
   const { user } = useAuthStore();
-  const pharmacyOnly = organizationId === user?.organization_id && isPharmacyWorkspace(user);
+  const pharmacyOnly = workspaceProfile ? workspaceProfile === "pharmacy" : organizationId === user?.organization_id && isPharmacyWorkspace(user);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState(pharmacyOnly ? "pharmacist" : "nurse");
   const [busy, setBusy] = useState(false);

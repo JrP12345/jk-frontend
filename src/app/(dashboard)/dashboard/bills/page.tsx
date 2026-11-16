@@ -3,8 +3,9 @@
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
 import PrintButton from "@/components/ui/PrintButton";
+import EkavyuLogo from "@/components/ui/EkavyuLogo";
 
-import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
+import { getPrintBrandStyles, getPrintBrandMarkup, printHtml } from "@/lib/printBrand";
 import { formatCurrency } from "@/lib/currency";
 
 import { useState, useEffect, useRef } from "react";
@@ -170,7 +171,7 @@ export default function PatientBillsPage() {
         <body>
           <div class="receipt">
             <div class="center">
-              <h3 style="margin:2px 0;">Ekavyu HEALTHCARE SYSTEM</h3>
+              ${getPrintBrandMarkup()}
               <p style="margin:2px 0; font-size:11px;">${inv.locationId?.name}</p>
             </div>
             <div class="border-dashed"></div>
@@ -395,7 +396,7 @@ export default function PatientBillsPage() {
           <div className="space-y-6">
             <div className="border border-border rounded-xl p-5 bg-surface-alt font-mono text-sm space-y-4">
               <div className="text-center border-b border-border/80 border-dashed pb-4 mb-2">
-                <h3 className="font-extrabold text-base tracking-tight text-text">Ekavyu</h3>
+                <EkavyuLogo size="sm" />
                 <p className="text-xs text-text-muted mt-0.5">{receiptInvoice.locationId?.name}</p>
                 <p className="text-[11px] text-text-muted">{receiptInvoice.locationId?.address}, {receiptInvoice.locationId?.city}</p>
               </div>

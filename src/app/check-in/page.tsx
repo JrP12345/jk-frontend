@@ -2,7 +2,7 @@
 
 import PrintButton from "@/components/ui/PrintButton";
 
-import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
+import { getPrintBrandStyles, getPrintBrandMarkup, printHtml } from "@/lib/printBrand";
 
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -159,7 +159,6 @@ export default function PublicSelfCheckInKiosk() {
           <style>${getPrintBrandStyles()}
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fff; }
             .slip { width: 300px; padding: 24px; border: 2px solid #000; text-align: center; border-radius: 8px; }
-            .title { font-size: 16px; font-weight: 900; margin: 0; letter-spacing: -0.5px; }
             .subtitle { font-size: 11px; color: #555; margin-top: 2px; }
             .divider { border-bottom: 2px dashed #000; margin: 16px 0; }
             .token-box { margin: 16px 0; }
@@ -173,7 +172,7 @@ export default function PublicSelfCheckInKiosk() {
         </head>
         <body>
           <div class="slip">
-            <h2 class="title">Ekavyu LOCATION RECEPTION</h2>
+            ${getPrintBrandMarkup()}
             <p class="subtitle">Outpatient Self Check-In Kiosk</p>
             <div class="divider"></div>
             <div class="token-box">

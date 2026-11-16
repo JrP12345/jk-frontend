@@ -24,8 +24,7 @@
 }
 
 .layout,
-.tabs,
-.content {
+.tabs {
   display: grid;
   gap: 1rem;
   min-width: 0;

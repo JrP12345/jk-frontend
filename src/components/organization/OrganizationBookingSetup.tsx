@@ -15,6 +15,7 @@ import { validSingleChoice } from "@/lib/locationWorkflow";
 import { locationPath, doctorPath } from "@/lib/publicPaths";
 import { getPublicBookingStatus } from "@/lib/publicBooking";
 import { publicBookingChecklist } from "@/lib/publicBookingSetup";
+import { facilityHasDoctorSection } from "@/lib/facility";
 import { organizationPath } from "@/services/organization.service";
 
 interface SetupLocation { id: string; slug?: string; name: string; isActive?: boolean; isPublished?: boolean }
@@ -70,6 +71,7 @@ export function OrganizationBookingSetup({ organizationId, onNavigate }: { organ
 
   if (!canRead) return null;
   const status = publicDetail ? getPublicBookingStatus({ ...publicDetail, doctorCount: publicDetail.doctors.length }) : null;
+  const serviceOnly = publicDetail && !facilityHasDoctorSection(publicDetail);
   const checklist = publicDetail ? publicBookingChecklist(publicDetail) : [];
   return <Card><CardHeader><div className={styles.sectionHeader}><CardTitle as="h2">Public booking setup</CardTitle><Button variant="outline" size="sm" className={styles.iconAction} aria-label="Refresh setup status" title="Refresh setup status" onClick={load} disabled={loading} loading={loading}><RotateCw className="h-4 w-4" /></Button></div><p className="text-sm text-text-muted">Review each location's team, contact details and hours before sharing its booking link.</p></CardHeader><CardContent className="space-y-4">
     {loading ? <LoadingState label="Checking setup" /> : error ? <Alert variant="error" title="Setup status unavailable" action={<Button onClick={load}>Retry setup status</Button>}>{error}</Alert> : !locations.length ? <Alert variant="warning" title="Create a location first" action={<Button onClick={() => onNavigate("locations")}>Open location setup</Button>}>A doctor needs an active practice location before appearing publicly.</Alert> : <>
@@ -79,15 +81,15 @@ export function OrganizationBookingSetup({ organizationId, onNavigate }: { organ
       {checking && <LoadingState label="Checking public page" />}
       {detailError && <Alert variant="error" title="Public status unavailable" action={<Button variant="outline" onClick={() => setRetry(value => value + 1)}>Retry public check</Button>}>{detailError}</Alert>}
       {publicDetail && <>
-        <Alert variant={status === "check_availability" ? "info" : "warning"} title={status === "no_doctors" ? "Location assignment required" : status === "contact_location" ? "Online booking is paused" : "Public page available"}>{status === "no_doctors" ? "No active doctors are listed at this location. Complete their location assignments in clinical team setup." : status === "contact_location" ? "Patients can view the page and contact reception. Review the subscription before offering online appointments." : "Patients can check availability. Review the remaining details and preview the page before sharing."}</Alert>
+        {serviceOnly ? <Alert variant="info" title="Public page available">This location does not require doctors or appointment booking. Customers can view its contact details and hours. A pharmacy can optionally publish medicines and accept pickups under Pharmacy → Public medicine list.</Alert> : <Alert variant={status === "check_availability" ? "info" : "warning"} title={status === "no_doctors" ? "Location assignment required" : status === "contact_location" ? "Online booking is paused" : "Public page available"}>{status === "no_doctors" ? "No active doctors are listed at this location. Complete their location assignments in clinical team setup." : status === "contact_location" ? "Patients can view the page and contact reception. Review the subscription before offering online appointments." : "Patients can check availability. Review the remaining details and preview the page before sharing."}</Alert>}
         <ul aria-label="Public booking checklist" className={styles.checklist}>{checklist.map(item => <li key={item.label}><span>{item.label}</span><span className={item.complete ? "text-success-text" : "text-warning-text"}>{item.complete ? "Complete" : "Needs attention"}</span></li>)}</ul>
         <Link className="inline-flex min-h-11 items-center text-sm font-semibold text-accent hover:underline" href={locationPath(publicDetail)} target="_blank" rel="noopener noreferrer">Preview public location page</Link>
         {publicDetail.doctors.length > 0 && <ul aria-label="Doctor public previews" className="space-y-2">{publicDetail.doctors.filter(doctor => doctor.slug).map(doctor => <li key={doctor.id}><Link className="inline-flex min-h-11 items-center text-sm text-accent hover:underline" href={doctorPath(doctor, publicDetail)} target="_blank" rel="noopener noreferrer">Preview {doctor.name}&apos;s doctor page</Link></li>)}</ul>}
       </>}
       <div className={styles.sectionActions}>
-        {hasAnyPermission(user, "VIEW_STAFF", "MANAGE_STAFF") && <Button variant="outline" size="sm" onClick={() => onNavigate("members")}>Open clinical team setup</Button>}
+        {!serviceOnly && hasAnyPermission(user, "VIEW_STAFF", "MANAGE_STAFF") && <Button variant="outline" size="sm" onClick={() => onNavigate("members")}>Open clinical team setup</Button>}
         <Button variant="outline" size="sm" onClick={() => onNavigate("locations")}>Review location details</Button>
-        {status === "contact_location" && hasAnyPermission(user, "MANAGE_BILLING") && <Button variant="outline" size="sm" onClick={() => onNavigate("subscription")}>Review subscription</Button>}
+        {!serviceOnly && status === "contact_location" && hasAnyPermission(user, "MANAGE_BILLING") && <Button variant="outline" size="sm" onClick={() => onNavigate("subscription")}>Review subscription</Button>}
       </div>
     </>}
   </CardContent></Card>;

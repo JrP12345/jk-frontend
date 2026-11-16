@@ -107,7 +107,7 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
   return <div className={marketplace.page}>
     <PublicBrandStyles color={selectedLocation?.brandColor} />
     <PublicStructuredData data={profileUrl ? { "@context": "https://schema.org", "@type": "ProfilePage", url: profileUrl, mainEntity: { "@type": "Person", "@id": `${profileUrl}#doctor`, name: doctor.name, url: profileUrl, ...(profileImage ? { image: profileImage } : {}), ...(doctor.description ? { description: doctor.description } : {}), workLocation: locations.map((location) => ({ "@type": "Place", name: location.name, url: absolutePublicUrl(locationPath(location)) })) } } : null} />
-    <MarketplaceNavbar showSignUp showSearch={false} navigationSlot={<><Link href="/browse" className="font-medium text-accent">Find care</Link><Link href="/" className="text-text-secondary hover:text-text">For patients</Link><Link href="/pricing" className="text-text-secondary hover:text-text">For providers</Link></>} />
+    <MarketplaceNavbar showSignUp showSearch={false} />
     <main className={cn(marketplace.content, styles.content)}>
       <div className={styles.breadcrumbs}><Breadcrumbs separator={<span aria-hidden="true">/</span>} items={[{ label: "Browse locations", href: "/browse" }, ...(selectedLocation ? [{ label: selectedLocation.name, href: locationPath(selectedLocation) }] : []), { label: doctor.name }]} /></div>
       <div className={styles.layout}>
@@ -117,11 +117,11 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
             <div className={styles.identityText}><h1 id="doctor-title" className={care.title}>{doctor.name}</h1><p className="mt-2 text-sm font-medium text-accent">{doctor.specialization || "Specialty not listed"}</p>{doctor.qualification && <p className="mt-1 text-sm text-text-secondary">{doctor.qualification}</p>}{doctor.languages.length > 0 && <p className="mt-2 text-xs text-text-secondary">Consultations in {doctor.languages.join(", ")}</p>}{selectedLocation && hasMultipleLocations(doctor) && selectedLocation.name !== doctor.organizationName && <p className="mt-2 text-xs text-text-secondary">{doctor.organizationName}</p>}</div>
             {selectedLocation && <PublicProfileShare title={doctor.name} path={doctorPath(doctor, selectedLocation)} className={styles.share} iconOnly />}
           </section>
-          <Card padding="none" className={care.card}><dl className={cn(care.summary, styles.summary)}>
+          {(doctor.experienceYears > 0 || selectedLocation) && <Card padding="none" className={care.card}><dl className={cn(care.summary, styles.summary)}>
             {doctor.experienceYears > 0 && <div><dt>Experience</dt><dd>{doctor.experienceYears} {doctor.experienceYears === 1 ? "year" : "years"}</dd></div>}
             {selectedLocation && <div><dt>Consultation fee</dt><dd>{consultationFee(selectedLocation, doctor.currency)}</dd></div>}
             {selectedLocation && <div><dt>Booking</dt><dd>{getPublicBookingStatus({ ...selectedLocation, doctorCount: 1 }) !== "check_availability" ? "Contact reception" : selectedLocation.bookingMode === "sequential_queue" ? "Queue token" : selectedLocation.bookingMode === "time_slot" ? "Time slot" : "Check availability"}</dd></div>}
-          </dl></Card>
+          </dl></Card>}
           {doctor.description && <section aria-labelledby="doctor-about-title" className={styles.about}><h2 id="doctor-about-title" className={care.sectionTitle}>About</h2><p className="mt-3 whitespace-pre-line text-sm leading-7 text-text-secondary">{doctor.description}</p></section>}
           <section aria-labelledby="doctor-locations-title" className={styles.practices}>
             <h2 id="doctor-locations-title" className={care.sectionTitle}>Practice {locations.length === 1 ? "location" : "locations"}</h2>

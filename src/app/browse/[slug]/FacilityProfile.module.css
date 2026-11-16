@@ -1,4 +1,23 @@
 .container { padding-block: 0 48px; }
+.pharmacyPage { min-height: calc(100dvh - 64px); background: var(--background); color: var(--text-primary); }
+:global(.dark) .pharmacyPage, :global([data-mode="dark"]) .pharmacyPage { --background: #081b18; --surface: #102925; --surface-muted: #163733; --surface-alt: #163733; --surface-elevated: #102925; --surface-hover: #1a4039; --border: #284e46; --input-border: #315b51; --text-primary: #eef6f3; --text-secondary: #aec6c0; --text-muted: #aec6c0; --accent: #4cc6ab; --accent-hover: #72d4bf; --selected: #163733; --danger-subtle: #3e1c15; --danger-text: #ffac90; --focus-ring: #4cc6ab; }
+.layout.pharmacyLayout { display: block; margin-top: 28px; }
+.pharmacyPage { --pharmacy-action: var(--p-500); --pharmacy-action-hover: var(--p-600); --pharmacy-action-text: var(--brand-mist); }
+:global(.dark) .pharmacyPage, :global([data-mode="dark"]) .pharmacyPage { --pharmacy-action: #4cc6ab; --pharmacy-action-hover: #72d4bf; --pharmacy-action-text: #071d18; }
+.pharmacyLayout > .aboutSection { margin-top: 24px; }
+.pharmacyLocation { min-width: 0; }
+.pharmacyLocation > div { border-radius: 16px; box-shadow: none; }
+.pharmacyLocation .locationBody { padding: var(--pharmacy-location-padding, 18px); gap: 12px; }
+.pharmacyLocation .weeklyHours { margin-inline: var(--pharmacy-hours-margin, 20px); }
+.pharmacyLocation .locationBody h2 { font-size: 18px; }
+.pharmacyLocation .embeddedMap { border-radius: 12px; }
+.pharmacyLocation .embeddedMap iframe { height: 150px; }
+.pharmacyLocation .locationActions :is(a, button) { min-height: 48px; border-radius: 12px; }
+.pharmacyLocation .locationActions > a { background: var(--pharmacy-action); color: var(--pharmacy-action-text); }
+.pharmacyLocation .locationActions > a:hover { background: var(--pharmacy-action-hover); }
+.mapLink { display: flex; min-height: 150px; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; color: var(--text-secondary); background: repeating-linear-gradient(45deg, var(--background), var(--background) 12px, var(--surface-muted) 12px, var(--surface-muted) 24px); font-size: 14px; font-weight: 600; }
+.mapLink svg { width: 18px; height: 18px; }
+.mapLink:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .heroBand { position: relative; padding-bottom: 64px; background: var(--brand-primary); color: var(--brand-mist); box-shadow: 0 0 0 100vmax var(--brand-primary); clip-path: inset(0 -100vmax); }
 .breadcrumbs { display: flex; align-items: center; min-height: 56px; min-width: 0; }
 .breadcrumbs > nav { min-width: 0; }
@@ -33,7 +52,7 @@
 .openingStatus > span:last-child { min-width: 0; max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
 .jumpNav { display: none; }
 .layout { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(300px, 1fr); gap: 28px 32px; align-items: start; margin-top: 36px; }
-.layout > section, .layout > aside, .weeklyHours { min-width: 0; scroll-margin-top: 88px; }
+.layout > section, .layout > div > section, .layout > aside, .weeklyHours { min-width: 0; scroll-margin-top: 88px; }
 .doctors { grid-column: 1; grid-row: 1; }
 .sidebar { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 88px; }
 .aboutSection { grid-column: 1; grid-row: 2; }

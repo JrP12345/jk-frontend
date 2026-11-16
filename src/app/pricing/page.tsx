@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { Button } from "@/components/ui";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import Card from "@/components/ui/Card";
+import Skeleton from "@/components/ui/Skeleton";
 import { billingService, type SaaSPlan } from "@/services/billing.service";
 import { BillingCycleSwitch, PublicPlanCard, planCapacityRows as capacityRows, planFeatureRows as featureRows } from "@/components/billing/PublicPlanCard";
+import styles from "./pricing.module.css";
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
@@ -33,49 +38,47 @@ export default function PricingPage() {
     return () => { current = false; };
   }, [queryClient, attempt]);
 
-  return (
-    <div className="min-h-dvh bg-background text-text flex flex-col">
-      <MarketplaceNavbar />
-      <main className="mx-auto w-full max-w-6xl px-4 pt-24 pb-10 sm:px-6">
-        <header className="mb-8 space-y-3">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Plans for your practice</h1>
-          <p className="text-sm text-text-secondary max-w-2xl">Compare location capacity and features. Trial duration and pricing depend on the selected plan.</p>
-          <BillingCycleSwitch value={billingCycle} onChange={setBillingCycle} />
-        </header>
-        {loading ? (
-          <div role="status" aria-live="polite" className="grid gap-4 md:grid-cols-3" aria-busy="true" aria-label="Loading pricing tiers">
-            {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-80 animate-pulse rounded-xl border border-border bg-surface-alt" />)}
+  return <div className={styles.page}>
+    <MarketplaceNavbar showSearch={false} showSignUp showProviderRequest />
+    <main className={styles.main}>
+      <Breadcrumbs className={styles.breadcrumb} items={[{ label: "Home", href: "/" }, { label: "Plans" }]} />
+      <header className={styles.introduction}>
+        <p className={styles.eyebrow}>For clinics &amp; hospitals</p>
+        <h1>Plans for your practice</h1>
+        <p>Choose the capacity and tools your team needs. We’ll confirm your plan and help you get started.</p>
+      </header>
+      <div className={styles.controls}>
+        <BillingCycleSwitch value={billingCycle} onChange={setBillingCycle} />
+        <p>Pricing and trial terms follow your selected plan.</p>
+      </div>
+      {loading ? <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading pricing tiers"><span className="sr-only">Loading current plans</span><Skeleton height="20rem" rounded="2xl" /></div> : error ? <Card padding="lg" contentClassName={styles.unavailable}>
+        <h2>Plan details are unavailable</h2><p role="status">{error}</p>
+        <div className={styles.recovery}><Button variant="outline" onClick={() => {
+          void queryClient.invalidateQueries({ queryKey: ["public-plans"], exact: true, refetchType: "none" });
+          setLoading(true); setAttempt(value => value + 1);
+        }}>Try again</Button><a href="mailto:ekavyuofficial@gmail.com">Contact the team</a></div>
+      </Card> : <>
+        <section className={styles.plans} data-plan-count={plans.length} aria-label="Subscription plans">
+          {plans.map(plan => <PublicPlanCard key={plan.id || plan.slug} plan={plan} billingCycle={billingCycle} single={plans.length === 1} />)}
+        </section>
+        <p className={styles.setupNote}>Setup is assisted. Your team’s access and included tools are confirmed before activation.</p>
+        <details className={styles.comparison}>
+          <summary>Compare all limits and features</summary>
+          <div className={styles.tableRegion} tabIndex={0} role="region" aria-label="Plan feature comparison">
+            <table>
+              <caption className="sr-only">Configured subscription plan limits and features</caption>
+              <thead><tr><th scope="col">Feature</th>{plans.map(plan => <th scope="col" key={plan.id || plan.slug}>{plan.name}</th>)}</tr></thead>
+              <tbody>
+                {capacityRows.map(row => <tr key={row.key}><th scope="row">{row.label}</th>{plans.map(plan => <td key={plan.id || plan.slug}>{plan.limits?.[row.key]?.toLocaleString() ?? "—"}</td>)}</tr>)}
+                {featureRows.map(row => <tr key={row.key}><th scope="row">{row.label}</th>{plans.map(plan => <td key={plan.id || plan.slug}>{plan.features?.[row.key] ? "Included" : "Not included"}</td>)}</tr>)}
+              </tbody>
+            </table>
           </div>
-        ) : error ? (
-          <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
-            <p role="status" className="text-sm text-text-secondary">{error}</p>
-            <Button variant="outline" onClick={() => {
-              void queryClient.invalidateQueries({ queryKey: ["public-plans"], exact: true, refetchType: "none" });
-              setLoading(true); setAttempt(value => value + 1);
-            }}>Try again</Button>
-          </div>
-        ) : (
-          <>
-            <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Subscription plans">
-              {plans.map(plan => <PublicPlanCard key={plan.id || plan.slug} plan={plan} billingCycle={billingCycle} />)}
-            </section>
-            <details className="mt-6 rounded-xl border border-border bg-surface">
-              <summary className="cursor-pointer p-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Compare all limits and features</summary>
-              <div className="overflow-x-auto px-4 pb-4 touch-scroll focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring" tabIndex={0} role="region" aria-label="Plan feature comparison">
-                <table className="w-full min-w-[560px] text-left text-sm">
-                  <caption className="sr-only">Configured subscription plan limits and features</caption>
-                  <thead><tr className="border-b border-border"><th scope="col" className="p-3">Feature</th>{plans.map(plan => <th scope="col" className="p-3 text-center" key={plan.id || plan.slug}>{plan.name}</th>)}</tr></thead>
-                  <tbody>
-                    {capacityRows.map(row => <tr key={row.key} className="border-b border-border"><th scope="row" className="p-3 font-medium">{row.label}</th>{plans.map(plan => <td key={plan.id || plan.slug} className="p-3 text-center">{plan.limits?.[row.key]?.toLocaleString() ?? "—"}</td>)}</tr>)}
-                    {featureRows.map(row => <tr key={row.key} className="border-b border-border"><th scope="row" className="p-3 font-medium">{row.label}</th>{plans.map(plan => <td key={plan.id || plan.slug} className="p-3 text-center">{plan.features?.[row.key] ? "Included" : "Not included"}</td>)}</tr>)}
-                  </tbody>
-                </table>
-              </div>
-            </details>
-          </>
-        )}
-      </main>
-      <footer className="mt-auto border-t border-border p-6 text-center text-xs text-text-muted">© 2026 Ekavyu Healthcare Infrastructure Platform.</footer>
-    </div>
-  );
+        </details>
+      </>}
+      <aside className={styles.help} aria-label="Plan questions"><div><h2>Need help choosing?</h2><p>Tell us about your practice and the team you’re setting up.</p></div><a href="mailto:ekavyuofficial@gmail.com">Talk to the team <span aria-hidden="true">↗</span></a></aside>
+      <div className={styles.otherAudience}><span>Setting up a pharmacy?</span><Link href="/pharmacy-start">View pharmacy onboarding <span aria-hidden="true">→</span></Link></div>
+    </main>
+    <footer className={styles.footer}><span>Ekavyu · Care, connected.</span><Link href="/browse">Browse care</Link></footer>
+  </div>;
 }

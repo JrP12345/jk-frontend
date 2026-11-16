@@ -1,4 +1,3 @@
-import Link from "next/link";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { Card, Skeleton, cn } from "@/components/ui";
 import marketplace from "@/components/MarketplaceLayout.module.css";
@@ -7,7 +6,7 @@ import care from "@/components/PublicCare.module.css";
 
 export default function BrowseDetailSkeleton() {
   return <div className={marketplace.page} role="status" aria-label="Loading location and doctor details" aria-busy="true">
-    <MarketplaceNavbar showSignUp showSearch={false} navigationSlot={<><Link href="/browse">Find care</Link><Link href="/">For patients</Link><Link href="/pricing">For providers</Link></>} />
+    <MarketplaceNavbar showSignUp showSearch={false} />
     <div className={cn(marketplace.content, styles.container)} aria-hidden="true">
       <div className={styles.heroBand}><div className={styles.breadcrumbs}><Skeleton width="220px" height="16px" /></div><div className={styles.hero}>
         <div className={styles.heroIdentity}><div className={styles.logo} /><div className="w-full space-y-3"><Skeleton width="70%" height="32px" /><Skeleton width="45%" height="24px" /></div></div>

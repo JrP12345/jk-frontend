@@ -23,13 +23,17 @@ export const metadata: Metadata = {
     title: "Ekavyu — Healthcare Platform",
     description: brandDescription,
   },
-  manifest: "/manifest.json?v=brand-5",
+  manifest: "/manifest.json?v=brand-6",
   icons: {
     icon: [
-      { url: "/favicon-32.png?v=brand-5", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-32.png?v=brand-6", sizes: "32x32", type: "image/png", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon-dark-32.png?v=brand-6", sizes: "32x32", type: "image/png", media: "(prefers-color-scheme: dark)" },
     ],
-    shortcut: [{ url: "/favicon-16.png?v=brand-5", sizes: "16x16", type: "image/png" }],
-    apple: [{ url: "/app-icon-180.png?v=brand-5", sizes: "180x180", type: "image/png" }],
+    shortcut: [
+      { url: "/favicon-16.png?v=brand-6", sizes: "16x16", type: "image/png", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon-dark-16.png?v=brand-6", sizes: "16x16", type: "image/png", media: "(prefers-color-scheme: dark)" },
+    ],
+    apple: [{ url: "/app-icon-180.png?v=brand-6", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,

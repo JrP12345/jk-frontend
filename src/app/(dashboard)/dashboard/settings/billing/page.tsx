@@ -9,6 +9,7 @@ import { AlertTriangle, Building2, Users, ExternalLink, CheckCircle2 } from "luc
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { useAuthStore } from "@/store/authStore";
 import { ProductQuotePanel } from "@/components/billing/ProductQuotePanel";
+import { ProductAccessSetup } from "@/components/billing/ProductAccessSetup";
 import { authScopeKey } from "@/lib/authScope";
 
 interface BillingSettingsPageProps {
@@ -618,7 +619,7 @@ function BillingSettingsWorkspace({
       </Card>
 
       {/* Commercial Plans Matrix */}
-      <ProductQuotePanel organizationId={effectiveOrgId} busy={isProcessing || !!pendingOrderId} onPurchase={(plan, quote) => { void handleInitiateCheckout(plan, false, quote); }} />
+      {isRootAdmin ? <ProductAccessSetup organizationId={effectiveOrgId} subscriptionId={subscription?.id} busy={isProcessing || !!pendingOrderId} onSaved={loadBillingData} onPurchase={(plan, quote) => { void handleInitiateCheckout(plan, false, quote); }} /> : <ProductQuotePanel organizationId={effectiveOrgId} busy={isProcessing || !!pendingOrderId} onPurchase={(plan, quote) => { void handleInitiateCheckout(plan, false, quote); }} />}
       <Card className="border border-border/80 shadow-xs">
         <CardHeader className="border-b border-border/60 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>

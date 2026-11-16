@@ -9,7 +9,7 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { authScopeKey } from "@/lib/authScope";
 import styles from "./Billing.module.css";
 
-import { getPrintBrandStyles, printElement, printHtml } from "@/lib/printBrand";
+import { getPrintBrandStyles, getPrintBrandMarkup, printElement, printHtml } from "@/lib/printBrand";
 import { canPrintPharmacyInvoice, pharmacyDocumentTitle, type IssuedPharmacyInvoice, type PharmacyTaxDocument } from "@/lib/pharmacyInvoice";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -864,7 +864,6 @@ function BillingWorkspace() {
             .border-dashed { border-bottom: 1px dashed var(--print-border); margin: 15px 0; }
             .flex-between { display: flex; justify-content: space-between; margin: 4px 0; font-size: 13px; }
             .bold { font-weight: bold; }
-            .title { font-size: 16px; margin: 2px 0; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
             th { border-bottom: 1px solid var(--print-border); text-align: left; padding-bottom: 5px; }
             td { padding: 4px 0; }
@@ -873,7 +872,7 @@ function BillingWorkspace() {
         <body>
           <div class="receipt">
             <div class="center">
-              <h3 class="title">Ekavyu HEALTHCARE SYSTEM</h3>
+              ${getPrintBrandMarkup()}
               <p style="margin:2px 0; font-size:11px;">${ticketData.locationId?.name}</p>
               <p style="margin:2px 0; font-size:10px;">${ticketData.locationId?.address}, ${ticketData.locationId?.city}</p>
             </div>

@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Badge, Table, Tabs, Modal, Toggle, EmptyState, useToast, Skeleton } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Badge, Table, Tabs, Modal, Toggle, EmptyState, useToast, Skeleton, Select } from "@/components/ui";
 import { billingService, SaaSPlan } from "@/services/billing.service";
+import { ProductAccessSetup } from "@/components/billing/ProductAccessSetup";
+import { ProductPlanFields, initialProductPricing } from "@/components/billing/ProductPlanFields";
 import { API_URL } from "@/lib/api";
 import { RotateCw, Plus, Building2, CreditCard, Layers, Search, Edit3, CheckCircle2, CalendarPlus, KeyRound, Eye, EyeOff, Shield } from "lucide-react";
 
@@ -143,7 +145,9 @@ export default function AdminBillingPage() {
 
     setSavingPlan(true);
     try {
-      await billingService.adminUpsertPlan(editingPlan);
+      const existing = plans.find(plan => plan.id === editingPlan.id);
+      const payload = editingPlan.commercialFamily === "location_products" ? { ...editingPlan, currency: "INR", commercialPricing: { ...editingPlan.commercialPricing!, revision: existing?.commercialPricing ? existing.commercialPricing.revision + 1 : 1 } } : editingPlan;
+      await billingService.adminUpsertPlan(payload);
       toast({
         title: "Plan Saved",
         description: `Plan '${editingPlan.name}' has been saved successfully.`,
@@ -237,7 +241,7 @@ export default function AdminBillingPage() {
       {!loadError && activeTab === "plans" && <section aria-label="Configured plans" className={styles.planGrid}>
         {!plans.length && <EmptyState icon={<Layers />} title="No plans configured yet" description="Create a subscription plan to set its price, limits and features." />}
         {plans.map(plan => <Card key={plan.id || plan.slug} contentClassName="gap-4">
-          <div><div className={styles.planTitle}><h2>{plan.name}</h2><Badge variant={plan.status === "active" ? "success" : "neutral"} size="sm" dot>{plan.status}</Badge></div><p className={`${styles.meta} ${styles.planDescription}`}>{plan.description}</p><p className="mt-3 text-2xl font-semibold tabular-nums">₹{plan.monthlyPrice?.toLocaleString("en-IN")} <span className="text-xs font-normal text-text-secondary">/ month</span></p></div>
+          <div><div className={styles.planTitle}><h2>{plan.name}</h2><Badge variant={plan.status === "active" ? "success" : "neutral"} size="sm" dot>{plan.status}</Badge></div><p className={`${styles.meta} ${styles.planDescription}`}>{plan.description}</p>{plan.commercialFamily === "location_products" ? <p className="mt-3 text-sm font-medium">Location-based pricing <span className="block mt-1 text-xs font-normal text-text-secondary">Preview selected branches for the total.</span></p> : <p className="mt-3 text-2xl font-semibold tabular-nums">₹{plan.monthlyPrice?.toLocaleString("en-IN")} <span className="text-xs font-normal text-text-secondary">/ month</span></p>}</div>
           <div className="border-t border-border pt-4"><h3 className="mb-3 text-xs font-medium text-text-secondary">Resource limits</h3><dl className={styles.quotaGrid}><div><dt>Locations</dt><dd>{plan.limits?.maxLocations} {plan.limits?.maxLocations === 1 ? "branch" : "branches"}</dd></div><div><dt>Doctors</dt><dd>{plan.limits?.maxDoctors}</dd></div><div><dt>Staff</dt><dd>{plan.limits?.maxStaff}</dd></div><div><dt>Patients</dt><dd>{(plan.limits?.maxPatients || 500).toLocaleString("en-IN")}</dd></div></dl></div>
           <div className="flex flex-wrap gap-1.5">{plan.features?.analytics && <Badge variant="primary" size="sm">Analytics</Badge>}{plan.features?.auditLogs && <Badge variant="primary" size="sm">Audit logs</Badge>}{plan.features?.aiFeatures && <Badge variant="primary" size="sm">Clinical AI</Badge>}{plan.features?.multiBranch && <Badge variant="primary" size="sm">Multi-branch</Badge>}</div>
           <div className={styles.planFooter}><Button variant="outline" size="sm" aria-label={`Edit plan: ${plan.name}`} onClick={() => { setEditingPlan(plan); setPlanModalOpen(true); }}><Edit3 className="h-4 w-4" />Edit plan</Button></div>
@@ -377,8 +381,8 @@ export default function AdminBillingPage() {
         </Modal>
       )}
 
-      <Modal open={!!manualGrantSub} onClose={() => setManualGrantSub(null)} title="Grant manual subscription access" size="sm">
-        <div className="space-y-4 pt-1">
+      <Modal open={!!manualGrantSub} onClose={() => setManualGrantSub(null)} title="Grant manual subscription access" size={manualGrantSub?.planId?.commercialFamily === "location_products" ? "lg" : "sm"}>
+        {manualGrantSub?.planId?.commercialFamily === "location_products" ? <ProductAccessSetup organizationId={manualGrantSub.organizationId?.id || manualGrantSub.organizationId?._id} subscriptionId={manualGrantSub.id} onSaved={() => { setManualGrantSub(null); void loadAdminData(); }} /> : <div className="space-y-4 pt-1">
           <p className="text-sm text-text-secondary">Grant {manualGrantSub?.organizationId?.name} access to {manualGrantSub?.planId?.name}. This is a Root override and does not record a payment.</p>
           <Input label="Reason for manual grant" value={manualGrantReason} onChange={(event) => setManualGrantReason(event.target.value)} placeholder="Describe the approved exception" minLength={10} />
           <div className={styles.formActions}>
@@ -396,7 +400,7 @@ export default function AdminBillingPage() {
               } finally { setSavingManualGrant(false); }
             }}>Grant access</Button>
           </div>
-        </div>
+        </div>}
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -410,6 +414,7 @@ export default function AdminBillingPage() {
           size="xl"
         >
           <form onSubmit={handleSavePlan} className="space-y-4 pt-1">
+            <Select label="Plan pricing model" value={editingPlan.commercialFamily || "flat"} disabled={Boolean(editingPlan.id)} options={[{ value: "flat", label: "Flat subscription" }, { value: "location_products", label: "Location products — clinics and pharmacies" }]} onChange={event => setEditingPlan(event.target.value === "location_products" ? { ...editingPlan, commercialFamily: "location_products", legacyTier: "starter", currency: "INR", monthlyPrice: 0, annualPrice: 0, commercialPricing: initialProductPricing() } : { ...editingPlan, commercialFamily: undefined, commercialPricing: undefined, selfServicePharmacy: false })} />
             <div className={styles.formGrid}>
               <Input
                 label="Plan Name *"
@@ -436,8 +441,9 @@ export default function AdminBillingPage() {
               placeholder="e.g. Designed for growing multi-doctor practices and multi-branch locations."
             />
 
+            {editingPlan.commercialFamily === "location_products" && <ProductPlanFields plan={editingPlan} onChange={setEditingPlan} />}
             <div className={styles.formGrid}>
-              <Input
+              {editingPlan.commercialFamily !== "location_products" && <><Input
                 label="Monthly Price (INR) *"
                 type="number"
                 value={editingPlan.monthlyPrice || 0}
@@ -450,11 +456,11 @@ export default function AdminBillingPage() {
                 value={editingPlan.annualPrice || 0}
                 onChange={(e) => setEditingPlan({ ...editingPlan, annualPrice: Number(e.target.value) })}
                 required
-              />
+              /></>}
               <Input
                 label="Default Trial Days"
                 type="number"
-                value={editingPlan.trialDays || 15}
+                value={editingPlan.trialDays ?? 15}
                 onChange={(e) => setEditingPlan({ ...editingPlan, trialDays: Number(e.target.value) })}
               />
               <Toggle
@@ -483,7 +489,7 @@ export default function AdminBillingPage() {
                 <Input
                   label="Max Doctors"
                   type="number"
-                  value={editingPlan.limits?.maxDoctors || 2}
+                  value={editingPlan.limits?.maxDoctors ?? 2}
                   onChange={(e) =>
                     setEditingPlan({
                       ...editingPlan,

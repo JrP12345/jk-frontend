@@ -9,7 +9,7 @@ import styles from "./PharmacyWorkspace.module.css";
 const fieldLabel = (field: string) => ({ sourceId: "Actual source row ID", medicineId: "Existing product ID", partyId: "Existing party ID", sourceDate: "Actual source date (YYYY-MM-DD)",
   baseUnit: "Base unit", packUnit: "Pack unit", unitsPerPack: "Units per pack", packs: "Full packs", looseUnits: "Loose base units", batchNumber: "Printed batch", expiryPrecision: "Printed expiry precision (day/month)",
   expiry: "Printed expiry (YYYY-MM-DD / YYYY-MM)", purchaseTotal: "Total acquisition cost (INR)", sellingPrice: "Selling price per base unit (INR)", mrp: "MRP per base unit (INR)", amount: "Actual due (INR)",
-  name: "Product name", genericName: "Generic/formulation", category: "Medicine form", scheduleType: "Source schedule classification", barcode: "Barcode", manufacturer: "Manufacturer", strength: "Strength", reorderLevel: "Reorder level" }[field] || field);
+  name: "Product name", genericName: "Generic/formulation", category: "Medicine form", scheduleType: "Source schedule classification", barcode: "Barcode", manufacturer: "Manufacturer", strength: "Strength", reorderLevel: "Reorder level", rackLocation: "Rack / shelf" }[field] || field);
 const currency = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(paise / 100);
 interface Props { locationId: string; allowedKinds: PharmacyImportKind[]; onCommitted: () => void }
 export function PharmacyImports(props: Props) {

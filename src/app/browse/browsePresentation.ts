@@ -20,6 +20,6 @@ export function facilityPresentation(location: Location) {
     whereabouts, phone, dial, callable, bookable,
     directionsUrl: destination ? `https://www.google.com/maps/dir/?${new URLSearchParams({ api: "1", destination })}` : null,
     specialties: [...new Set((location.specialties || []).map(value => value.trim()).filter(value => value && value.toLowerCase() !== "specialty not listed"))].slice(0, 2),
-    actionLabel: bookable ? "Book appointment" : location.facilityType === "clinic" ? "View clinic" : location.facilityType === "hospital" ? "View hospital" : "View facility",
+    actionLabel: bookable ? "Book appointment" : location.pharmacy?.catalogueEnabled ? "View medicines" : location.facilityType === "pharmacy" ? "View pharmacy" : location.facilityType === "clinic" ? "View clinic" : location.facilityType === "hospital" ? "View hospital" : "View facility",
   };
 }

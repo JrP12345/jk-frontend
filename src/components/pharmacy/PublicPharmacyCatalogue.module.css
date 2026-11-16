@@ -1,0 +1,38 @@
+.host { container: pharmacy-pickup / inline-size; min-width: 0; }
+.layout { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; gap: 16px; min-width: 0; }
+.main, .sidebar, .identity { min-width: 0; }
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+.detailsLocation { --pharmacy-location-padding: 0px; --pharmacy-hours-margin: 0px; margin-top: 4px; padding-top: 18px; border-top: 1px solid var(--border); }
+.detailsLocation > aside > div { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.card { border-radius: 16px; box-shadow: none; }
+.cardBody { padding: 18px; gap: 14px; }
+.title { font-size: 18px; font-weight: 650; line-height: 1.45; letter-spacing: -.025em; }
+.description, .detailsIntro { color: var(--text-secondary); font-size: 14px; line-height: 1.55; }
+.detailsIntro { margin-top: 5px; }
+.description { margin-top: 2px; }
+.note, .closed { border-radius: 12px; padding: 13px 14px; font-size: 14px; line-height: 1.55; }
+.note { background: var(--surface-muted); color: var(--text-primary); }
+.closed { background: var(--danger-subtle); color: var(--danger-text); }
+.card .input { height: 50px; min-height: 50px; border-radius: 12px; background: var(--background); font-size: 15px; }
+.products { display: grid; gap: 10px; }
+.product { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.identity { flex: 1 1 180px; overflow-wrap: anywhere; }
+.identity h3 { font-size: 15px; line-height: 1.4; font-weight: 600; }
+.identity p { margin-top: 3px; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
+.card .add { min-width: 82px; min-height: 44px; border-radius: 12px; font-size: 14px; }
+.quantity { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.empty { padding: 12px; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+.fields { display: grid; gap: 34px; min-width: 0; margin: 4px 0 34px; padding: 0; border: 0; }
+.selectionTitle { font-size: 14px; font-weight: 600; padding-top: 4px; }
+.selectionCount { margin-top: 10px; font-size: 13px; color: var(--text-secondary); }
+.card .submit { width: 100%; min-height: 48px; margin-top: 14px; border-radius: 12px; background: var(--pharmacy-action, var(--p-500)); color: var(--pharmacy-action-text, var(--brand-mist)); font-size: 15px; }
+.card .submit:hover:not(:disabled) { background: var(--pharmacy-action-hover, var(--p-600)); }
+/* The profile provides the available width; embedded clinic catalogues stay stacked. */
+@container pharmacy-pickup (min-width: 800px) {
+  .layout:has(> .sidebar) { grid-template-columns: minmax(0,1fr) clamp(320px, 32cqi, 440px); }
+}
+@media (max-width: 479px) {
+  .cardBody { padding: 16px; }
+  .fields { gap: 24px; margin-bottom: 24px; }
+  .product { gap: 10px; }
+}

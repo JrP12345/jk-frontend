@@ -11,7 +11,13 @@ export function getPrintBrandStyles(): string {
     const value = style.getPropertyValue(name).trim();
     return /^#[\da-f]{6}$/i.test(value) ? `${name}:${value};` : "";
   }).join("");
-  return `:root{${declarations}color-scheme:light;}`;
+  return `:root{${declarations}color-scheme:light;}.ekavyu-print-logo{display:flex;align-items:center;justify-content:center;gap:6px;width:150px;margin:2px auto 8px}.ekavyu-print-logo img{object-fit:contain}`;
+}
+
+/** Supplied black artwork for standalone token and receipt documents. */
+export function getPrintBrandMarkup(): string {
+  const origin = window.location.origin;
+  return `<div class="ekavyu-print-logo" role="img" aria-label="Ekavyu"><img src="${origin}/brand/ekavyu-symbol-black.svg?v=brand-6" alt="" width="32" height="24" /><img src="${origin}/brand/ekavyu-wordmark-black.svg?v=brand-6" alt="" width="112" height="19" /></div>`;
 }
 
 export class PrintPreparationError extends Error {

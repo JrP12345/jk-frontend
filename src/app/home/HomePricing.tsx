@@ -43,6 +43,7 @@ export default function HomePricing() {
       <div className={styles.pricingControls}>
         <BillingCycleSwitch value={cycle} onChange={setCycle} />
       </div>
+      <noscript><p className={styles.smallNote}>Current plans need JavaScript to load. Email <a href="mailto:ekavyuofficial@gmail.com">ekavyuofficial@gmail.com</a> for plan and setup details.</p></noscript>
       {isPending ? (
         <div className={styles.pricingLoading} aria-busy="true">
           <Spinner size="sm" label="Loading current plans" />
@@ -60,9 +61,9 @@ export default function HomePricing() {
         </div>
       ) : (
         <>
-          {plans.length > 1 && <p className={styles.planSwipeHint}>Swipe to compare plans <ArrowRight size={14} aria-hidden="true" /></p>}
-          <div className={styles.planGrid} role="region" aria-label="Current organization plans" tabIndex={0}>
-            {plans.map(plan => <PublicPlanCard key={plan.id || plan.slug} plan={plan} billingCycle={cycle} compact />)}
+          {plans.length > 1 && <p className={styles.planSwipeHint}>Scroll to compare plans <ArrowRight size={14} aria-hidden="true" /></p>}
+          <div className={styles.planGrid} data-plan-count={plans.length} role="region" aria-label="Current organization plans" tabIndex={0}>
+            {plans.map(plan => <PublicPlanCard key={plan.id || plan.slug} plan={plan} billingCycle={cycle} compact single={plans.length === 1} />)}
           </div>
         </>
       )}

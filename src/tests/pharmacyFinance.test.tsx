@@ -39,6 +39,22 @@ beforeEach(() => {
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
 afterEach(() => { vi.restoreAllMocks(); });
+it("loads an expiry shortcut into original received stock without selecting quantities or creating credit", async () => {
+  mount({ initialReturn: { purchaseId: "purchase", batchId: "batch" } });
+  const quantity = await screen.findByLabelText("Supplier return quantity RECEIVED"); expect(quantity).toHaveValue(0);
+  expect(api.get.mock.calls.some(([url]) => url.includes("/purchases/purchase/return-source?"))).toBe(true);
+  expect(screen.getByRole("button", { name: "Review expected supplier credit" })).toBeInTheDocument();
+  expect(api.post).not.toHaveBeenCalled();
+});
+it("offers goods returns without exposing settlement choices to return-only staff", async () => {
+  mount({ canSettle: false, initialReturn: { purchaseId: "purchase", batchId: "batch" } });
+  await screen.findByLabelText("Supplier return quantity RECEIVED");
+  fireEvent.click(screen.getByRole("combobox", { name: "Supplier financial action" }));
+  expect(await screen.findByRole("option", { name: "Return original received stock" })).toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: "Confirm actual supplier payment" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: "Record actual supplier credit note" })).not.toBeInTheDocument();
+  expect(api.post).not.toHaveBeenCalled();
+});
 it("requires actual payout evidence and allocates one supplier payment across a bill and opening balance", async () => {
   mount(); await chooseSupplier();
   const submit = screen.getByRole("button", { name: "Record actual supplier payment" });
@@ -80,7 +96,7 @@ it("does not confirm an inconsistent server event or discard its recovery refere
   api.post.mockImplementationOnce(async (url, body, config) => response({ ...financialResult(url, body, config), amountPaise: 1 })); mount(); await chooseSupplier(); supplierEvidence(); change("Allocate BILL-001 (INR)", "118"); fireEvent.click(screen.getByRole("button", { name: "Record actual supplier payment" })); await screen.findByText(/Settlement result does not match/); expect(screen.queryByText("Supplier payment recorded")).not.toBeInTheDocument(); expect(sessionStorage.length).toBe(1);
 });
 it("creates an explicitly reviewed opening debt and opens its separate statement collection flow", async () => {
-  mount(); fireEvent.click(screen.getByRole("tab", { name: "Reviewed opening dues" })); fireEvent.click(screen.getByRole("button", { name: "Search customer statements" })); fireEvent.click(await screen.findByRole("button", { name: "Open customer statement Actual customer" })); change("Actual opening due (INR)", "50"); change("Opening source date", "2026-10-19"); change("Actual dated opening source reference", "ACTUAL-SOURCE"); change("Opening source review reference", "Actual source review"); fireEvent.click(screen.getByRole("checkbox", { name: /reviewed this actual dated opening debt/ })); fireEvent.click(screen.getByRole("button", { name: "Record reviewed opening due" })); await screen.findByText("Opening balance recorded"); await screen.findByRole("dialog", { name: "Opening balance collections" }); expect(api.post.mock.calls[0][1]).toMatchObject({ kind: "customer_due", partyId: "customer", expectedPartyRevision: 0, amountPaise: 5000, sourceDate: "2026-10-19", confirmedSource: true }); expect(screen.getByRole("button", { name: "Preview opening balance statement" })).toBeEnabled();
+  mount(); fireEvent.click(screen.getByRole("tab", { name: "Reviewed opening dues" })); fireEvent.click(screen.getByRole("button", { name: "Search customer statements" })); fireEvent.click(await screen.findByRole("button", { name: "Open customer statement Actual customer" })); change("Actual opening due (INR)", "50"); change("Opening source date", "2026-10-19"); change("Actual dated opening source reference", "ACTUAL-SOURCE"); change("Opening source review reference", "Actual source review"); fireEvent.click(screen.getByRole("checkbox", { name: /reviewed this actual dated opening debt/ })); fireEvent.click(screen.getByRole("button", { name: "Record reviewed opening due" })); await screen.findByText("Opening balance recorded"); await screen.findByRole("dialog", { name: "Collect opening balance" }); expect(api.post.mock.calls[0][1]).toMatchObject({ kind: "customer_due", partyId: "customer", expectedPartyRevision: 0, amountPaise: 5000, sourceDate: "2026-10-19", confirmedSource: true }); expect(screen.getByRole("button", { name: "Preview opening balance statement" })).toBeEnabled();
 });
 it("prints a captured opening statement with no supply or tax invoice presentation", async () => {
   render(<ToastProvider><PharmacyDocumentButton invoice={openingInvoice} /></ToastProvider>); fireEvent.click(screen.getByRole("button", { name: "Preview opening balance statement" })); const paper = screen.getByRole("article", { name: "Saved pharmacy opening balance statement" }); expect(paper).toHaveTextContent("ACTUAL-SOURCE"); expect(paper).toHaveTextContent("Captured Pharmacy"); expect(screen.queryByRole("article", { name: "Issued pharmacy document" })).not.toBeInTheDocument(); fireEvent.click(screen.getByRole("button", { name: "Print opening balance statement" })); await waitFor(() => expect(printElement).toHaveBeenCalledOnce()); expect(api.post).not.toHaveBeenCalled();

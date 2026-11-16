@@ -1,18 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Button, Input, Select, DatePicker } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import api from "@/lib/api";
 import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
-import type { PharmacyParty, PurchaseDraft } from "@/services/pharmacyPurchase.service";
+import { readPurchase, type PharmacyParty, type PurchaseDraft } from "@/services/pharmacyPurchase.service";
+import { purchaseDeliveryPayload, purchaseReceivingPlan, remainingDeliveryLines, type PurchaseDeliveryLine as DeliveryLine } from "@/lib/pharmacyReceiving";
 import { money } from "./pharmacyWorkspace";
 import styles from "./PharmacyWorkspace.module.css";
 
 type Pending = { key: string; kind: "post" | "receipt" };
-type DeliveryLine = { lineId: string; purchaseLineId: string; billed: string; free: string; batch: string; precision: string; expiry: string };
 type Receipt = { id: string; deliveryReference: string; receivedAt: string; lines: Array<{ lineId: string; batchNumber: string; billedBaseUnits: number; freeBaseUnits: number; costPaise: number; expiry: { value: string } }> };
 const message = (error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message || (error instanceof Error ? error.message : "Outcome could not be confirmed. Keep the same reference.");
 function stored(key: string): Pending | null {
@@ -21,7 +21,8 @@ function stored(key: string): Pending | null {
   if (!["post", "receipt"].includes(value.kind) || !/^[a-zA-Z0-9_-]{8,100}$/.test(value.key)) throw new Error("Purchase reference needs review before another operation.");
   return value;
 }
-export function PharmacyPurchaseOperations({ purchase, canManage, canReceive, onClose, onChanged }: { purchase: PurchaseDraft; canManage: boolean; canReceive: boolean; onClose: () => void; onChanged: () => void }) {
+export function PharmacyPurchaseOperations({ purchase: initialPurchase, canManage, canReceive, onClose, onChanged }: { purchase: PurchaseDraft; canManage: boolean; canReceive: boolean; onClose: () => void; onChanged: () => void }) {
+  const [purchase, setPurchase] = useState(initialPurchase);
   const scope = authScopeKey(useAuthStore(state => state.user)), storageKey = `pharmacy-purchase-operation:${scope}:${purchase.locationId}:${purchase.id}`;
   const [initial] = useState(() => { try { return { pending: stored(storageKey), error: "" }; } catch (error) { return { pending: null, error: message(error) }; } });
   const [pending, setPending] = useState(initial.pending), [error, setError] = useState(initial.error), [busy, setBusy] = useState(false), [confirmed, setConfirmed] = useState<{ requestKey: string; receiptId?: string; payablePaise?: number } | null>(null);
@@ -39,8 +40,13 @@ export function PharmacyPurchaseOperations({ purchase, canManage, canReceive, on
   const [party, setParty] = useState<PharmacyParty | null>(null), [lookupError, setLookupError] = useState("");
   const [posting, setPosting] = useState({ state: "", taxMode: "", cost: "", round: "0", review: "" });
   const [deliveryReference, setDeliveryReference] = useState("");
-  const addLine = (): DeliveryLine => ({ lineId: crypto.randomUUID(), purchaseLineId: purchase.lines[0].lineId, billed: "0", free: "0", batch: "", precision: "month", expiry: "" });
-  const [lines, setLines] = useState<DeliveryLine[]>(() => [addLine()]);
+  const plan = useMemo(() => { try { return { rows: purchaseReceivingPlan(purchase), error: "" }; } catch (failure) { return { rows: [], error: message(failure) }; } }, [purchase]);
+  const outstanding = plan.rows.filter(row => row.billed + row.free > 0);
+  const addLine = (): DeliveryLine => ({ lineId: crypto.randomUUID(), purchaseLineId: outstanding[0]?.source.lineId || "", billed: "0", free: "0", batch: "", precision: "month", expiry: "" });
+  const [lines, setLines] = useState<DeliveryLine[]>(() => {
+    if (purchase.status !== "posted") return [];
+    try { return initial.pending?.kind === "receipt" ? [addLine()] : remainingDeliveryLines(purchase); } catch { return []; }
+  });
   const [receipts, setReceipts] = useState<Receipt[]>([]), [cursor, setCursor] = useState<string | null>(null), [historyError, setHistoryError] = useState("");
   const beginHistory = useRef(0);
   const fetchHistory = useCallback(async (after?: string) => {
@@ -90,6 +96,22 @@ export function PharmacyPurchaseOperations({ purchase, canManage, canReceive, on
     try { if (stored(storageKey)?.key !== confirmed.requestKey) throw new Error("Purchase reference changed. Reopen before continuing."); sessionStorage.removeItem(storageKey); onChanged(); }
     catch (failure) { setError(message(failure)); }
   }
+  async function continueReceiving() {
+    if (!pending || pending.kind !== "post" || !confirmed || lock.current || !current() || !canManage || !canReceive) return;
+    lock.current = true; setBusy(true); setError("");
+    try {
+      const fresh = await readPurchase(purchase.id, purchase.locationId);
+      if (!current()) return;
+      if (fresh.status !== "posted" || fresh.revision < purchase.revision || purchase.status === "draft" && fresh.revision === purchase.revision) throw new Error("The posted purchase could not be refreshed. Retry continuing to receiving.");
+      const remaining = remainingDeliveryLines(fresh);
+      const saved = stored(storageKey);
+      if (saved?.kind !== "post" || saved.key !== confirmed.requestKey) throw new Error("Purchase reference changed. Reopen before continuing.");
+      sessionStorage.removeItem(storageKey);
+      frozen.current = null; setPending(null); setConfirmed(null); setHasSubmitted(false); setCanCorrect(false);
+      setPurchase(fresh); setLines(remaining); setDeliveryReference(""); setLookupError("");
+    } catch (failure) { if (current()) setError(message(failure)); }
+    finally { lock.current = false; if (current()) setBusy(false); }
+  }
   function post(event: React.FormEvent) {
     event.preventDefault(); const absolute = parseReceiptPaise(posting.round.replace(/^-/, "")), roundOffPaise = absolute === null ? null : posting.round.startsWith("-") ? -absolute : absolute;
     if (!party || !/^(0[1-9]|[12][0-9]|3[0-8])$/.test(posting.state) || !posting.taxMode || !posting.cost || posting.review.trim().length < 3 || roundOffPaise === null || Math.abs(roundOffPaise) > 99) { setError("Record the actual review, supplier state, tax split, cost treatment and round-off within INR 0.99."); return; }
@@ -97,8 +119,8 @@ export function PharmacyPurchaseOperations({ purchase, canManage, canReceive, on
   }
   function receive(event: React.FormEvent) {
     event.preventDefault();
-    if (deliveryReference.trim().length < 3 || !lines.length || lines.some(line => !/^\d+$/.test(line.billed) || !/^\d+$/.test(line.free) || !Number.isSafeInteger(Number(line.billed) + Number(line.free)) || Number(line.billed) + Number(line.free) <= 0 || !line.batch.trim() || !line.expiry)) { setError("Record the actual delivery reference, positive whole billed/free base units, batch and printed expiry for each received line."); return; }
-    void send("receipt", { locationId: purchase.locationId, expectedRevision: purchase.revision, deliveryReference: deliveryReference.trim(), lines: lines.map(line => ({ lineId: line.lineId, purchaseLineId: line.purchaseLineId, billedBaseUnits: Number(line.billed), freeBaseUnits: Number(line.free), batchNumber: line.batch.trim(), expiry: { precision: line.precision, value: line.expiry } })) });
+    try { const payload = purchaseDeliveryPayload(purchase, deliveryReference, lines); void send("receipt", payload); }
+    catch (failure) { setError(message(failure)); }
   }
   const postingMode = purchase.status === "draft", disabled = busy || Boolean(confirmed) || Boolean(hasSubmitted && pending), allowed = canManage && (postingMode || canReceive);
   return <Modal open title={postingMode ? "Post saved supplier invoice" : "Receive purchase delivery"} onClose={onClose} busy={busy} size="lg" bodyClassName={styles.dialog} footer={<Button size="sm" variant="outline" disabled={busy} onClick={onClose}>Close purchase</Button>}>
@@ -106,22 +128,25 @@ export function PharmacyPurchaseOperations({ purchase, canManage, canReceive, on
     {purchase.posting && <p>Posted payable: {money(purchase.posting.payablePaise / 100)}. Delivery receipts do not create another payable.</p>}
     {postingMode && <p>Only the saved draft is posted. This freezes the supplier bill and establishes its payable; stock is received separately. Review source tax and supplier eligibility before posting.</p>}
     {(error || lookupError) && <Alert variant="error" title="Purchase needs attention">{error || lookupError}</Alert>}
+    {plan.error && <Alert variant="error" title="Purchase quantities unavailable">{plan.error}</Alert>}
     {pending && <Alert variant={confirmed ? "success" : "warning"} title={confirmed ? "Purchase operation confirmed" : "Pending purchase operation"}>
-      <p>Reference: {pending.key}</p>{confirmed ? <><p>{confirmed.receiptId ? "Delivery recorded." : `Supplier payable posted: ${money((confirmed.payablePaise || 0) / 100)}.`}</p><Button size="sm" disabled={busy} onClick={acknowledge}>Done with purchase operation</Button></> : <><p>Check the result before another operation. Retry uses the same saved reference and submitted details. After reload, re-enter the original details only if no committed result is visible.</p><Button size="sm" variant="outline" disabled={busy} onClick={() => { void check(); }}>Check purchase result</Button>{hasSubmitted && allowed && <Button size="sm" disabled={busy} onClick={() => { if (frozen.current) void send(frozen.current.ref.kind, frozen.current.payload); }}>Retry same purchase operation</Button>}{canCorrect && allowed && <Button size="sm" variant="outline" disabled={busy} onClick={() => { frozen.current = null; setHasSubmitted(false); setCanCorrect(false); }}>Correct details using same reference</Button>}</>}
+      <p>Reference: {pending.key}</p>{confirmed ? <><p>{confirmed.receiptId ? "Delivery recorded." : `Supplier payable posted: ${money((confirmed.payablePaise || 0) / 100)}.`}</p>{pending.kind === "post" && canManage && canReceive && <Button size="sm" loading={busy} onClick={() => { void continueReceiving(); }}>Continue to receiving</Button>}<Button size="sm" variant="outline" disabled={busy} onClick={acknowledge}>Done with purchase operation</Button></> : <><p>Check the result before another operation. Retry uses the same saved reference and submitted details. After reload, re-enter the original details only if no committed result is visible.</p><Button size="sm" variant="outline" disabled={busy} onClick={() => { void check(); }}>Check purchase result</Button>{hasSubmitted && allowed && <Button size="sm" disabled={busy} onClick={() => { if (frozen.current) void send(frozen.current.ref.kind, frozen.current.payload); }}>Retry same purchase operation</Button>}{canCorrect && allowed && <Button size="sm" variant="outline" disabled={busy} onClick={() => { frozen.current = null; setHasSubmitted(false); setCanCorrect(false); }}>Correct details using same reference</Button>}</>}
     </Alert>}
-    {allowed && (!pending || !hasSubmitted && pending.kind === (postingMode ? "post" : "receipt")) && !confirmed && (postingMode ? <form onSubmit={post} className={styles.form} noValidate><fieldset className={styles.form} disabled={disabled}>
+    {!postingMode && !plan.error && !outstanding.length && <p role="status">All invoice quantities have been received. Recorded deliveries remain available below.</p>}
+    {allowed && !plan.error && (postingMode || outstanding.length > 0) && (!pending || !hasSubmitted && pending.kind === (postingMode ? "post" : "receipt")) && !confirmed && (postingMode ? <form onSubmit={post} className={styles.form} noValidate><fieldset className={styles.form} disabled={disabled}>
       <Input label="Reviewed supplier state code" maxLength={2} value={posting.state} onChange={event => setPosting({ ...posting, state: event.target.value })} />
       <Select label="Reviewed supplier GST split" value={posting.taxMode} onChange={event => setPosting({ ...posting, taxMode: event.target.value })} options={[{ value: "", label: "Choose reviewed tax split" }, { value: "sgst", label: "CGST + SGST" }, { value: "utgst", label: "CGST + UTGST" }, { value: "igst", label: "IGST" }]} />
       <Select label="Reviewed acquisition cost treatment" value={posting.cost} onChange={event => setPosting({ ...posting, cost: event.target.value })} options={[{ value: "", label: "Choose reviewed cost treatment" }, { value: "exclude_tax", label: "Exclude supplier GST from stock cost" }, { value: "include_tax", label: "Include supplier GST in stock cost" }]} />
       <Input label="Reviewed invoice round-off (INR)" value={posting.round} onChange={event => setPosting({ ...posting, round: event.target.value })} /><Input label="Supplier eligibility and tax review reference" maxLength={200} value={posting.review} onChange={event => setPosting({ ...posting, review: event.target.value })} />
       <Button size="sm" type="submit" disabled={!party || Boolean(lookupError)} loading={busy}>Post saved supplier invoice</Button>
     </fieldset></form> : <form onSubmit={receive} className={styles.form} noValidate><fieldset className={styles.form} disabled={disabled}>
+      <p>Remaining invoice quantities are prefilled. Adjust to the actual delivery for partial receipts, or split a product into separate batch lots. Record each printed batch and expiry.</p>
       <Input label="Actual delivery reference" maxLength={100} value={deliveryReference} onChange={event => setDeliveryReference(event.target.value)} />
       {lines.map((line, index) => {
-        const source = purchase.lines.find(row => row.lineId === line.purchaseLineId)!, progress = purchase.receiptProgress?.find(row => row.lineId === line.purchaseLineId);
+        const remaining = plan.rows.find(row => row.source.lineId === line.purchaseLineId)!;
         const edit = (field: keyof DeliveryLine, value: string) => setLines(previous => previous.map(row => row.lineId === line.lineId ? { ...row, [field]: value } : row));
-        return <fieldset className={styles.rx} key={line.lineId} aria-label={`Delivery line ${index + 1}`}><Select label={`Source purchase line ${index + 1}`} value={line.purchaseLineId} onChange={event => edit("purchaseLineId", event.target.value)} options={purchase.lines.map((row, number) => ({ value: row.lineId, label: `${number + 1}. ${row.medicineSnapshot.name}` }))} />
-          <p>Remaining: {source.billedBaseUnits - (progress?.billedBaseUnits || 0)} billed, {source.freeBaseUnits - (progress?.freeBaseUnits || 0)} free {source.unitSnapshot.baseUnit}.</p>
+        return <fieldset className={styles.rx} key={line.lineId} aria-label={`Delivery line ${index + 1}`}><Select label={`Source purchase line ${index + 1}`} value={line.purchaseLineId} onChange={event => edit("purchaseLineId", event.target.value)} options={outstanding.map((row, number) => ({ value: row.source.lineId, label: `${number + 1}. ${row.source.medicineSnapshot.name}` }))} />
+          <p>Remaining: {remaining.billed} billed, {remaining.free} free {remaining.source.unitSnapshot.baseUnit}.</p>
           <div className={styles.fieldGrid}><Input label={`Received billed base units ${index + 1}`} type="number" min="0" step="1" value={line.billed} onChange={event => edit("billed", event.target.value)} /><Input label={`Received free base units ${index + 1}`} type="number" min="0" step="1" value={line.free} onChange={event => edit("free", event.target.value)} /></div>
           <Input label={`Printed batch ${index + 1}`} value={line.batch} maxLength={100} onChange={event => edit("batch", event.target.value)} /><Select label={`Expiry precision ${index + 1}`} value={line.precision} onChange={event => { edit("precision", event.target.value); edit("expiry", ""); }} options={[{ value: "month", label: "Printed month" }, { value: "day", label: "Printed day" }]} /><DatePicker label={`Printed expiry ${index + 1}`} mode={line.precision === "month" ? "month" : "date"} value={line.expiry} onChange={value => edit("expiry", value)} />
           <Button size="sm" variant="ghost" onClick={() => setLines(previous => previous.filter(row => row.lineId !== line.lineId))}>Remove delivery line {index + 1}</Button>

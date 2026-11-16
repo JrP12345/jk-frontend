@@ -3,7 +3,7 @@
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
 
-import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
+import { getPrintBrandStyles, getPrintBrandMarkup, printHtml } from "@/lib/printBrand";
 
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
@@ -455,7 +455,6 @@ export default function AppointmentsPage() {
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: var(--print-surface-muted); padding: 20px; }
             .ticket { background: white; border: 1px solid var(--print-border); border-radius: 16px; padding: 32px; width: 380px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: left; }
             .header { text-align: center; border-bottom: 2px dashed var(--print-border); padding-bottom: 20px; margin-bottom: 20px; }
-            .brand { font-size: 12px; font-weight: 800; color: var(--print-accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
             .location-name { font-size: 18px; font-weight: 700; color: #1f2937; margin: 0; }
             .token-box { text-align: center; margin: 16px 0; }
             .token-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--print-muted); font-weight: 600; }
@@ -474,7 +473,7 @@ export default function AppointmentsPage() {
         <body>
           <div class="ticket">
             <div class="header">
-              <div class="brand">Ekavyu</div>
+              ${getPrintBrandMarkup()}
               <h1 class="location-name">${ticketData.locationName}</h1>
               <p style="margin: 4px 0 0; font-size: 12px; color: var(--print-muted);">${ticketData.locationAddress}</p>
             </div>

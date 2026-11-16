@@ -14,6 +14,7 @@ import { CreateOrganization } from "./CreateOrganization";
 import { OrganizationDetails } from "./OrganizationDetails";
 import { OrganizationMembers } from "./OrganizationMembers";
 import { OrganizationBookingSetup } from "./OrganizationBookingSetup";
+import { OrganizationPharmacySetup } from "./OrganizationPharmacySetup";
 import { OrganizationNotifications, OrganizationAISettings } from "./OrganizationConfiguration";
 import { OrganizationModules } from "./OrganizationModules";
 import { OrganizationWorkflowPreferences } from "./OrganizationWorkflowPreferences";
@@ -209,24 +210,24 @@ export default function OrganizationManagement() {
       <nav ref={sectionNavRef} aria-label="Organization sections"><Tabs className={styles.workspaceTabs} variant="pills" tabs={sections} activeTab={active} onChange={id => navigate(organization.id, id)} scrollActiveIntoView={false} /></nav>
       <section key={organization.id} aria-label={sections.find(item => item.id === active)?.label} className="min-w-0">
         {active === "overview" && <div className="space-y-5">
-          <OrganizationBookingSetup key={`${organization.id}:${scope}`} organizationId={organization.id} onNavigate={nextSection => navigate(organization.id, nextSection, nextSection === "members")} />
+          {organization.workspaceProfile === "pharmacy" ? <OrganizationPharmacySetup organization={organization} onNavigate={nextSection => navigate(organization.id, nextSection, nextSection === "members")} onOpenWorkspace={root ? () => openAction("login") : undefined} onOrganizationSaved={load} /> : <OrganizationBookingSetup key={`${organization.id}:${scope}`} organizationId={organization.id} onNavigate={nextSection => navigate(organization.id, nextSection, nextSection === "members")} />}
           <Card padding="none"><dl className={styles.workspaceSummary} aria-label="Workspace summary"><div><dt>Primary administrator</dt><dd>{organization.primaryAdmin?.name || "No administrator linked"}<span className="block mt-1 text-xs font-normal text-text-secondary">{organization.primaryAdmin?.email || "Contact not provided"}</span></dd></div><div><dt>Subscription</dt><dd className="capitalize">{subscriptionLabel(organization)}</dd></div><div><dt>Country &amp; currency</dt><dd>{organization.countryCode || "Not configured"} / {organization.currency || "Not configured"}</dd></div><div><dt>Operating timezone</dt><dd>{organization.timezone || "Not configured"}</dd></div></dl></Card>
           {organization.onboardingStatus && organization.onboardingStatus !== "COMPLETED" && <Alert title="Administrator setup pending">The administrator completes MFA setup from their own security settings.</Alert>}
           {root && <Card><details><summary className="text-sm font-semibold cursor-pointer py-2">Platform status and deletion</summary><p className="text-sm text-text-muted my-3">Suspension blocks organization access. Deletion permanently removes linked clinical and operational records.</p><div className="flex flex-wrap gap-3"><Button variant="outline" onClick={() => openAction("status")}>{suspended(organization) ? "Reactivate organization" : "Suspend organization"}</Button><Button variant="danger" onClick={() => openAction("delete")}>Delete organization</Button></div></details></Card>}
         </div>}
         {active === "details" && <OrganizationDetails organization={organization} onSaved={updated => setOrganizations(list => list.map(org => org.id === updated.id ? updated : org))} />}
-        {active === "members" && <Card><OrganizationMembers organizationId={organization.id} initialClinicalSetup={clinicalSetup} /></Card>}
+        {active === "members" && <Card><OrganizationMembers organizationId={organization.id} workspaceProfile={organization.workspaceProfile} initialClinicalSetup={clinicalSetup} onManageRoles={sections.some(item => item.id === "access") ? () => navigate(organization.id, "access") : undefined} /></Card>}
         {active === "access" && <Access organizationId={organization.id} />}
-        {active === "locations" && <LocationManagement organizationId={organization.id} embedded />}
+        {active === "locations" && <LocationManagement organizationId={organization.id} workspaceProfile={organization.workspaceProfile} embedded />}
         {active === "subscription" && <BillingSettingsPage selectedOrgId={organization.id} isRoot={root} />}
         {active === "configuration" && <div className="space-y-4">
           <h2 className="text-base font-semibold">Configuration</h2>
           <div className={styles.configurationGrid}>
-          <OrganizationWorkflowPreferences key={organization.id} organizationId={organization.id} />
+          {organization.workspaceProfile !== "pharmacy" && <OrganizationWorkflowPreferences key={organization.id} organizationId={organization.id} />}
           <Card><OrganizationModules organizationId={organization.id} /></Card>
           </div>
           <section className="space-y-3" aria-label="Organization delivery settings"><div><h2 className="text-base font-semibold">Organization delivery settings</h2><p className="mt-1 text-sm text-text-secondary">Delivery settings for this workspace.</p>{root && <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/settings?tab=messaging")}>Open platform WhatsApp settings →</Button>}</div><OrganizationNotifications selectedOrgId={organization.id} isRoot={root} organizationOnly /></section>
-          {root && <OrganizationAISettings selectedOrgId={organization.id} isRoot />}
+          {root && organization.workspaceProfile !== "pharmacy" && <OrganizationAISettings selectedOrgId={organization.id} isRoot />}
         </div>}
       </section>
     </>}

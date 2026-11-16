@@ -1,9 +1,8 @@
-.shell { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); min-height: 100dvh; background: var(--surface); color: var(--text-primary); }
-.brand { position: sticky; top: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 48px; height: 100dvh; min-height: 580px; overflow: hidden; padding: 40px clamp(32px, 4vw, 64px); background: radial-gradient(ellipse at top left, var(--brand-secondary), transparent 65%), var(--brand-primary); color: var(--brand-mist); }
-.brand::after { position: absolute; inset: 0; content: ""; pointer-events: none; opacity: .07; background: repeating-linear-gradient(115deg, var(--brand-mist) 0 1px, transparent 1px 40px); }
+.shell { display: grid; grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr); min-height: 100dvh; background: var(--surface); color: var(--text-primary); }
+.brand { position: sticky; top: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; height: 100dvh; min-height: 560px; padding: 40px clamp(32px, 4vw, 64px); background: var(--brand-primary); color: var(--brand-mist); }
 .brand > * { position: relative; z-index: 1; }
-.brandLogo { color: var(--brand-mist); }
-.brandLogo > span > span { text-transform: none; letter-spacing: -.025em; }
+.homeLink { display: inline-flex; align-self: flex-start; min-height: 44px; border-radius: 8px; }
+.homeLink:focus-visible, .mobileBrand:focus-visible { outline: 2px solid currentColor; outline-offset: 6px; }
 .brandContent { max-width: 440px; }
 .brandContent h2 { font-size: clamp(30px, 3.2vw, 44px); font-weight: 600; line-height: 1.15; letter-spacing: -.035em; text-wrap: balance; }
 .brandContent > p { margin-top: 20px; color: color-mix(in srgb, var(--brand-mist) 80%, transparent); font-size: 16px; line-height: 1.7; }
@@ -17,13 +16,18 @@
 .stage { display: flex; flex: 1; align-items: center; justify-content: center; min-width: 0; padding-block: 32px; }
 .frame { width: 100%; max-width: 440px; min-width: 0; }
 .wide { max-width: 560px; }
+.entryContent { width: 100%; min-width: 0; }
+.entryNarrow { max-width: 440px; margin-inline: auto; }
 .mobileBrand { display: none; }
 .card { border: 0; box-shadow: none; background: transparent; overflow: visible; }
 .formHeader { margin-bottom: 24px; padding: 0; border: 0; text-align: left; }
 .formHeader p { font-size: 14px; line-height: 1.6; }
 .formFooter { margin-top: 0; padding-top: 4px; border: 0; }
 .tabs > [role=tablist] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--selected); border: 0; box-shadow: none; backdrop-filter: none; }
-.tabs [role=tab] { justify-content: center; min-height: 44px; padding-inline: 8px; }
+/* Auth uses a CSS highlight so selection also works under the strict production CSP. */
+.tabs > [role=tablist] > div { display: none; }
+.tabs [role=tab] { justify-content: center; min-height: 44px; padding-inline: 8px; border: 1px solid transparent; }
+.tabs [role=tab][aria-selected=true] { background: var(--surface); border-color: var(--border); box-shadow: var(--s-shadow-xs); }
 .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .pairedFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .fullField { grid-column: 1 / -1; }
@@ -41,7 +45,6 @@
   .backText { display: none; }
   .stage { align-items: flex-start; padding-top: 20px; padding-bottom: 0; }
   .mobileBrand { display: flex; min-width: 0; }
-  .mobileBrand > div > span > span { text-transform: none; letter-spacing: -.025em; }
   .formHeader { margin-bottom: 0; }
   .accountLinks { gap: 0; margin-top: 12px; }
   .divider { margin-block: 12px; }

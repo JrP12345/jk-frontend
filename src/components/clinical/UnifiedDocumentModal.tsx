@@ -3,7 +3,7 @@
 import LoadingImage from "@/components/ui/LoadingImage";
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
-import { getPrintBrandStyles, printHtml, PrintPreparationError } from "@/lib/printBrand";
+import { getPrintBrandStyles, printElement, printHtml, PrintPreparationError } from "@/lib/printBrand";
 import { formatCurrency } from "@/lib/currency";
 import { PharmacyInvoiceDocument } from "@/components/pharmacy/PharmacyInvoiceDocument";
 import { canPrintPharmacyInvoice, pharmacyDocumentTitle, type IssuedPharmacyInvoice } from "@/lib/pharmacyInvoice";
@@ -126,7 +126,11 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
   const handlePrint = async () => {
     if (document.pharmacyInvoice && !canPrintPharmacyInvoice(document.pharmacyInvoice)) throw new PrintPreparationError("not-ready");
     const printTitle = document.pharmacyInvoice ? `${pharmacyDocumentTitle(document.pharmacyInvoice.taxDocument.kind)} #${document.pharmacyInvoice.invoiceNumber}` : document.title;
-    const printRecipient = document.pharmacyInvoice?.taxDocument.recipient.name || document.patientName;
+    if (document.pharmacyInvoice) {
+      await printElement(printRef.current, { title: printTitle });
+      return;
+    }
+    const printRecipient = document.patientName;
     const printContent = printRef.current?.innerHTML;
     if (!printContent) throw new PrintPreparationError("not-ready");
 
@@ -302,7 +306,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
         {/* Printable Document Container */}
         <div
           ref={printRef}
-          className={`bg-white text-text text-xs shadow-sm rounded-xl border border-border space-y-4 transition-all ${
+          className={document.pharmacyInvoice ? "bg-white rounded-xl border border-border" : `bg-white text-text text-xs shadow-sm rounded-xl border border-border space-y-4 transition-all ${
             isPreprinted ? "pt-16 p-6" : "p-6"
           }`}
         >

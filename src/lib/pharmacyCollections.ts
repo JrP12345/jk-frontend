@@ -1,6 +1,13 @@
 import api from "@/lib/api";
 import type { IssuedPharmacyInvoice } from "./pharmacyInvoice";
 
+export function pendingCollectionReference(storageKey: string): { key: string; invoiceId: string } | null {
+  const value = sessionStorage.getItem(storageKey); if (!value) return null;
+  const result = JSON.parse(value) as { key: string; invoiceId: string };
+  if (!result || !/^[a-zA-Z0-9_-]{8,100}$/.test(result.key) || typeof result.invoiceId !== "string" || !result.invoiceId) throw new Error("Collection reference requires review before another payment.");
+  return result;
+}
+
 export type CollectionMethod = "cash" | "upi" | "card";
 export interface CollectionEntry { componentId: string; amountPaise: number; paymentMethod: CollectionMethod; referenceNumber?: string }
 export interface CollectionInput {
@@ -22,6 +29,17 @@ export interface CollectionReceipt {
   requestKey?: string;
 }
 export interface InvoiceSummary { id: string; invoiceNumber: string; status: string; totalAmount: number; currency: string; documentVersion?: number; customerSnapshot?: { anonymous: boolean; name?: string } }
+export interface CustomerSale extends InvoiceSummary { issuedAt: string; amountPaid: number; balanceDue: number }
+export async function counterCustomerHistory(customerId: string, locationId: string, cursor?: string, signal?: AbortSignal): Promise<{ items: CustomerSale[]; nextCursor: string | null }> {
+  const params = new URLSearchParams({ locationId, customerId });
+  if (cursor) params.set("cursor", cursor);
+  const response = await api.get(`/pharmacy/invoices?${params}`, { signal }), page = response.data?.data;
+  if (!page || page.customerId !== customerId || page.locationId !== locationId || !Array.isArray(page.items) || page.items.length > 25 ||
+      new Set(page.items.map((row: CustomerSale) => row.id)).size !== page.items.length || page.nextCursor !== null && typeof page.nextCursor !== "string" ||
+      page.items.some((row: CustomerSale & { customerSnapshot?: { partyId?: string } }) => !row.id || !row.invoiceNumber || typeof row.status !== "string" || !row.status || row.currency !== "INR" || row.customerSnapshot?.partyId !== customerId ||
+        !Number.isFinite(new Date(row.issuedAt).getTime()) || [row.totalAmount, row.amountPaid, row.balanceDue].some(value => !Number.isFinite(value) || value < 0))) throw new Error("Customer history could not be confirmed. Retry this customer's history.");
+  return { items: page.items, nextCursor: page.nextCursor };
+}
 export function validateCollectionReceipt(value: unknown): CollectionReceipt {
   const result = value as CollectionReceipt | null;
   if (!result || [result.receiptId, result.invoiceId, result.invoiceNumber, result.locationId, result.actorId].some(value => typeof value !== "string" || !value) || result.currency !== "INR" ||

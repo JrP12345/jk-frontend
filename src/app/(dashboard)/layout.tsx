@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from "react";
 import { hasRoutePermission } from "@/lib/routePermissions";
 import { orderNavigation } from "@/lib/navigationOrder";
 import { isPharmacyWorkspace, pharmacyWorkspaceRoute } from "@/lib/workspaceProfile";
+import { isCounterSalesUser } from "@/lib/pharmacyCapabilities";
 import { getDisabledRouteModule, requiresTenantModules } from "@/lib/routeModules";
 import dynamic from "next/dynamic";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
@@ -21,6 +22,7 @@ import { OfflineStatusBanner } from "@/components/clinical/OfflineStatusBanner";
 import { MobileBottomNav } from "@/components/dashboard";
 import { useTrafficTracker } from "@/hooks/useTrafficTracker";
 import DashboardLoading from "./loading";
+import { PharmacySkeleton } from "@/components/pharmacy/PharmacySkeleton";
 import AICopilotLauncher from "@/components/ai/AICopilotLauncher";
 import { getAvatarInitials } from "@/components/ui/Avatar";
 import { LayoutDashboard, Calendar, User, CreditCard, Bell, BarChart3, Building2, Users, FileText, Video, FlaskConical, Image as ImageIcon, Pill, Receipt, ShieldCheck, ClipboardList, Clock, MessageSquare, Settings, Activity, ChevronLeft, ChevronRight, Menu, X, LogOut, Lock } from "lucide-react";
@@ -39,6 +41,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, logout, stopImpersonation, checkAuth, isLoading, isLoggingOut, authError } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
+  // Reduce pharmacy page gutters while keeping the standard dashboard navigation.
+  const compactPharmacy = pathname === "/dashboard/pharmacy" && (!user || isPharmacyWorkspace(user) || isCounterSalesUser(user));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const drawerGesture = useSwipeGesture({ axis: "x", direction: "left", enabled: mobileMenuOpen, mediaQuery: "(max-width: 1023px)", onSwipe: () => setMobileMenuOpen(false) });
@@ -227,7 +231,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // 3. Diagnostics & Pharmacy
     { section: "Diagnostics & Pharmacy", label: "Laboratory & LIS", href: "/dashboard/laboratory", icon: <FlaskConical className="w-5 h-5" />, moduleKey: "laboratory" },
     { section: "Diagnostics & Pharmacy", label: "Radiology & PACS", href: "/dashboard/radiology", icon: <ImageIcon className="w-5 h-5" />, moduleKey: "radiology" },
-    { section: "Diagnostics & Pharmacy", label: "Pharmacy Inventory", href: "/dashboard/pharmacy", icon: <Pill className="w-5 h-5" />, moduleKey: "pharmacy" },
+    { section: "Diagnostics & Pharmacy", label: isCounterSalesUser(user) ? "Counter sales" : "Pharmacy Inventory", href: "/dashboard/pharmacy", icon: <Pill className="w-5 h-5" />, moduleKey: "pharmacy" },
 
     // 4. Billing & Finance
     { section: "Billing & Finance", label: "Patient Invoicing", href: "/dashboard/billing", icon: <Receipt className="w-5 h-5" />, moduleKey: "billing" },
@@ -247,6 +251,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const filteredNavItems = (isLoading || !user)
     ? []
     : orderNavigation(allNavItems.filter((item) => {
+        if (isCounterSalesUser(user) && item.href === "/dashboard/locations") return false;
         if (isPharmacyWorkspace(user) && !pharmacyWorkspaceRoute(item.href)) return false;
         // Overview and Notifications are always visible to authenticated users
         if (item.href === "/dashboard" || item.href === "/browse" || item.href === "/dashboard/notifications") return true;
@@ -285,6 +290,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <h1 className="text-xl font-semibold">Unable to verify your session</h1>
         <p className="text-text-secondary">{authError}</p>
         <Button loading={isLoading} onClick={() => void checkAuth()}>Try again</Button>
+        {pathname === "/dashboard/pharmacy" && <a className="block text-sm font-medium text-accent underline" href="/pharmacy-offline.html">Prepare cached pharmacy draft</a>}
       </div>
     </main>
   );
@@ -413,7 +419,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   ? "Platform Superadmin Console"
                   : user.role === "admin"
                   ? "Organization Admin Dashboard"
-                  : `${user.role} Dashboard`
+                  : isCounterSalesUser(user) ? "Counter sales" : `${user.role.replaceAll("_", " ")} Dashboard`
                 : "Clinical Workspace"}
             </p>
           </div>
@@ -424,6 +430,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="order-2 lg:order-3 flex items-center gap-1 sm:gap-2 xl:gap-4 min-w-0 shrink-0">
+            <AICopilotLauncher inline={pathname === "/dashboard/pharmacy"} />
             <NotificationBell />
             <div className="hidden lg:block"><ModeSwitcher variant="icon" /></div>
             <div className="w-px h-6 bg-border mx-0.5 sm:mx-1 md:mx-2 hidden xl:block" />
@@ -434,7 +441,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <span aria-hidden="true"><Avatar src={user.image_url} name={user.name} size="sm" status="online" /></span>{" "}
                     <div className="text-left hidden sm:block">
                       <p className="text-xs font-semibold text-text leading-tight truncate max-w-[120px]">{user.name}</p>{" "}
-                      <p className="text-[10px] text-text-muted capitalize leading-tight">{user.role}</p>
+                      <p className="text-[10px] text-text-muted capitalize leading-tight">{isCounterSalesUser(user) ? "Counter sales" : user.role.replaceAll("_", " ")}</p>
                     </div>
                   </button>
                 }
@@ -471,12 +478,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           role="main"
           id="main-content"
           data-app-scroll
-          className="brand-essence flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6 lg:py-8 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 lg:pb-8 scroll-pb-[calc(8rem+env(safe-area-inset-bottom))] md:scroll-pb-8 scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]"
+          data-pharmacy-compact={compactPharmacy || undefined}
+          className={cn("brand-essence flex-1 min-h-0 overflow-y-auto scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]", compactPharmacy ? "p-2 sm:p-3 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-4 scroll-pb-[calc(8rem+env(safe-area-inset-bottom))] md:scroll-pb-4" : "p-3 sm:p-5 md:p-6 lg:py-8 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 lg:pb-8 scroll-pb-[calc(8rem+env(safe-area-inset-bottom))] md:scroll-pb-8")}
         >
           {/* This shell owns page gutters; route workspaces fill the available width. */}
           <div className="w-full min-w-0 space-y-5 sm:space-y-6" data-dashboard-content>
             {isLoading || !user ? (
-              <DashboardLoading />
+              pathname === "/dashboard/pharmacy" ? <PharmacySkeleton counter={compactPharmacy} /> : <DashboardLoading />
             ) : !hasAccess ? (
               <div className="min-h-[400px] flex items-center justify-center bg-surface rounded-2xl border border-border p-6 text-center">
                 <Spinner size="lg" label="Redirecting..." />
@@ -496,9 +504,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onOpenMenu={() => setMobileMenuOpen(true)}
         isMenuOpen={mobileMenuOpen}
       />
-
-      {/* Global Floating AI Copilot Drawer Button */}
-      <AICopilotLauncher />
 
     </div>
   );

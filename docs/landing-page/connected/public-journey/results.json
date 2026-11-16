@@ -1,0 +1,1285 @@
+{
+  "date": "2026-11-09",
+  "environment": "Isolated Next production builds; server/browser synthetic fixtures; local Chrome; no external services",
+  "sourceRuns": [
+    {
+      "source": "public-journey-final",
+      "phases": [
+        "views",
+        "journeys",
+        "states"
+      ],
+      "cases": 43
+    },
+    {
+      "source": "public-journey-auth-final",
+      "phases": [
+        "views",
+        "journeys"
+      ],
+      "cases": 15
+    },
+    {
+      "source": "public-journey-streaming-final",
+      "phases": [
+        "views",
+        "journeys",
+        "states",
+        "loading"
+      ],
+      "cases": 29
+    },
+    {
+      "source": "public-journey-loading-final",
+      "phases": [
+        "loading"
+      ],
+      "cases": 4
+    }
+  ],
+  "diagnostics": [
+    "A production-only login tab highlight defect was found visually and corrected with local CSS; affected cases were rechecked.",
+    "The initial direct-navigation doctor-loading timing probe timed out. The final cold in-app link checks passed for both profile pages at desktop and phone widths."
+  ],
+  "results": [
+    {
+      "name": "login-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-auth-final"
+    },
+    {
+      "name": "register-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Create your account",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "browse-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Clinics & hospitals near you",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Filters",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "2 facilities found",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove East",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".leaflet-control-zoom-out > span[aria-hidden=\"true\"]"
+                ],
+                "summary": "Fix any of the following:\n  Element content contains only non-text characters",
+                "html": "<span aria-hidden=\"true\">−</span>"
+              }
+            ]
+          }
+        ]
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "facility-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Doctors",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Location",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "About",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "login-768",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-auth-final"
+    },
+    {
+      "name": "register-768",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Create your account",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "browse-768",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Clinics & hospitals near you",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Filters",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "2 facilities found",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove East",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "facility-768",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Doctors",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Location",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "About",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-768",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "login-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-auth-final"
+    },
+    {
+      "name": "register-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Create your account",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "browse-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Clinics & hospitals near you",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Filters",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "2 facilities found",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove East",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "facility-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Doctors",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Location",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "About",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "login-320",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-auth-final"
+    },
+    {
+      "name": "register-320",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Create your account",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "browse-320",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Clinics & hospitals near you",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Filters",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "2 facilities found",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove East",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "facility-320",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Doctors",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Location",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "About",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-320",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "login-dark-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-auth-final"
+    },
+    {
+      "name": "register-dark-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Create your account",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "browse-dark-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Clinics & hospitals near you",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Filters",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "2 facilities found",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Aster Grove East",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-final"
+    },
+    {
+      "name": "facility-dark-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Aster Grove Clinic",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Doctors",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Location",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "About",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-dark-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "booking-details-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "register-verification-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Verify your mobile number",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "register-rejected-code-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Verify your mobile number",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".shadow-danger\\/10 > .pt-0\\.5.break-words.flex-1 > .mt-1.leading-relaxed.text-text-secondary"
+                ],
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements",
+                "html": "<p class=\"text-xs text-text-secondary mt-1 leading-relaxed\">Verification did not return a signed-in account. Please try again or sign in.</p>"
+              }
+            ]
+          }
+        ]
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "provider-sign-in-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "connected-journey-1440",
+      "simulatedOtp": [
+        "/api/auth/otp/request",
+        "/api/auth/otp/verify (rejected synthetic code)"
+      ],
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "booking-details-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "register-verification-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Verify your mobile number",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "register-rejected-code-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Verify your mobile number",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".shadow-danger\\/10 > .pt-0\\.5.break-words.flex-1 > .mt-1.leading-relaxed.text-text-secondary"
+                ],
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements",
+                "html": "<p class=\"text-xs text-text-secondary mt-1 leading-relaxed\">Verification did not return a signed-in account. Please try again or sign in.</p>"
+              }
+            ]
+          }
+        ]
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "provider-sign-in-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "connected-journey-390",
+      "simulatedOtp": [
+        "/api/auth/otp/request",
+        "/api/auth/otp/verify (rejected synthetic code)"
+      ],
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "facility-unavailable-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Location unavailable",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-unavailable-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Doctor profile unavailable",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "facility-error-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Profile temporarily unavailable",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-assignment-removed-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "facility-unavailable-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Location unavailable",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-unavailable-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Doctor profile unavailable",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "facility-error-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Profile temporarily unavailable",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "doctor-assignment-removed-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true,
+      "sourceRun": "public-journey-streaming-final"
+    },
+    {
+      "name": "facility-loading-1440",
+      "passed": true,
+      "sourceRun": "public-journey-loading-final"
+    },
+    {
+      "name": "doctor-loading-1440",
+      "passed": true,
+      "sourceRun": "public-journey-loading-final"
+    },
+    {
+      "name": "facility-loading-390",
+      "passed": true,
+      "sourceRun": "public-journey-loading-final"
+    },
+    {
+      "name": "doctor-loading-390",
+      "passed": true,
+      "sourceRun": "public-journey-loading-final"
+    }
+  ],
+  "blockedWrites": [],
+  "missingFixtures": []
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import { absolutePublicUrl, canIndexPublicSite } from "./siteUrl";
 import { locationPath } from "./publicPaths";
+import { facilityHasDoctorSection } from "./facility";
 
 /** Mark up only explicit, valid day schedules. Never publish parser defaults. */
 export function publicOpeningHours(timings?: string | null) {
@@ -43,13 +44,14 @@ export function profileMetadata(title: string, description: string, path: string
 }
 
 export function locationDescription(location: LocationDetail) {
-  return `${location.name}${location.city ? ` in ${location.city}` : ""}. ${location.description || "View doctors, location details, opening hours and appointment options."}`.replace(/\s+/g, " ").slice(0, 300);
+  const fallback = facilityHasDoctorSection(location) ? "View doctors, location details, opening hours and appointment options." : location.pharmacy?.catalogueEnabled ? "Browse medicines, pickup options, opening hours and pharmacy contact details." : "View services, opening hours, directions and contact details.";
+  return `${location.name}${location.city ? ` in ${location.city}` : ""}. ${location.description || fallback}`.replace(/\s+/g, " ").slice(0, 300);
 }
 
 export function locationStructuredData(location: LocationDetail) {
   const url = absolutePublicUrl(locationPath(location));
   if (!url) return null;
-  const types: Record<string, string> = { clinic: "MedicalClinic", hospital: "Hospital" };
+  const types: Record<string, string> = { clinic: "MedicalClinic", hospital: "Hospital", pharmacy: "Pharmacy" };
   const image = publicImageUrl(location.image_url);
   const hours = publicOpeningHours(location.timings);
   return {

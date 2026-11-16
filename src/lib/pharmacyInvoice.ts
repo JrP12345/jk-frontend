@@ -1,3 +1,5 @@
+import { validCapturedPharmacyNumber, type PharmacyNumberSnapshot } from "./pharmacyInvoiceNumberFormat";
+
 export interface PharmacyTaxDocument {
   version: 1 | 2;
   kind: "tax_invoice" | "bill_of_supply" | "invoice_cum_bill_of_supply" | "ordinary_bill";
@@ -11,7 +13,9 @@ export interface IssuedPharmacyInvoice {
   calculation?: { policy: string; priceMode: string; taxMode: string; currency: string;
     totals: { lineDiscountPaise: number; invoiceDiscountPaise: number; roundOffPaise: number; grossAmountPaise: number; payablePaise: number } };
   invoiceNumber: string; issuedAt: string; financialYear: string; documentVersion: number;
+  numberingVersion?: number; numberingSnapshot?: PharmacyNumberSnapshot; invoiceSeries?: string;
   currency?: string; status: string; subtotal: number; tax: number; totalAmount: number; cgstTotal: number; sgstTotal: number;
+  amountPaid?: number; balanceDue?: number;
   taxDocument: PharmacyTaxDocument;
   items: Array<{ description: string; amount: number; quantity: number; hsnSacCode: string; unitCode: string; gstRate: number;
     baseAmountPaise: number; cgstPaise: number; sgstPaise: number; grossAmountPaise: number;
@@ -29,7 +33,7 @@ export function canPrintPharmacyInvoice(value: unknown): value is IssuedPharmacy
       !["tax_invoice", "bill_of_supply", "invoice_cum_bill_of_supply", "ordinary_bill"].includes(document.kind) ||
       !document.issuer?.legalName || !document.issuer.address || !document.issuer.authorisedSignatory ||
       !document.issuer.drugLicenceNumbers?.length || !document.recipient?.name ||
-      !/^I[A-Z0-9]{4}[0-9]{4}\/[0-9]{6}$/.test(invoice.invoiceNumber) || !Number.isFinite(new Date(invoice.issuedAt).getTime()) || !invoice.items?.length) return false;
+      !validCapturedPharmacyNumber(invoice) || !Number.isFinite(new Date(invoice.issuedAt).getTime()) || !invoice.items?.length) return false;
   if (document.kind === "ordinary_bill" ? document.issuer.registration !== "unregistered" || Boolean(document.issuer.gstin)
     : !["regular", "composition"].includes(document.issuer.registration) || !document.issuer.gstin) return false;
   const fields = ["baseAmountPaise", "cgstPaise", "sgstPaise", "grossAmountPaise"] as const;

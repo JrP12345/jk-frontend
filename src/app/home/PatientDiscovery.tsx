@@ -1,8 +1,8 @@
 import ProductScreenshots, { type ProductScreen } from "./ProductScreenshots";
 
 const screens: readonly ProductScreen[] = [
-  { id: "discovery", label: "Find a provider", moment: "01 / Find care", title: "Find a clinic that fits your visit.", description: "Search the real directory by city and specialty. Our illustrative practice has three doctors across two locations; Anaya chooses Dr. Mira Shah at Aster Grove Clinic.", alt: "Actual Ekavyu directory with two illustrative Aster Grove clinic locations and multiple specialties." },
-  { id: "booking", label: "View booking options", moment: "02 / Plan the visit", title: "A doctor, a location and a time to visit.", description: "Anaya reviews Dr. Mira’s practice details and chooses 10:30. The real booking panel shows the fee and available times before patient details. Confirmation follows the provider’s booking and payment requirements.", alt: "Actual Dr. Mira Shah demonstration profile with Aster Grove Clinic, consultation fee and available appointment times." },
+  { id: "discovery", label: "Find care", title: "A place to start your search.", description: "Explore the directory by city and specialty, then open a clinic to see its doctors and appointment options.", alt: "Actual Ekavyu directory with fictional Aster Grove clinic locations and specialty filters." },
+  { id: "booking", label: "Plan a visit", title: "Know your options before you book.", description: "Review the doctor, practice location, fee and available appointment times. Confirmation follows the provider’s booking and payment requirements.", alt: "Actual Ekavyu doctor profile and booking panel with fictional Dr. Mira Shah, practice details, fee and available dates." },
 ];
 
 export default function PatientDiscovery() {

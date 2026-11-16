@@ -1,0 +1,824 @@
+{
+  "tool": "Playwright 1.64.1",
+  "results": [
+    {
+      "scenario": "desktop",
+      "status": 200,
+      "errors": [],
+      "consoleErrors": [],
+      "layout": {
+        "heading": "Care,connected.",
+        "main": 1,
+        "overflow": false,
+        "canvas": 0,
+        "brokenAnchors": []
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "keyboardEvidenceWorks": true,
+      "evidence": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/discovery-desktop.webp"
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/booking-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/reception-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/queue-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/doctor-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/billing-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/whatsapp-desktop.webp"
+        }
+      ],
+      "frameChanges": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "heightDelta": 0
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "heightDelta": 0
+        }
+      ],
+      "pharmacyEvidence": true,
+      "destinations": true,
+      "screenControlsVisible": true,
+      "requirementsRevealed": true,
+      "whatsappDisclosure": true,
+      "changedStateAccessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "planLayout": {
+        "sameRow": true,
+        "scrollable": false
+      },
+      "pageHeight": 7024,
+      "writes": [],
+      "passed": true
+    },
+    {
+      "scenario": "tablet",
+      "status": 200,
+      "errors": [],
+      "consoleErrors": [],
+      "layout": {
+        "heading": "Care,connected.",
+        "main": 1,
+        "overflow": false,
+        "canvas": 0,
+        "brokenAnchors": []
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "keyboardEvidenceWorks": true,
+      "evidence": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/discovery-desktop.webp"
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/booking-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/reception-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/queue-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/doctor-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/billing-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/whatsapp-desktop.webp"
+        }
+      ],
+      "frameChanges": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "heightDelta": 0
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "heightDelta": 0
+        }
+      ],
+      "pharmacyEvidence": true,
+      "destinations": true,
+      "screenControlsVisible": true,
+      "requirementsRevealed": true,
+      "whatsappDisclosure": true,
+      "changedStateAccessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "planLayout": {
+        "sameRow": true,
+        "scrollable": true
+      },
+      "pageHeight": 7321,
+      "writes": [],
+      "passed": true
+    },
+    {
+      "scenario": "mobile",
+      "status": 200,
+      "errors": [],
+      "consoleErrors": [],
+      "layout": {
+        "heading": "Care,connected.",
+        "main": 1,
+        "overflow": false,
+        "canvas": 0,
+        "brokenAnchors": []
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "menuFocusRecovered": true,
+      "menuResizeDismissed": true,
+      "keyboardEvidenceWorks": true,
+      "evidence": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/discovery-mobile.webp"
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/booking-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/reception-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/queue-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/doctor-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/billing-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/whatsapp-mobile.webp"
+        }
+      ],
+      "frameChanges": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "heightDelta": 0
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "heightDelta": 0
+        }
+      ],
+      "pharmacyEvidence": true,
+      "destinations": true,
+      "screenControlsVisible": true,
+      "requirementsRevealed": true,
+      "whatsappDisclosure": true,
+      "changedStateAccessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "planLayout": {
+        "sameRow": true,
+        "scrollable": true
+      },
+      "pageHeight": 9888,
+      "writes": [],
+      "passed": true
+    },
+    {
+      "scenario": "narrow-mobile",
+      "status": 200,
+      "errors": [],
+      "consoleErrors": [],
+      "layout": {
+        "heading": "Care,connected.",
+        "main": 1,
+        "overflow": false,
+        "canvas": 0,
+        "brokenAnchors": []
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "keyboardEvidenceWorks": true,
+      "evidence": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/discovery-mobile.webp"
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/booking-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/reception-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/queue-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/doctor-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/billing-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/whatsapp-mobile.webp"
+        }
+      ],
+      "frameChanges": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "heightDelta": 0
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "heightDelta": 0
+        }
+      ],
+      "pharmacyEvidence": true,
+      "destinations": true,
+      "screenControlsVisible": true,
+      "requirementsRevealed": true,
+      "whatsappDisclosure": true,
+      "changedStateAccessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "planLayout": {
+        "sameRow": true,
+        "scrollable": true
+      },
+      "writes": [],
+      "passed": true
+    },
+    {
+      "scenario": "reduced-motion",
+      "status": 200,
+      "errors": [],
+      "consoleErrors": [],
+      "layout": {
+        "heading": "Care,connected.",
+        "main": 1,
+        "overflow": false,
+        "canvas": 0,
+        "brokenAnchors": []
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "keyboardEvidenceWorks": true,
+      "evidence": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/discovery-desktop.webp"
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/booking-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/reception-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/queue-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/doctor-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/billing-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/whatsapp-desktop.webp"
+        }
+      ],
+      "frameChanges": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "heightDelta": 0
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "heightDelta": 0
+        }
+      ],
+      "pharmacyEvidence": true,
+      "destinations": true,
+      "screenControlsVisible": true,
+      "requirementsRevealed": true,
+      "whatsappDisclosure": true,
+      "changedStateAccessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "planLayout": {
+        "sameRow": true,
+        "scrollable": false
+      },
+      "writes": [],
+      "passed": true
+    },
+    {
+      "scenario": "no-javascript",
+      "status": 200,
+      "errors": [],
+      "consoleErrors": [],
+      "layout": {
+        "heading": "Care,connected.",
+        "main": 1,
+        "overflow": false,
+        "canvas": 0,
+        "brokenAnchors": []
+      },
+      "writes": [],
+      "passed": true
+    },
+    {
+      "scenario": "dark-desktop",
+      "status": 200,
+      "errors": [],
+      "consoleErrors": [],
+      "layout": {
+        "heading": "Care,connected.",
+        "main": 1,
+        "overflow": false,
+        "canvas": 0,
+        "brokenAnchors": []
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "keyboardEvidenceWorks": true,
+      "evidence": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/discovery-desktop.webp"
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/booking-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/reception-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/queue-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/doctor-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/billing-desktop.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/whatsapp-desktop.webp"
+        }
+      ],
+      "frameChanges": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "heightDelta": 0
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "heightDelta": 0
+        }
+      ],
+      "pharmacyEvidence": true,
+      "destinations": true,
+      "screenControlsVisible": true,
+      "requirementsRevealed": true,
+      "whatsappDisclosure": true,
+      "changedStateAccessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "planLayout": {
+        "sameRow": true,
+        "scrollable": false
+      },
+      "pageHeight": 7024,
+      "writes": [],
+      "passed": true
+    },
+    {
+      "scenario": "dark-mobile",
+      "status": 200,
+      "errors": [],
+      "consoleErrors": [],
+      "layout": {
+        "heading": "Care,connected.",
+        "main": 1,
+        "overflow": false,
+        "canvas": 0,
+        "brokenAnchors": []
+      },
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "keyboardEvidenceWorks": true,
+      "evidence": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/discovery-mobile.webp"
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/booking-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/reception-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/queue-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/doctor-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/billing-mobile.webp"
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "pressed": "true",
+          "source": "http://localhost:3106/landing/product/whatsapp-mobile.webp"
+        }
+      ],
+      "frameChanges": [
+        {
+          "audience": "patient",
+          "label": "Find care",
+          "heightDelta": 0
+        },
+        {
+          "audience": "patient",
+          "label": "Plan a visit",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "01Reception",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "02Live queue",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "03Consultation",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "04Billing",
+          "heightDelta": 0
+        },
+        {
+          "audience": "clinic",
+          "label": "05Patient updates",
+          "heightDelta": 0
+        }
+      ],
+      "pharmacyEvidence": true,
+      "destinations": true,
+      "screenControlsVisible": true,
+      "requirementsRevealed": true,
+      "whatsappDisclosure": true,
+      "changedStateAccessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "planLayout": {
+        "sameRow": true,
+        "scrollable": true
+      },
+      "writes": [],
+      "passed": true
+    }
+  ]
+}

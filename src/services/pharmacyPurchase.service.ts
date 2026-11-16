@@ -8,6 +8,11 @@ export interface PurchaseLine {
   lineId: string; medicineId: string; expectedUnitVersion: number; packs: number; looseUnits: number; freePacks: number; freeLooseUnits: number;
   baseAmountPaise: number; discountPaise: number; gstRateBps: number; hsnCode: string; sellingPricePaise: number; mrpPaise?: number;
 }
+export interface PurchaseProduct {
+  id: string; name: string; genericName?: string; strength?: string; manufacturer?: string; price: number; hsnCode?: string;
+  unitDefinition: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number };
+  identityHash?: string;
+}
 export interface PurchaseDraft {
   id: string; locationId: string; supplierId: string; supplierSnapshot: { name: string; revision: number; address: string; gstin?: string };
   supplierInvoiceNumber: string; invoiceDate: string; invoiceFY: string; statedTotalPaise: number; revision: number; status: "draft" | "posted"; notes: string;

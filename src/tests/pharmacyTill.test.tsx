@@ -67,7 +67,7 @@ it("fails collection readiness closed and allows a successful explicit recheck",
   api.get.mockResolvedValueOnce(response({ active: drawer })); fireEvent.click(screen.getByRole("button", { name: "Recheck open drawer" })); await screen.findByText("Drawer COUNTER-1 open"); expect(ready).toHaveBeenLastCalledWith(true); expect(api.post).not.toHaveBeenCalled();
 });
 it("uses the shared billing drawer endpoints and preserves actual currency", async () => {
-  api.get.mockImplementation(async (url: string) => url.endsWith("/history") ? response({ items: [], nextCursor: null }) : response({ active: { ...drawer, currency: "USD" } })); mount({ channel: "billing" }); await screen.findByText(/Expected cash.*\$100.00/); expect(api.get.mock.calls.some(([url]) => url === "/billing/till/drawers")).toBe(true); expect(api.get.mock.calls.some(([url]) => url.startsWith("/pharmacy/"))).toBe(false);
+  api.get.mockImplementation(async (url: string) => url.endsWith("/history") ? response({ items: [], nextCursor: null }) : response({ active: { ...drawer, currency: "USD" } })); mount({ channel: "billing" }); const expectedCash = await screen.findByText("Expected cash"); expect(expectedCash.parentElement).toHaveTextContent(/\$100.00/); expect(api.get.mock.calls.some(([url]) => url === "/billing/till/drawers")).toBe(true); expect(api.get.mock.calls.some(([url]) => url.startsWith("/pharmacy/"))).toBe(false);
 });
 it("rejects malformed method totals and changed branch or close state", async () => {
   api.get.mockResolvedValueOnce(response({ active: { ...drawer, locationId: "other" } })); await expect(activeDrawer("branch")).rejects.toThrow(/another branch/);

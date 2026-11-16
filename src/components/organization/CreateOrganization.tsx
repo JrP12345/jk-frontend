@@ -1,24 +1,44 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
 import { facilityTypeOptions } from "@/lib/facility";
 import { Alert, Button, ImageUpload, Input, Modal, Select, Checkbox } from "@/components/ui";
 import { saveWithBranding } from "@/services/organization.service";
 import { COUNTRIES, countryOptions, type CountryCode } from "@/lib/countries";
+import { readPharmacyTrials, type PharmacyTrialOption } from "@/lib/pharmacyOnboarding";
+import { formatCurrency } from "@/lib/currency";
 import styles from "./OrganizationManagement.module.css";
 
 export function CreateOrganization({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (id: string) => void }) {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ org_name: "", city: "", countryCode: "IN", timezone: "Asia/Kolkata", plan: "starter", trial: "default", customDays: "", admin_name: "", admin_email: "", admin_password: "", location_name: "", facilityType: "clinic", sendWelcomeEmail: true });
+  const [form, setForm] = useState({ org_name: "", city: "", address: "", phone: "", countryCode: "IN", timezone: "Asia/Kolkata", plan: "starter", trial: "default", customDays: "", admin_name: "", admin_email: "", admin_password: "", location_name: "", facilityType: "clinic", sendWelcomeEmail: true });
   const [logo, setLogo] = useState<File | string | null>(null);
   const [cover, setCover] = useState<File | string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const pharmacy = form.facilityType === "pharmacy";
+  const [trials, setTrials] = useState<PharmacyTrialOption[]>([]);
+  const [trialId, setTrialId] = useState("");
+  const [trialsLoading, setTrialsLoading] = useState(true);
+  const [trialsError, setTrialsError] = useState("");
+  const [trialRead, setTrialRead] = useState(0);
+  const selectedTrial = trials.find(trial => trial.id === trialId);
+  useEffect(() => {
+    if (!pharmacy) return;
+    const controller = new AbortController();
+    readPharmacyTrials(controller.signal).then(rows => {
+      if (!controller.signal.aborted) { setTrials(rows); setTrialId(rows.length === 1 ? rows[0].id : ""); }
+    }).catch(() => { if (!controller.signal.aborted) setTrialsError("Pharmacy trial terms could not be loaded."); })
+      .finally(() => { if (!controller.signal.aborted) setTrialsLoading(false); });
+    return () => controller.abort();
+  }, [pharmacy, trialRead]);
   const change = (key: keyof typeof form, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
   function next() {
     if (!form.org_name.trim() || !form.city.trim() || /^[0-9+\s-]{6,}$/.test(form.city.trim())) { setError("Enter an organization name and a valid city."); return; }
+    if (pharmacy && (!selectedTrial || form.address.trim().length < 5 || form.phone.trim().length < 7)) { setError("Select a pharmacy trial and enter the full branch address and contact number."); return; }
     const days = form.trial === "custom" ? Number(form.customDays) : Number(form.trial);
-    if (form.trial !== "default" && (!Number.isInteger(days) || days < 1 || days > 365)) { setError("Trial duration must be between 1 and 365 whole days."); return; }
+    if (!pharmacy && form.trial !== "default" && (!Number.isInteger(days) || days < 1 || days > 365)) { setError("Trial duration must be between 1 and 365 whole days."); return; }
     setError(""); setStep(2);
   }
   async function submit(e: React.FormEvent) {
@@ -29,7 +49,8 @@ export function CreateOrganization({ open, onClose, onCreated }: { open: boolean
       const response = await saveWithBranding([logo, cover], undefined, ([logo_url, image_url]) => api.post("/onboarding/organization", {
         org_name: form.org_name.trim(), city: form.city.trim(), countryCode: form.countryCode,
         currency: COUNTRIES[form.countryCode as CountryCode].currency, timezone: form.timezone,
-        plan: form.plan, trialDays: form.trial === "default" ? undefined : Number(form.trial === "custom" ? form.customDays : form.trial),
+        ...(pharmacy ? { pharmacyPlanId: selectedTrial?.id, pharmacyPlanFingerprint: selectedTrial?.fingerprint } : { plan: form.plan, trialDays: form.trial === "default" ? undefined : Number(form.trial === "custom" ? form.customDays : form.trial) }),
+        address: form.address.trim() || undefined, org_phone: form.phone.trim() || undefined,
         admin_name: form.admin_name.trim(), admin_email: form.admin_email.trim().toLowerCase(), admin_password: form.admin_password,
         location_name: form.location_name.trim() || undefined, facilityType: form.facilityType, sendWelcomeEmail: form.sendWelcomeEmail,
         logo_url: logo_url || undefined, image_url: image_url || undefined,
@@ -47,17 +68,29 @@ export function CreateOrganization({ open, onClose, onCreated }: { open: boolean
       <fieldset disabled={busy} className="min-w-0 space-y-4">
         {step === 1 ? <>
           <Input label="Organization name" required value={form.org_name} onChange={(e) => change("org_name", e.target.value)} />
-          <Select label="Primary location type" value={form.facilityType} options={[...facilityTypeOptions]} onChange={(e) => change("facilityType", e.target.value)} />
-          <div className={styles.fieldGrid}><Input label="City" required value={form.city} onChange={(e) => change("city", e.target.value)} /><Select label="Country" value={form.countryCode} options={countryOptions} onChange={(e) => setForm({ ...form, countryCode: e.target.value, timezone: COUNTRIES[e.target.value as CountryCode].timezone })} /></div>
-          <div className={styles.fieldGrid}>
+          <Select label="Primary location type" value={form.facilityType} options={[...facilityTypeOptions]} onChange={(e) => {
+            const type = e.target.value;
+            if (type === "pharmacy") { setTrials([]); setTrialId(""); setTrialsError(""); setTrialsLoading(true); }
+            setForm(previous => ({ ...previous, facilityType: type, ...(type === "pharmacy" ? { countryCode: "IN", timezone: "Asia/Kolkata" } : {}) }));
+          }} />
+          <div className={styles.fieldGrid}><Input label="City" required value={form.city} onChange={(e) => change("city", e.target.value)} /><Select label="Country" value={form.countryCode} options={pharmacy ? countryOptions.filter(option => option.value === "IN") : countryOptions} onChange={(e) => setForm({ ...form, countryCode: e.target.value, timezone: COUNTRIES[e.target.value as CountryCode].timezone })} /></div>
+          <Input label="Branch address" required={pharmacy} minLength={pharmacy ? 5 : undefined} value={form.address} onChange={e => change("address", e.target.value)} />
+          <Input label="Branch contact number" type="tel" required={pharmacy} minLength={pharmacy ? 7 : undefined} maxLength={30} value={form.phone} onChange={e => change("phone", e.target.value)} />
+          {pharmacy ? <div className="space-y-3">
+            {trialsLoading ? <p role="status">Loading pharmacy trials…</p> : trialsError ? <Alert variant="error" title="Pharmacy trials unavailable" action={<Button size="sm" variant="outline" onClick={() => { setTrialsError(""); setTrialsLoading(true); setTrialRead(value => value + 1); }}>Reload trials</Button>}>{trialsError}</Alert> : !trials.length ? <Alert variant="warning" title="No pharmacy trial is published">Configure and publish a pharmacy product trial in <Link href="/dashboard/admin/billing" className="underline">Plans &amp; subscriptions</Link> before creating this pharmacy.</Alert> : <>
+              <Select label="Pharmacy product trial" value={trialId} options={[{ value: "", label: "Select a reviewed trial" }, ...trials.map(trial => ({ value: trial.id, label: trial.name }))]} onChange={e => setTrialId(e.target.value)} />
+              {selectedTrial && <p className="text-sm leading-relaxed text-text-secondary">{selectedTrial.trialDays}-day trial · {formatCurrency(selectedTrial.monthlyTotalPaise / 100, selectedTrial.currency)} per month after trial · one pharmacy branch · {selectedTrial.maxStaff} staff · no doctor seats. Paid activation is separate.</p>}
+            </>}
+            <p className="text-sm text-text-secondary">The administrator must set up MFA before operational access. Issuer review, pharmacy enablement and stock setup follow creation.</p>
+          </div> : <><div className={styles.fieldGrid}>
           <Select label="Subscription tier" value={form.plan} options={[{ value: "starter", label: "Starter" }, { value: "professional", label: "Pro" }, { value: "enterprise", label: "Enterprise" }]} onChange={(e) => change("plan", e.target.value)} />
           <Select label="Free trial duration" value={form.trial} options={[{ value: "default", label: "Use plan default" }, { value: "7", label: "7 days" }, { value: "15", label: "15 days" }, { value: "30", label: "30 days" }, { value: "custom", label: "Custom duration" }]} onChange={(e) => change("trial", e.target.value)} />
           </div>
           {form.trial === "custom" && <Input label="Custom trial days" type="number" required min={1} max={365} step={1} value={form.customDays} onChange={(e) => change("customDays", e.target.value)} />}
-          {form.plan === "enterprise" && form.trial === "default" && <p className="text-sm text-text-muted">Enterprise uses manual activation by default. Select days to start a trial.</p>}
+          {form.plan === "enterprise" && form.trial === "default" && <p className="text-sm text-text-muted">Enterprise uses manual activation by default. Select days to start a trial.</p>}</>}
           <details className="border-t border-border pt-2"><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg">Branding and location options</summary><div className="space-y-4 pt-3"><div className={styles.fieldGrid}><ImageUpload label="Organization logo" value={logo} onChange={setLogo} /><ImageUpload label="Cover photo" value={cover} onChange={setCover} /></div><Input label="Primary location name" hint="Uses the organization name when left blank." value={form.location_name} onChange={(e) => change("location_name", e.target.value)} /><Input label="Operating timezone" required value={form.timezone} onChange={(e) => change("timezone", e.target.value)} /></div></details>
         </> : <>
-          <p className="rounded-xl bg-surface-alt p-3 text-sm leading-relaxed text-text-secondary [overflow-wrap:anywhere]"><strong className="text-text">{form.org_name}</strong> · {form.city} · {form.plan.toUpperCase()}</p>
+          <p className="rounded-xl bg-surface-alt p-3 text-sm leading-relaxed text-text-secondary [overflow-wrap:anywhere]"><strong className="text-text">{form.org_name}</strong> · {form.city} · {pharmacy ? selectedTrial?.name : form.plan.toUpperCase()}</p>
           <Input label="Administrator name" required value={form.admin_name} onChange={(e) => change("admin_name", e.target.value)} />
           <Input label="Administrator email" required type="email" value={form.admin_email} onChange={(e) => change("admin_email", e.target.value)} />
           <Input label="Administrator password" required type="password" autoComplete="new-password" minLength={8} hint="Use uppercase, lowercase, a number and a symbol." value={form.admin_password} onChange={(e) => change("admin_password", e.target.value)} />

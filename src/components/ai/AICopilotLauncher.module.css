@@ -1,0 +1,5 @@
+.launcher { position: fixed; bottom: calc(5rem + env(safe-area-inset-bottom)); right: 1rem; z-index: 45; }
+@media (min-width: 640px) { .launcher { right: 1.5rem; } }
+@media (min-width: 768px) { .launcher { bottom: 1.5rem; } }
+.inline { position: relative; inset: auto; flex-shrink: 0; }
+.inline [data-copilot-trigger] { width: 40px; height: 40px; }

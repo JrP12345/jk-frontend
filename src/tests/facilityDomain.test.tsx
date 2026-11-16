@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { facilityTypeLabel, resolveLocationSelection } from "@/lib/facility";
 import { useLocationStore } from "@/store/locationStore";
 import api from "@/lib/api";
@@ -8,7 +8,7 @@ import BrowseClient, { type Location } from "@/app/browse/BrowseClient";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }), usePathname: () => "/browse" }));
 vi.mock("@/components/MarketplaceNavbar", () => ({ default: () => <nav>Navigation</nav> }));
 
-beforeEach(() => { vi.restoreAllMocks(); useLocationStore.getState().reset(); localStorage.clear(); });
+beforeEach(() => { vi.restoreAllMocks(); useLocationStore.getState().reset(); localStorage.clear(); window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }); });
 
 describe("Physical facility metadata and selection", () => {
   it("does not guess clinic type for old, invalid or unclassified metadata", () => {
@@ -44,9 +44,9 @@ describe("Physical facility metadata and selection", () => {
     ];
     render(<BrowseClient initialLocations={locations} />);
     expect(screen.getByRole("heading", { name: "Surat Hospital" })).toBeInTheDocument();
-    expect(screen.queryByText("Hospital", { exact: true })).not.toBeInTheDocument();
-    expect(screen.getByText("Diagnostic center", { exact: true })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("2 locations");
+    expect(within(screen.getByRole("article", { name: "Surat Hospital" })).queryByText("Hospital", { exact: true })).not.toBeInTheDocument();
+    expect(screen.getAllByText("Diagnostic center", { exact: true }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("status").some(element => element.textContent?.includes("2 locations"))).toBe(true);
     expect(screen.queryByText("Single-location organization", { exact: false })).not.toBeInTheDocument();
     expect(screen.queryByText("Mixed healthcare group", { exact: false })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Surat Hospital" })).toHaveAttribute("href", "/browse/surat-hospital");

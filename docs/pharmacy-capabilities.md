@@ -75,6 +75,8 @@ Existing member-location assignments remain independent of paid capacity. Use th
 
 ## Independent business signup
 
+Root-assisted setup now uses the same published pharmacy product terms and branch-bound trial initializer. **Add organization → Pharmacy** requires a current plan ID/fingerprint and actual branch contact/address, creates zero doctor seats, and requires staff MFA. Flat tiers/custom trial overrides remain the clinical creation flow. Existing pharmacy organizations are completed through the pharmacy Overview, branch settings and reviewed product quote/grant controls; they are not recreated or automatically converted. See [the assisted setup audit and current steps](pharmacy-assisted-setup-review.md).
+
 Implemented locally on 21 October 2026. No catalogue price, published offer, live account, database index or deployment was changed. Synthetic test licences are not professional approval.
 
 ### Owner journey

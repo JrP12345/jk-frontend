@@ -1,0 +1,1556 @@
+{
+  "reviewedAt": "2026-11-11",
+  "environment": "Local production build, synthetic API fixtures only; no provider, payment or database writes",
+  "scope": "Pricing page and homepage plans; persistent login/register frame; Browse provider entry",
+  "verification": {
+    "unitTests": 136,
+    "testFiles": 12,
+    "browserCases": 80,
+    "passed": 80,
+    "lintErrors": 0,
+    "existingLintWarnings": 2,
+    "productionBuild": "passed, including TypeScript"
+  },
+  "accessibilityScope": "Whole pricing/account pages, homepage pricing section, Browse header. Not a site-wide accessibility audit.",
+  "limitations": [
+    "Rejected-OTP toast cases retain incomplete automated contrast observations; no Axe violations were reported in checked scopes.",
+    "Request flow stops at the existing organization setup request form. Requests, provisioning and real OTP delivery were not submitted.",
+    "No general map accessibility or live-provider delivery certification."
+  ],
+  "results": [
+    {
+      "name": "pricing-single-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 1120,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-annual-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 1120,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-comparison-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 1120,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "home-single-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 1240,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-multiple-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Essential demo plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Practice demo plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Network demo plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-register-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-continuity-1440",
+      "passed": true,
+      "framePreserved": true,
+      "headerPreserved": true,
+      "removed": 0,
+      "shells": 1
+    },
+    {
+      "name": "auth-login-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "browse-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-single-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 694,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-annual-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 694,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-comparison-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 694,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "home-single-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 694,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-multiple-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Essential demo plan",
+            "width": 337,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Practice demo plan",
+            "width": 337,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Network demo plan",
+            "width": 337,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-register-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-continuity-768",
+      "passed": true,
+      "framePreserved": true,
+      "headerPreserved": true,
+      "removed": 0,
+      "shells": 1
+    },
+    {
+      "name": "auth-login-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "browse-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "request-setup-768",
+      "passed": true,
+      "destination": "/onboarding?mode=new_org"
+    },
+    {
+      "name": "pricing-single-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-annual-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-comparison-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "home-single-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 344,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-multiple-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Essential demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Practice demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Network demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-register-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-continuity-390",
+      "passed": true,
+      "framePreserved": true,
+      "headerPreserved": true,
+      "removed": 0,
+      "shells": 1
+    },
+    {
+      "name": "auth-login-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "browse-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "request-setup-390",
+      "passed": true,
+      "destination": "/onboarding?mode=new_org"
+    },
+    {
+      "name": "pricing-single-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-annual-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-comparison-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "home-single-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 274,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-multiple-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Essential demo plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Practice demo plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Network demo plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-register-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-continuity-320",
+      "passed": true,
+      "framePreserved": true,
+      "headerPreserved": true,
+      "removed": 0,
+      "shells": 1
+    },
+    {
+      "name": "auth-login-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "browse-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "request-setup-320",
+      "passed": true,
+      "destination": "/onboarding?mode=new_org"
+    },
+    {
+      "name": "pricing-single-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-annual-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-comparison-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "home-single-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 344,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-multiple-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Essential demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Practice demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Network demo plan",
+            "width": 348,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-register-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-continuity-dark-390",
+      "passed": true,
+      "framePreserved": true,
+      "headerPreserved": true,
+      "removed": 0,
+      "shells": 1
+    },
+    {
+      "name": "auth-login-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "browse-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "request-setup-dark-390",
+      "passed": true,
+      "destination": "/onboarding?mode=new_org"
+    },
+    {
+      "name": "pricing-single-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 1120,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-annual-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 1120,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-comparison-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 1120,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "home-single-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Core demo plan",
+            "width": 1240,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-multiple-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "Essential demo plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Practice demo plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "Network demo plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-register-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "auth-continuity-dark-1440",
+      "passed": true,
+      "framePreserved": true,
+      "headerPreserved": true,
+      "removed": 0,
+      "shells": 1
+    },
+    {
+      "name": "auth-login-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 1,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "browse-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": []
+      },
+      "errors": []
+    },
+    {
+      "name": "request-setup-dark-1440",
+      "passed": true,
+      "destination": "/onboarding?mode=new_org"
+    },
+    {
+      "name": "pricing-empty-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-retry-empty-320",
+      "passed": true
+    },
+    {
+      "name": "pricing-error-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-retry-error-320",
+      "passed": true
+    },
+    {
+      "name": "pricing-long-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "A long configured practice plan for multidisciplinary healthcare teams 1 plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "A long configured practice plan for multidisciplinary healthcare teams 2 plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "A long configured practice plan for multidisciplinary healthcare teams 3 plan",
+            "width": 278,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-empty-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-retry-empty-1440",
+      "passed": true
+    },
+    {
+      "name": "pricing-error-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": []
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "pricing-retry-error-1440",
+      "passed": true
+    },
+    {
+      "name": "pricing-long-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "shells": 0,
+        "cards": [
+          {
+            "name": "A long configured practice plan for multidisciplinary healthcare teams 1 plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "A long configured practice plan for multidisciplinary healthcare teams 2 plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          },
+          {
+            "name": "A long configured practice plan for multidisciplinary healthcare teams 3 plan",
+            "width": 360,
+            "capacityClear": true,
+            "actionContained": true
+          }
+        ]
+      },
+      "a11y": {
+        "violations": [],
+        "incomplete": [
+          "color-contrast"
+        ]
+      },
+      "errors": []
+    },
+    {
+      "name": "request-setup-1440",
+      "passed": true,
+      "destination": "/onboarding?mode=new_org"
+    },
+    {
+      "name": "booking-details-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true
+    },
+    {
+      "name": "register-verification-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Verify your mobile number",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true
+    },
+    {
+      "name": "register-rejected-code-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Verify your mobile number",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".shadow-danger\\/10 > .pt-0\\.5.break-words.flex-1 > .mt-1.leading-relaxed.text-text-secondary"
+                ],
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements",
+                "html": "<p class=\"text-xs text-text-secondary mt-1 leading-relaxed\">Verification did not return a signed-in account. Please try again or sign in.</p>"
+              }
+            ]
+          }
+        ]
+      },
+      "passed": true
+    },
+    {
+      "name": "provider-sign-in-1440",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true
+    },
+    {
+      "name": "connected-journey-1440",
+      "simulatedOtp": [
+        "/api/auth/otp/request",
+        "/api/auth/otp/verify (rejected synthetic code)"
+      ],
+      "passed": true
+    },
+    {
+      "name": "booking-details-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Dr. Mira Shah",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Practice locations",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Book a visit",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true
+    },
+    {
+      "name": "register-verification-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Verify your mobile number",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true
+    },
+    {
+      "name": "register-rejected-code-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Verify your mobile number",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".shadow-danger\\/10 > .pt-0\\.5.break-words.flex-1 > .mt-1.leading-relaxed.text-text-secondary"
+                ],
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it partially overlaps other elements",
+                "html": "<p class=\"text-xs text-text-secondary mt-1 leading-relaxed\">Verification did not return a signed-in account. Please try again or sign in.</p>"
+              }
+            ]
+          }
+        ]
+      },
+      "passed": true
+    },
+    {
+      "name": "provider-sign-in-390",
+      "errors": [],
+      "layout": {
+        "overflow": false,
+        "main": 1,
+        "nestedLinks": 0,
+        "typography": [
+          {
+            "text": "Care, connected.",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          },
+          {
+            "text": "Welcome back",
+            "font": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+          }
+        ]
+      },
+      "tabHighlightVisible": true,
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      },
+      "passed": true
+    },
+    {
+      "name": "connected-journey-390",
+      "simulatedOtp": [
+        "/api/auth/otp/request",
+        "/api/auth/otp/verify (rejected synthetic code)"
+      ],
+      "passed": true
+    }
+  ]
+}

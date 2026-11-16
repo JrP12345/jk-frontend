@@ -2,6 +2,8 @@ import api from "@/lib/api";
 import type { ChimeType, VoiceAnnounceLanguage } from "@/utils/audioChimes";
 
 export interface OrganizationRecord {
+  workspaceProfile?: "clinic" | "pharmacy";
+  staffMfaRequired?: boolean;
   workflowPreferences?: { registration?: "full" | "essential"; consultation?: "full" | "focused"; queueChime?: ChimeType; queueVoiceLanguage?: VoiceAnnounceLanguage };
   id: string; name: string; city: string; plan: string; status: string; isActive?: boolean;
   address?: string; email?: string; phone?: string; description?: string;
@@ -9,7 +11,7 @@ export interface OrganizationRecord {
   countryCode?: string; currency?: string; timezone?: string; taxId?: string; licenseNumber?: string;
   timings?: string; working_days?: string; onboardingStatus?: string;
   maxLocations?: number; maxDoctors?: number; maxStaff?: number;
-  primaryAdmin?: { name: string; email?: string } | null;
+  primaryAdmin?: { name: string; email?: string; twoFactorEnabled?: boolean; isActive?: boolean } | null;
   subscriptionSummary?: { label?: string; commercialState?: string; trialEndsAt?: string; nextBillingDate?: string; [key: string]: unknown };
 }
 export interface OrganizationMember { id: string; name: string; email: string; phone?: string; role: string; isActive: boolean; source?: string;

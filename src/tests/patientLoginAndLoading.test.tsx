@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import LoginPage from "@/app/(auth)/login/page";
+import LoginPage from "@/components/auth/LoginForm";
 import LoginLoading from "@/app/(auth)/login/loading";
 import RootLoading from "@/app/(auth)/loading";
 import { useAuthStore, type User } from "@/store/authStore";

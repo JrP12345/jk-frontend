@@ -26,8 +26,9 @@ import { vibrateFeedback } from "@/lib/haptics";
 import { locationDateKey, locationClockMinutes, addCalendarDays, locationLocalTimeToIso } from "@/lib/locationTime";
 import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
 import { useAuthStore } from "@/store/authStore";
-import { Card, CardContent, Button, Modal, Input, Select, useToast, Badge, LoadingState, SkeletonForm } from "@/components/ui";
-import MarketplaceNavbar from "@/components/MarketplaceNavbar";
+import { Button, Modal, Input, Select, useToast, Badge, LoadingState, SkeletonForm } from "@/components/ui";
+import PublicCareState from "@/components/PublicCareState";
+import { locationPath } from "@/lib/publicPaths";
 import { AlertCircle, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, UserCheck, User, Smartphone, Mail, FileText, CalendarOff, X, ChevronLeft } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { publicConsultationFee as doctorFeeLabel } from "@/lib/publicFees";
@@ -69,6 +70,7 @@ export interface LocationDetail {
   slug?: string;
   name: string;
   facilityType?: FacilityType | null;
+  pharmacy?: { catalogueEnabled: boolean; pickupEnabled: boolean };
   city: string;
   address: string;
   latitude?: number | null;
@@ -289,7 +291,7 @@ export default function BrowseDetailClient({
     if (!timingsStr) {
       return (
         <div className="space-y-2">
-          <p className="text-xs text-text-secondary">Opening hours have not been listed. Contact reception to confirm them.</p>
+          <p className="text-xs text-text-secondary">Opening hours have not been listed. Contact the location to confirm them.</p>
         </div>
       );
     }
@@ -310,7 +312,7 @@ export default function BrowseDetailClient({
       if (days.length === 0) {
         return (
           <div className="space-y-2">
-            <span className="text-xs text-text-secondary">Opening hours have not been listed. Contact reception to confirm them.</span>
+            <span className="text-xs text-text-secondary">Opening hours have not been listed. Contact the location to confirm them.</span>
           </div>
         );
       }
@@ -1084,8 +1086,8 @@ export default function BrowseDetailClient({
   };
 
   if (locationError) {
-    if (bookingOnly) return <div role="alert" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">{locationError === "not_found" ? "This practice location is no longer available." : "We couldn't load booking details."}{locationError === "load_failed" && <Button className="ml-3" onClick={() => setLocationRetry((value) => value + 1)}>Try again</Button>}</div>;
-    return <div className={marketplace.page}><MarketplaceNavbar showSignUp /><main className="max-w-lg mx-auto px-4 pt-12"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">{locationError === "not_found" ? "Location page unavailable" : "We couldn't load this location"}</h1><p className="text-sm text-text-muted">{locationError === "not_found" ? "This location link may have changed or the location is no longer listed." : "Check your connection and try again."}</p><div className="flex flex-wrap gap-3">{locationError === "load_failed" && <Button onClick={() => setLocationRetry((value) => value + 1)}>Try again</Button>}<Link href="/browse" className="text-sm text-accent py-2">Browse locations</Link></div></CardContent></Card></main></div>;
+    if (bookingOnly) return <div role="alert" className="space-y-3 rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary"><p>{locationError === "not_found" ? "This practice location is no longer available." : "We couldn't load booking details."}</p><div className="flex flex-wrap items-center gap-3">{locationError === "load_failed" && <Button onClick={() => setLocationRetry((value) => value + 1)}>Try again</Button>}<Link href="/browse" className="inline-flex min-h-11 items-center font-medium text-accent underline">Browse other locations</Link></div></div>;
+    return <PublicCareState title={locationError === "not_found" ? "Location page unavailable" : "We couldn't load this location"} description={locationError === "not_found" ? "This location link may have changed or the location is no longer listed." : "Check your connection and try again."} role="alert"><div className="flex flex-wrap items-center gap-3">{locationError === "load_failed" && <Button onClick={() => setLocationRetry((value) => value + 1)}>Try again</Button>}<Link href="/browse" className="inline-flex min-h-11 items-center text-sm font-medium text-accent underline">Browse locations</Link></div></PublicCareState>;
   }
 
   if (loading || (location && location.slug !== slug)) {
@@ -1116,7 +1118,7 @@ export default function BrowseDetailClient({
   const matchingDoctors = location.doctors.filter((doctor) => (!locationSpecialty || doctor.specialization?.trim() === locationSpecialty) && `${doctor.name} ${doctor.specialization}`.toLocaleLowerCase().includes(doctorQuery.trim().toLocaleLowerCase()));
   const visibleDoctors = showAllDoctors || doctorQuery || locationSpecialty ? matchingDoctors : matchingDoctors.slice(0, 12);
 
-  if (bookingOnly && !bookingDoctor) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">This doctor is no longer listed at {location.name}. Choose another practice location or contact reception.</div>;
+  if (bookingOnly && !bookingDoctor) return <div role="status" className="space-y-3 rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary"><p>This doctor is no longer listed at {location.name}. Choose another practice location or contact reception.</p><Link href={locationPath(location)} className="inline-flex min-h-11 items-center font-medium text-accent underline">View available doctors</Link></div>;
   if (bookingOnly && bookingStatus === "contact_location") return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary"><p className="font-semibold text-text">Online booking is unavailable at {location.name}.</p><p className="mt-2">{location.phone ? <>Please <a className="font-semibold text-accent underline" href={`tel:${location.phone.replace(/\s+/g, "")}`}>call {location.phone}</a> for help.</> : "Please contact reception for help."}</p></div>;
   if (bookingOnly && !selectedDoctor && !ticketModalOpen) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">Preparing available appointments at {location.name}…</div>;
 

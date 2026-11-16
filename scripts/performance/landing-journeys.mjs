@@ -9,7 +9,7 @@ const puppeteer = requireTool('puppeteer-core');
 const origin = process.env.LANDING_QA_ORIGIN || 'http://127.0.0.1:3097';
 const output = path.resolve(process.env.LANDING_QA_OUTPUT || '.next/landing-refinement-final-review');
 await fs.mkdir(output, { recursive: true });
-const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--disable-background-networking', '--no-first-run', '--no-proxy-server'] });
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', pipe: true, headless: true, args: ['--disable-background-networking', '--no-first-run', '--no-proxy-server'] });
 const results = [];
 try {
   for (const mobile of [false, true]) {
@@ -36,10 +36,13 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     const checks = [];
     for (const target of [
-      { selector: 'main a[href="/browse"]', pathname: '/browse', heading: 'Find a', expected: 'Synthetic Audit Clinic' },
+      { selector: 'main a[href="/browse"]', pathname: '/browse', heading: 'Clinics & hospitals near you', expected: 'Synthetic Audit Clinic' },
       { selector: 'footer a[href="/pricing"]', pathname: '/pricing', heading: 'Plans for your practice', expected: 'Compare all limits and features' },
       { selector: 'main a[href="/onboarding?mode=new_org"]', pathname: '/onboarding', heading: 'Request organization setup', expected: 'Submit setup request' },
+      { selector: 'main a[href="/pharmacy-start"]', pathname: '/pharmacy-start', heading: 'Start your pharmacy workspace', expected: 'Synthetic pharmacy trial' },
     ]) {
+      console.log(JSON.stringify({ checking: target.pathname, viewport: mobile ? 'mobile' : 'desktop' }));
+      try {
       await page.goto(origin, { waitUntil: 'networkidle0', timeout: 90000 });
       await page.click(target.selector);
       await page.waitForFunction(pathname => location.pathname === pathname, { timeout: 30000 }, target.pathname);
@@ -52,6 +55,10 @@ try {
       const check = { route: target.pathname, heading: await page.$eval('h1', node => node.textContent), passed: true };
       checks.push(check);
       await page.screenshot({ path: path.join(output, `${mobile ? 'mobile' : 'desktop'}-route-${target.pathname.slice(1)}.png`) });
+      } catch (error) {
+        await page.screenshot({ path: path.join(output, 'journey-failure.png') });
+        throw new Error(JSON.stringify({ target: target.pathname, actual: page.url(), heading: await page.$eval('h1', node => node.textContent).catch(() => null), text: (await page.$eval('body', node => node.innerText)).slice(0, 1800), errors, cause: error.message }));
+      }
     }
     results.push({ viewport: mobile ? 'mobile' : 'desktop', checks, errors, blockedWrites, passed: !errors.length });
     console.log(JSON.stringify(results.at(-1)));

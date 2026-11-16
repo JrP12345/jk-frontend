@@ -1,0 +1,20 @@
+[
+  ["src/lib/pharmacyDrafts.ts", "pharmacyDrafts.js"],
+  ["src/lib/pharmacyCatalogue.ts", "pharmacyCatalogue.js"],
+  ["src/lib/pharmacyBranchCatalogue.ts", "pharmacyBranchCatalogue.js"],
+  ["src/lib/pharmacyBackgroundWork.ts", "pharmacyBackgroundWork.js"],
+  ["src/lib/authScope.ts", "authScope.js"],
+  ["src/offline/pharmacy.ts", "entry.js"],
+  ["src/offline/pharmacyFinal.ts", "pharmacyFinal.js"],
+  ["src/lib/pharmacyOfflineLedger.ts", "pharmacyOfflineLedger.js"],
+  ["src/lib/pharmacyOfflineCrypto.ts", "pharmacyOfflineCrypto.js"],
+  ["src/lib/pharmacyOfflineGrant.ts", "pharmacyOfflineGrant.js"],
+  ["src/lib/pharmacyOfflineSession.ts", "pharmacyOfflineSession.js"],
+  ["src/lib/pharmacyOfflineIdentity.ts", "pharmacyOfflineIdentity.js"],
+  ["src/lib/pharmacyOfflinePrint.ts", "pharmacyOfflinePrint.js"],
+  ["src/lib/pharmacyOfflinePricing.ts", "pharmacyOfflinePricing.js"],
+  ["src/lib/pharmacyInvoice.ts", "pharmacyInvoice.js"],
+  ["src/lib/pharmacyInvoiceNumberFormat.ts", "pharmacyInvoiceNumberFormat.js"],
+  ["src/lib/generated/pharmacyCalculation.ts", "pharmacyCalculation.js"],
+  ["src/lib/generated/pharmacyOfflineDocument.ts", "pharmacyOfflineDocument.js"]
+]

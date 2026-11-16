@@ -1,0 +1,35 @@
+.plan { min-width: 0; height: 100%; }
+.popular { border-color: var(--accent); }
+.content { display: flex; flex-direction: column; gap: 24px; padding: 28px; }
+.introduction { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.name { font-size: 20px; font-weight: 600; line-height: 1.35; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.description { color: var(--text-secondary); font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; max-width: 52ch; }
+.priceGroup { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding-top: 8px; }
+.price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; font-size: 38px; font-weight: 600; line-height: 1.2; letter-spacing: -.04em; overflow-wrap: anywhere; }
+.price > span { color: var(--text-secondary); font-size: 13px; font-weight: 400; letter-spacing: normal; }
+.billingNote { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.trial { color: var(--accent); font-size: 13px; line-height: 1.6; }
+.details { display: flex; flex: 1; flex-direction: column; gap: 24px; min-width: 0; }
+.capacities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 24px; border-top: 1px solid var(--border); padding-top: 20px; }
+.compactCapacities { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.compactCapacities dt { min-height: 36px; }
+.capacities > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.capacities dt { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.capacities dd { font-size: 20px; font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
+.features { display: grid; gap: 10px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.features li { display: flex; align-items: baseline; gap: 8px; }
+.features li > span { color: var(--accent); }
+@media (min-width: 800px) {
+  .single .content { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 48px; padding: 36px; }
+  .single .details { border-left: 1px solid var(--border); padding-left: 36px; }
+  .single .capacities { border-top: 0; padding-top: 0; }
+  .single .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .single .price { font-size: 44px; }
+}
+@media (max-width: 479px) {
+  .content { padding: 22px; gap: 22px; }
+  .compactCapacities { gap: 12px; }
+  .capacities dt { font-size: 12px; }
+  .price { font-size: 34px; }
+}

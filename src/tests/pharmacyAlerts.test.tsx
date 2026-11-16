@@ -12,6 +12,12 @@ it("uses trusted saleable quantities and the configured base-unit reorder basis 
   render(<PharmacyAlertsCenter {...defaults} />); await screen.findByText(/Eligible 2.*Physical 15.*Reorder at 20/); fireEvent.click(screen.getByRole("button", { name: "Add batch" })); expect(defaults.onOpenAddBatch).toHaveBeenCalledWith(medicine);
   fireEvent.click(screen.getByRole("tab", { name: "Expired" })); await screen.findByText(/OLD.*Printed expiry 2020-01/); fireEvent.click(screen.getByRole("button", { name: "Add fresh batch" })); expect(defaults.onOpenAddBatch).toHaveBeenLastCalledWith(medicine);
 });
+it("sends a low-stock product with explicit units to the shortbook without receiving stock", async () => {
+  const onShortbook = vi.fn(), product = { ...medicine, unitDefinition: { version: 1, baseUnit: "piece", packUnit: "box", unitsPerPack: 10 } };
+  render(<PharmacyAlertsCenter {...defaults} canManage={false} medicines={[product]} onShortbook={onShortbook} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Add to shortbook" }));
+  expect(onShortbook).toHaveBeenCalledWith(product); expect(defaults.onOpenAddBatch).not.toHaveBeenCalled();
+});
 it("shows an expiry read failure instead of a false empty success and supports retry", async () => {
   render(<PharmacyAlertsCenter {...defaults} />); await screen.findByText("Sample medicine"); fixture.get.mockRejectedValueOnce(new Error("Synthetic expiry offline")); fireEvent.click(screen.getByRole("tab", { name: "Expiring" })); await screen.findByText("Expiry alerts unavailable"); expect(screen.queryByText(/No expiring/)).not.toBeInTheDocument();
   fixture.get.mockResolvedValueOnce(response(reportFixture("expiry", "clinic", [], { days: 60 }))); fireEvent.click(screen.getByRole("button", { name: "Retry alerts" })); await screen.findByText("No expiring batches on this source page within 60 days.");
@@ -30,6 +36,15 @@ it("refreshes after stock changes, displays unknown eligibility for review and s
 });
 it("handles absent locations without a request and keeps stock-only read access independent of inventory load", async () => {
   const view = render(<PharmacyAlertsCenter {...defaults} locationId="" canManage={false} />); expect(screen.getByText("Choose a location to review stock and expiry alerts.")).toBeInTheDocument(); expect(fixture.get).not.toHaveBeenCalled(); view.rerender(<PharmacyAlertsCenter {...defaults} canManage={false} />); await screen.findByText("Sample medicine"); expect(screen.queryByRole("button", { name: "Add batch" })).not.toBeInTheDocument();
+});
+
+it("opens only a captured supplier purchase from a valid expiry row and offers no return for unlinked stock", async () => {
+  const onSupplierReturn = vi.fn(), original = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation(async (url: string, config: any) => url.endsWith("expiry") ? response(reportFixture("expiry", "clinic", [{ ...expiryReportRow, purchaseId: "purchase" }, { ...expiryReportRow, id: "opening", batch: "UNLINKED" }, { ...expiryReportRow, id: "corrupt", purchaseId: "blocked", review: "Needs review" }], { days: 60 })) : original(url, config));
+  render(<PharmacyAlertsCenter {...defaults} onSupplierReturn={onSupplierReturn} />); fireEvent.click(screen.getByRole("tab", { name: "Expired" }));
+  const button = await screen.findByRole("button", { name: "Review supplier return" }); fireEvent.click(button);
+  expect(screen.getAllByRole("button", { name: "Review supplier return" })).toHaveLength(1);
+  expect(onSupplierReturn).toHaveBeenCalledWith({ purchaseId: "purchase", batchId: expiryReportRow.id });
 });
 it("paginates low-stock source pages and never labels a filtered empty page as the whole store", async () => {
   const cursor = "b".repeat(24); fixture.get.mockImplementation(async (_url: string, config: any) => response(reportFixture("low_stock", "clinic", config.params.cursor ? [{ ...stockReportRow, id: "later", product: "Later low-stock product" }] : [], { scanned: 25, nextCursor: config.params.cursor ? null : cursor, cursor: config.params.cursor || null })));

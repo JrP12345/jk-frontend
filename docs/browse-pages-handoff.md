@@ -1,6 +1,10 @@
 # Ekavyu Browse pages — product and engineering handoff
 
-Directory, facility and doctor presentation updated against the repository on **9 November 2026**; booking policy retains its **27 October 2026** review. This document describes the current implementation. It is a guide for explaining, maintaining, designing, or reviewing these pages; it is not a proposal for a new design.
+Public navigation updated on **11 November 2026**; directory, facility and doctor presentation reviewed on **9 November 2026**; booking policy retains its **27 October 2026** review. This document describes the current implementation. It is a guide for explaining, maintaining, designing, or reviewing these pages; it is not a proposal for a new design.
+
+The later **connected public/account review** also covers login and registration: [current findings, fixes, previews and verification](public-pages-review.md). Browse now replaces the three landing-audience shortcuts with a direct “List your practice” request link, including in the phone menu. Login and registration share a persistent account frame. Staff sign-in remains available from the provider footer; unavailable profiles retain the public frame and registration recovery/handoff is checked. The production-only auth tab highlight, quick-filter accessibility role and clipped map attribution were corrected. Canonical facility and doctor routes remain unchanged.
+
+Account entry now stays on `/login`: registration opens inline and uses `?mode=register` for direct links and refresh. The former `/register` route redirects there. Patient and Staff remain explicit sign-in choices; this selection does not grant permissions. Passwords clear when switching audience, and pending verification blocks form switches. Staff authentication, MFA, passkeys and workspace selection use the existing server contracts.
 
 The 9 November typography pass uses the existing system sans-serif throughout these pages: restrained semibold headings, plain labels, consistent fee figures and subtle card shadows. Decorative serif fonts, heavy black weights and wide uppercase booking labels are removed. Titles remain readable at phone widths; date targets use 64px minimum widths so their labels do not crowd. Responsive layouts and booking behavior are preserved.
 
@@ -292,7 +296,7 @@ For publication, domain configuration and deployment acceptance, use [Public dis
 
 | File | Responsibility |
 | --- | --- |
-| [Directory server page](../src/app/browse/(directory)/page.tsx) | Initial keyword/server fetch and directory metadata |
+| [Directory server page](<../src/app/browse/(directory)/page.tsx>) | Initial keyword/server fetch and directory metadata |
 | [BrowseClient](../src/app/browse/BrowseClient.tsx) | Results, normalization, filters, sorting, pagination, recovery and continuity |
 | [BrowseSearch](../src/app/browse/BrowseSearch.tsx), [BrowseFilters](../src/app/browse/BrowseFilters.tsx) | Header search and shared sidebar/sheet filters |
 | [BrowseMap](../src/app/browse/BrowseMap.tsx), [map CSS](../src/app/browse/BrowseMap.module.css), [presentation helpers](../src/app/browse/browsePresentation.ts) | Lazy map, coordinates, selection, bounds and shared actions |
@@ -327,12 +331,12 @@ The earlier list/map implementation passed 29 fixture browser cases across 320/3
 
 Focused frontend coverage includes facility actions, directory orchestration, mobile navigation and booking-entry preservation. Backend coverage checks specialty/bounds/hours filtering before cursor pagination, published visibility, missing hours, timezone and overnight behavior. Package type checks and a controlled production build verify integration. These are scoped checks, not a replacement for release gates or accessibility certification.
 
-The **1 November** polish passed 36 focused synthetic browser cases across 320/390/768/1440px and both themes, including list/map selection and filters, empty/error/unmapped/long-content states, facility contacts, gallery, and ordinary/single-doctor booking entry. The final doctor footer was checked for fee/button alignment and containment. Scoped lint, TypeScript, directory/card/detail tests and booking-continuity regressions passed. No appointment or configuration writes were made. The captures linked below predate this polish.
+The **1 November** polish passed 36 focused synthetic browser cases across 320/390/768/1440px and both themes, including list/map selection and filters, empty/error/unmapped/long-content states, facility contacts, gallery, and ordinary/single-doctor booking entry. The final doctor footer was checked for fee/button alignment and containment. Scoped lint, TypeScript, directory/card/detail tests and booking-continuity regressions passed. No appointment or configuration writes were made. The screenshots linked below come from the later 9 November connected review.
 
-- Earlier directory evidence: [Connected results](landing-page/connected/browse/connected-results.json).
-- Directory actual data: [desktop](landing-page/connected/browse/connected-directory-actual-1440.png), [phone](landing-page/connected/browse/connected-directory-actual-390.png).
-- Map layout with isolated synthetic facilities and live map tiles: [desktop](landing-page/connected/browse/connected-directory-map-1440.png), [phone](landing-page/connected/browse/connected-directory-map-390.png). The current [mobile filter sheet](landing-page/connected/browse/connected-directory-filters-390.png) uses the same fixture set.
-- Facility reference update: [desktop](landing-page/connected/browse/connected-facility-1440.png), [phone](landing-page/connected/browse/connected-facility-390.png). These use isolated synthetic facilities; the configured-map fixture is labelled illustrative.
+- Current connected review: [findings and verification](public-pages-review.md), [browser results](landing-page/connected/public-journey/results.json).
+- Directory: [desktop](landing-page/connected/public-journey/browse-1440.png), [phone](landing-page/connected/public-journey/browse-390.png).
+- Facility: [desktop](landing-page/connected/public-journey/facility-1440.png), [phone](landing-page/connected/public-journey/facility-390.png).
+- Doctor: [desktop](landing-page/connected/public-journey/doctor-1440.png), [phone](landing-page/connected/public-journey/doctor-390.png).
 - Browser review: [List/map checks](../scripts/performance/review-browse-directory.mjs).
 - Frontend tests: [cards](../src/tests/browseLocationCard.test.tsx), [directory](../src/tests/browseAndMobilePolish.test.tsx), [doctor/detail/booking](../src/tests/browseDoctorDetail.test.tsx).
 - Backend tests: [catalogue](../../backend/tests/publicLocationCatalog.test.ts), [filters](../../backend/tests/publicBrowseFilters.test.ts).

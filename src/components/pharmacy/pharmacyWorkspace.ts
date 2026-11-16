@@ -3,8 +3,9 @@ import api from "@/lib/api";
 export interface Medicine {
   id: string; locationId: string; name: string; genericName: string; stockQuantity: number;
   price: number; costPrice?: number; expiryDate?: string | null; batchNumber?: string | null; reorderLevel?: number;
-  manufacturer?: string; strength?: string; category?: string; scheduleType?: string; hsnCode?: string; gstRate?: number; barcodes?: string[];
+  manufacturer?: string; strength?: string; rackLocation?: string; category?: string; scheduleType?: string; hsnCode?: string; gstRate?: number; barcodes?: string[];
   unitDefinition?: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number };
+  billingSupply?: { batchNumber: string; expiry: { precision: "day" | "month"; value: string }; mrpPaise: number };
 }
 export interface PrescriptionItem {
   id: string; medicineId: string | null; name: string; dosage: string; frequency: string; duration: string; instructions?: string;

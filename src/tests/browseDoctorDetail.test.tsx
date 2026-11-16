@@ -31,6 +31,29 @@ beforeEach(() => {
 afterEach(() => { route.search = "doctor=doctor-1"; vi.useRealTimers(); vi.restoreAllMocks(); useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false }); });
 
 describe("clinic detail and doctor booking links", () => {
+  it("treats a standalone pharmacy as a complete location without doctor booking", () => {
+    route.search = "";
+    render(<ToastProvider><BrowseDetailClient slug="pharmacy" initialLocation={{ ...location, slug: "pharmacy", facilityType: "pharmacy", name: "Standalone Pharmacy", doctors: [], pharmacy: { catalogueEnabled: false, pickupEnabled: false } }} /></ToastProvider>);
+    expect(screen.getByRole("heading", { name: "Medicines" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Doctors" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/No doctors are listed/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Book appointment/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/Contact this pharmacy to ask/)).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Facility sections" })).getByRole("link", { name: "Medicines" })).toHaveAttribute("aria-current", "location");
+  });
+
+  it("supports doctorless diagnostic services and real doctors at a mixed pharmacy", () => {
+    route.search = "";
+    const { unmount } = render(<ToastProvider><BrowseDetailClient slug="diagnostics" initialLocation={{ ...location, slug: "diagnostics", facilityType: "diagnostic_center", doctors: [] }} /></ToastProvider>);
+    expect(screen.getByRole("heading", { name: "Service enquiries" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Doctors" })).not.toBeInTheDocument();
+    unmount();
+    render(<ToastProvider><BrowseDetailClient slug="mixed" initialLocation={{ ...location, slug: "mixed", facilityType: "pharmacy", onlineBookingAvailable: true }} /></ToastProvider>);
+    expect(screen.getByRole("heading", { name: "Doctors" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Medicines" })).toBeInTheDocument();
+    expect(screen.getAllByText("Consultation fee")).toHaveLength(2);
+  });
+
   it("keeps fees and opening status in one place and omits empty supporting sections", () => {
     route.search = "";
     render(<ToastProvider><BrowseDetailClient slug="clinic-1" initialLocation={location} /></ToastProvider>);
@@ -134,7 +157,7 @@ describe("clinic detail and doctor booking links", () => {
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "About Surat Clinic" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Opening hours" })).toBeVisible();
-    expect(screen.getByText("Opening hours have not been listed. Contact reception to confirm them.")).toBeInTheDocument();
+    expect(screen.getByText("Opening hours have not been listed. Contact the location to confirm them.")).toBeInTheDocument();
     expect(screen.getByText("Hours unavailable")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Dr\./ })[0]).toHaveAttribute("href", "/doctor/doctor-1?location=clinic-1");
     route.search = "doctor=doctor-2";

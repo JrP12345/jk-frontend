@@ -1,43 +1,49 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select, Checkbox } from "@/components/ui";
-import Modal from "@/components/queue/QueueDialog";
-import { PharmacyDrawerGate } from "./PharmacyDrawerGate";
+import { Alert, Badge, Button, Card, EmptyState, Input } from "@/components/ui";
+import { ReceiptText, Search } from "lucide-react";
+import { PharmacyCollectionForm, type CounterPaymentPreference } from "./PharmacyCollectionForm";
+export { PharmacyCollectionForm } from "./PharmacyCollectionForm";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
 import { authScopeKey, referenceOwnerKey } from "@/lib/authScope";
-import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
-import { collectionInvoicePage, collectionReceiptPage, readCounterInvoice, recoverPharmacyCollection, submitPharmacyCollection, type CollectionInput, type CollectionMethod, type CollectionReceipt, type CounterInvoice, type InvoiceSummary } from "@/lib/pharmacyCollections";
+import { pendingCollectionReference as pendingReference, collectionInvoicePage, readCounterInvoice, recoverPharmacyCollection, submitPharmacyCollection, type CollectionInput, type CollectionReceipt, type CounterInvoice, type InvoiceSummary } from "@/lib/pharmacyCollections";
 import { money } from "./pharmacyWorkspace";
 import styles from "./PharmacyWorkspace.module.css";
 import { CollectionReceiptSummary } from "./PharmacyCollectionReceipt";
-import { PharmacyDocumentButton } from "./PharmacyDocumentButton";
 import { PharmacySaleRecovery } from "./PharmacySaleRecovery";
+import { createCollectionJournal } from "@/lib/pharmacyCommandJournal";
+import { usePharmacyReconnect } from "@/hooks/usePharmacyReconnect";
+import { prepareCheckoutPayment, prepareIssuedCheckoutPayment, type CounterCheckoutPayment } from "@/lib/pharmacyPayment";
 export { CollectionReceiptSummary } from "./PharmacyCollectionReceipt";
 
 const errorMessage = (failure: unknown) => (failure as { response?: { data?: { message?: string } } })?.response?.data?.message || (failure instanceof Error ? failure.message : "Collection could not be confirmed. Keep the same reference.");
-type PendingCollection = { key: string; invoiceId: string };
-function pendingReference(storageKey: string): PendingCollection | null {
-  const value = sessionStorage.getItem(storageKey); if (!value) return null;
-  const result = JSON.parse(value) as PendingCollection;
-  if (!/^[a-zA-Z0-9_-]{8,100}$/.test(result.key) || typeof result.invoiceId !== "string" || !result.invoiceId) throw new Error("Collection reference requires review before another payment.");
-  return result;
-}
-export function PharmacyCollections({ locationId, canCollect, initialInvoiceId }: { locationId: string; canCollect: boolean; initialInvoiceId?: string }) {
+type CollectionsProps = { locationId: string; canCollect: boolean; canOpenTill?: boolean; initialInvoiceId?: string; autoAcknowledge?: boolean; focusOnly?: boolean; checkoutOnly?: boolean; embeddedCheckout?: boolean; issuedTotalPaise?: number; checkoutPayment?: CounterCheckoutPayment; preference?: CounterPaymentPreference; onInvoiceClose?: () => void; onCollected?: (receipt: CollectionReceipt) => void; onPendingChange?: (pending: boolean) => void };
+export function PharmacyCollections(props: CollectionsProps) {
   const scope = authScopeKey(useAuthStore(state => state.user));
-  return <CollectionSession key={`${scope}:${locationId}`} locationId={locationId} canCollect={canCollect} initialInvoiceId={initialInvoiceId} />;
+  return <CollectionSession key={`${scope}:${props.locationId}`} {...props} />;
 }
-function CollectionSession({ locationId, canCollect, initialInvoiceId }: { locationId: string; canCollect: boolean; initialInvoiceId?: string }) {
+function CollectionSession({ locationId, canCollect, canOpenTill = false, initialInvoiceId, autoAcknowledge = false, focusOnly = false, checkoutOnly = false, embeddedCheckout = false, issuedTotalPaise, checkoutPayment, preference, onInvoiceClose, onCollected, onPendingChange }: CollectionsProps) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user), storageKey = `pharmacy-collection:${referenceOwnerKey(user)}:${locationId}`;
   const [initial] = useState(() => { try { return { pending: pendingReference(storageKey), error: "" }; } catch (failure) { return { pending: null, error: errorMessage(failure) }; } });
   const [pending, setPending] = useState(initial.pending), [receipt, setReceipt] = useState<CollectionReceipt | null>(null), [error, setError] = useState(initial.error);
+  useEffect(() => { onPendingChange?.(Boolean(pending)); }, [onPendingChange, pending]);
   const [busy, setBusy] = useState(false), [submitted, setSubmitted] = useState(false), [canCorrect, setCanCorrect] = useState(false);
   const frozen = useRef<{ invoiceId: string; input: CollectionInput; key: string } | null>(null), lock = useRef(false), alive = useRef(true);
-  const current = () => alive.current && authScopeKey(useAuthStore.getState().user) === scope;
+  const automaticAttempted = useRef(false);
+  const [detailNeeded, setDetailNeeded] = useState(Boolean(initial.pending));
+  const automaticSend = useRef<(id: string, input: CollectionInput) => void>(() => {});
+  const [journal] = useState(() => createCollectionJournal(scope, locationId)), [journalReady, setJournalReady] = useState(false);
+  const current = useCallback(() => alive.current && authScopeKey(useAuthStore.getState().user) === scope, [scope]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  const [items, setItems] = useState<InvoiceSummary[]>([]), [cursor, setCursor] = useState<string | undefined>(), [next, setNext] = useState<string | null>(null), [loading, setLoading] = useState(false), [listError, setListError] = useState("");
+  useEffect(() => {
+    void journal.load().then(saved => { if (!current()) return; if (saved.value && saved.value.key === initial.pending?.key && saved.value.invoiceId === initial.pending.invoiceId) { frozen.current = saved.value; setSubmitted(true); } setJournalReady(true); }).catch(failure => { if (current()) { setError(errorMessage(failure)); setJournalReady(true); } });
+  }, [journal, initial.pending, current]);
+  const [items, setItems] = useState<InvoiceSummary[]>([]), [cursor, setCursor] = useState<string | undefined>(), [next, setNext] = useState<string | null>(null), [loading, setLoading] = useState(true), [listError, setListError] = useState("");
   const [invoice, setInvoice] = useState<CounterInvoice | null>(null), [refresh, setRefresh] = useState(0);
+  const [search, setSearch] = useState(""), [status, setStatus] = useState("all");
+  const visibleItems = items.filter(row => (!search.trim() || `${row.invoiceNumber} ${row.customerSnapshot?.name || "Walk-in"}`.toLowerCase().includes(search.trim().toLowerCase())) && (status === "all" || status === "paid" && row.status === "paid" || status === "unpaid" && ["unpaid", "partially_paid"].includes(row.status)));
   const beginRead = useLatestRead(), beginDetail = useLatestRead();
   const load = useCallback(async () => {
     const request = beginRead(); setLoading(true); setListError(""); setItems([]);
@@ -45,19 +51,19 @@ function CollectionSession({ locationId, canCollect, initialInvoiceId }: { locat
     catch (failure) { if (request.isCurrent()) setListError(errorMessage(failure)); }
     finally { if (request.isCurrent()) setLoading(false); }
   }, [beginRead, locationId, cursor]);
-  useEffect(() => { void load(); }, [load, refresh]);
+  useEffect(() => { if (!focusOnly && !checkoutOnly) void Promise.resolve().then(load); }, [load, refresh, focusOnly, checkoutOnly]);
   useEffect(() => {
-    if (!initialInvoiceId) return;
+    if (!initialInvoiceId || checkoutPayment && issuedTotalPaise !== undefined && !detailNeeded) return;
     const request = beginDetail();
     void readCounterInvoice(initialInvoiceId, locationId, request.signal).then(value => { if (request.isCurrent()) setInvoice(value); }).catch(failure => { if (request.isCurrent()) setError(errorMessage(failure)); });
-  }, [initialInvoiceId, locationId, beginDetail]);
+  }, [initialInvoiceId, locationId, beginDetail, checkoutPayment, issuedTotalPaise, detailNeeded]);
   async function open(id: string) {
     const request = beginDetail(); setError("");
     try { const value = await readCounterInvoice(id, locationId, request.signal); if (request.isCurrent()) setInvoice(value); }
     catch (failure) { if (request.isCurrent()) setError(errorMessage(failure)); }
   }
   async function send(invoiceId: string, input: CollectionInput) {
-    if (!current() || lock.current || !canCollect || receipt) return;
+    if (!current() || !journalReady || lock.current || !canCollect || receipt) return;
     lock.current = true; setBusy(true); setError(""); setCanCorrect(false);
     try {
       const stored = pendingReference(storageKey);
@@ -66,78 +72,65 @@ function CollectionSession({ locationId, canCollect, initialInvoiceId }: { locat
       if (!pending) sessionStorage.setItem(storageKey, JSON.stringify(ref));
       setPending(ref);
       const pinned = frozen.current || { invoiceId, input: JSON.parse(JSON.stringify(input)) as CollectionInput, key: ref.key };
+      await journal.save(pinned); if (!current()) return;
       frozen.current = pinned; setSubmitted(true);
       const result = await submitPharmacyCollection(pinned.invoiceId, pinned.input, pinned.key);
-      if (current()) { setReceipt(result); setInvoice(null); }
-    } catch (failure) { if (current()) { setError(errorMessage(failure)); setCanCorrect([400, 409, 428].includes((failure as { response?: { status?: number } })?.response?.status || 0)); } }
+      if (current()) accept(result);
+    } catch (failure) { if (current()) { setDetailNeeded(true); setError(errorMessage(failure)); setCanCorrect([400, 409, 428].includes((failure as { response?: { status?: number } })?.response?.status || 0)); } }
     finally { lock.current = false; if (current()) setBusy(false); }
   }
   async function recover() {
     if (!current() || lock.current || !pending) return;
     lock.current = true; setBusy(true); setError("");
-    try { const result = await recoverPharmacyCollection(locationId, pending.key); if (result.invoiceId !== pending.invoiceId) throw new Error("Collection invoice reference needs review"); if (current()) { setReceipt(result); setInvoice(null); } }
+    try { const result = await recoverPharmacyCollection(locationId, pending.key); if (result.invoiceId !== pending.invoiceId) throw new Error("Collection invoice reference needs review"); if (current()) accept(result); }
     catch (failure) { if (current()) setError(errorMessage(failure)); }
     finally { lock.current = false; if (current()) setBusy(false); }
   }
+  function accept(result: CollectionReceipt) {
+    if (autoAcknowledge && result.invoiceId === initialInvoiceId) {
+      if (pendingReference(storageKey)?.key !== result.requestKey) throw Error("Collection reference changed. Reopen the result.");
+      sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {}); setPending(null); frozen.current = null; setSubmitted(false); onPendingChange?.(false);
+    }
+    setReceipt(result); setInvoice(null); onCollected?.(result);
+  }
+  usePharmacyReconnect(Boolean(pending && !receipt && !canCorrect), recover);
   function done() {
     if (!current() || busy || !pending || !receipt) return;
-    try { if (pendingReference(storageKey)?.key !== receipt.requestKey) throw new Error("Collection reference changed. Reopen the result."); sessionStorage.removeItem(storageKey); setPending(null); setReceipt(null); setSubmitted(false); frozen.current = null; setError(""); setRefresh(value => value + 1); }
+    try { if (pendingReference(storageKey)?.key !== receipt.requestKey) throw new Error("Collection reference changed. Reopen the result."); sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {}); setPending(null); setReceipt(null); setSubmitted(false); frozen.current = null; setError(""); setRefresh(value => value + 1); }
     catch (failure) { setError(errorMessage(failure)); }
   }
+  useEffect(() => { automaticSend.current = (id, input) => { void send(id, input); }; });
+  useEffect(() => {
+    if (!checkoutPayment || !initialInvoiceId || !invoice && issuedTotalPaise === undefined || !journalReady || !canCollect || pending || receipt || automaticAttempted.current) return;
+    automaticAttempted.current = true;
+    const input = issuedTotalPaise !== undefined ? prepareIssuedCheckoutPayment(locationId, issuedTotalPaise, checkoutPayment) : prepareCheckoutPayment(invoice!, checkoutPayment);
+    if (input) automaticSend.current(initialInvoiceId, input);
+    else void Promise.resolve().then(() => { setDetailNeeded(true); setError("The saved bill balance differs from the confirmed payment. Review payment below; no money has been recorded."); });
+  }, [checkoutPayment, invoice, journalReady, canCollect, pending, receipt, initialInvoiceId, issuedTotalPaise, locationId]);
+  const invoiceForm = invoice && !(checkoutPayment && !error && (!pending || pending.invoiceId === invoice.id)) && <PharmacyCollectionForm embedded={embeddedCheckout} key={`${invoice.id}:${invoice.paymentRevision}`} invoice={invoice} preference={invoice.id === initialInvoiceId ? preference : undefined} canOpenTill={canOpenTill} canCollect={journalReady && canCollect && !receipt && (!pending || pending.invoiceId === invoice.id) && !submitted} busy={busy} onClose={() => { setInvoice(null); onInvoiceClose?.(); }} onSubmit={input => { void send(invoice.id, input); }} />;
+  if (focusOnly) return <section aria-label="Saved bill">{error && <Alert variant="error" title="Bill unavailable">{error}<Button onClick={onInvoiceClose}>Close</Button></Alert>}{invoiceForm}</section>;
   return <section className={styles.list} aria-label="Pharmacy sales and collections">
-    <header><h2>Sales & collections</h2><p>Record only money actually received. A QR display or payment attempt is not confirmation.</p></header>
-    {!initialInvoiceId && <PharmacySaleRecovery locationId={locationId} onOpen={id => { void open(id); }} />}
+    {embeddedCheckout && !error && !receipt && <p role="status" className="text-sm text-text-secondary">{busy ? "Saving payment..." : "Checking saved bill..."}</p>}
+    {!checkoutOnly && <header><h2>Sales & collections</h2><p>Open a saved bill to record payment or view its receipts. Confirm money received before recording a payment.</p></header>}
+    {!initialInvoiceId && <details className="rounded-xl border border-border bg-surface px-4"><summary className="min-h-11 cursor-pointer py-3 text-sm text-text-secondary">Recover a sale using its original reference</summary><div className="pb-4"><PharmacySaleRecovery locationId={locationId} onOpen={id => { void open(id); }} /></div></details>}
     {error && <Alert variant="error" title="Collection needs attention">{error}</Alert>}
-    {pending && <Alert variant={receipt ? "success" : "warning"} title={receipt ? "Collection confirmed" : "Pending collection"}>
+    {pending && !busy && <Alert variant={receipt ? "success" : "warning"} title={receipt ? "Collection confirmed" : "Pending collection"}>
       <p>Reference: {pending.key}</p>{receipt ? <><CollectionReceiptSummary receipt={receipt} /><Button size="sm" variant="outline" disabled={busy} onClick={() => { void open(receipt.invoiceId); }}>View saved bill and receipts</Button><Button size="sm" disabled={busy} onClick={done}>Done with collection</Button></> : <><p>Check this result before collecting again. Keep the same reference after reload.</p><Button size="sm" variant="outline" disabled={busy} onClick={() => { void recover(); }}>Check collection result</Button>
         {submitted && canCollect && <Button size="sm" disabled={busy} onClick={() => { if (frozen.current) void send(frozen.current.invoiceId, frozen.current.input); }}>Retry same collection</Button>}
         {canCollect && (!submitted || canCorrect) && <Button size="sm" variant="outline" disabled={busy} onClick={() => { frozen.current = null; setSubmitted(false); setCanCorrect(false); void open(pending.invoiceId); }}>Re-enter original collection</Button>}</>}
     </Alert>}
-    {loading && <p role="status">Loading counter invoices...</p>}{listError && <Alert variant="error" title="Sales unavailable">{listError}<Button size="sm" onClick={() => setRefresh(value => value + 1)}>Retry sales</Button></Alert>}
-    {items.map(row => <article className={styles.card} key={row.id}><div className={styles.identity}><strong>{row.invoiceNumber}</strong><small>{row.customerSnapshot?.name || "Walk-in customer"} · {row.status.replaceAll("_", " ")}</small><span>{money(row.totalAmount)}</span></div><Button size="sm" variant="outline" disabled={busy} onClick={() => { void open(row.id); }}>{row.documentVersion === 3 ? "Open opening balance" : "Open sale"} {row.invoiceNumber}</Button></article>)}
-    <div className={styles.actions}>{cursor && <Button size="sm" variant="outline" disabled={loading} onClick={() => setCursor(undefined)}>First sales page</Button>}{next && <Button size="sm" variant="outline" disabled={loading} onClick={() => setCursor(next)}>Next sales page</Button>}</div>
-    {invoice && <PharmacyCollectionForm key={`${invoice.id}:${invoice.paymentRevision}`} invoice={invoice} canCollect={canCollect && !receipt && (!pending || pending.invoiceId === invoice.id) && !submitted} busy={busy} onClose={() => setInvoice(null)} onSubmit={input => { void send(invoice.id, input); }} />}
+    {!checkoutOnly && loading && <p role="status">Loading counter invoices...</p>}{!checkoutOnly && listError && <Alert variant="error" title="Sales unavailable">{listError}<Button size="sm" onClick={() => setRefresh(value => value + 1)}>Retry sales</Button></Alert>}
+    {!checkoutOnly && !loading && !listError && !items.length && <EmptyState icon={<ReceiptText aria-hidden="true" />} title="No sales on this page" description="Saved invoices and their payment records will appear here." className="rounded-xl border border-border bg-surface" />}
+    {!checkoutOnly && items.length > 0 && <Card contentClassName="gap-4">
+      <Input aria-label="Search sales on this page" icon={<Search size={17} aria-hidden="true" />} size="lg" placeholder="Find a sale by bill number or customer" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} />
+      <div className="flex flex-wrap items-center justify-between gap-2"><div role="group" aria-label="Payment status" className="flex gap-2">{[{ id: "all", label: "All" }, { id: "unpaid", label: "Unpaid" }, { id: "paid", label: "Paid" }].map(filter => <Button key={filter.id} size="sm" variant={status === filter.id ? "primary" : "outline"} className="rounded-full" aria-pressed={status === filter.id} onClick={() => setStatus(filter.id)}>{filter.label}</Button>)}</div><p className="text-xs text-text-secondary">Filters apply to this page</p></div>
+      <div className="divide-y divide-border">{visibleItems.map(row => <article className="flex min-w-0 flex-wrap items-center gap-3 py-4" key={row.id}>
+        <div className="min-w-0 flex-1 break-words"><strong className="text-sm font-semibold">{row.invoiceNumber}</strong><p className="mt-1 text-xs text-text-secondary">{row.customerSnapshot?.name || "Walk-in customer"}</p></div>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-3"><div className="space-y-1 text-right"><p className="text-sm font-semibold tabular-nums">{money(row.totalAmount)}</p><Badge variant={row.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(row.status) ? "warning" : "neutral"}>{row.status.replaceAll("_", " ")}</Badge></div><Button size="sm" variant={canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "primary" : "outline"} disabled={busy} aria-label={`${row.documentVersion === 3 ? "Open opening balance" : "Open sale"} ${row.invoiceNumber}`} onClick={() => { void open(row.id); }}>{row.documentVersion === 3 ? "Open balance" : canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "Collect" : "View bill"}</Button></div>
+      </article>)}</div>
+      {!visibleItems.length && <EmptyState title="No matching sales on this page" description="Try another bill number or change the payment filter." className="py-5" />}
+    </Card>}
+    <div className={styles.actions}>{!checkoutOnly && cursor && <Button size="sm" variant="outline" disabled={loading} onClick={() => setCursor(undefined)}>First sales page</Button>}{!checkoutOnly && next && <Button size="sm" variant="outline" disabled={loading} onClick={() => setCursor(next)}>Next sales page</Button>}</div>
+    {invoiceForm}
   </section>;
-}
-export function PharmacyCollectionForm({ invoice, canCollect, busy, onClose, onSubmit }: { invoice: CounterInvoice; canCollect: boolean; busy: boolean; onClose: () => void; onSubmit: (input: CollectionInput) => void }) {
-  const [drawerReady, setDrawerReady] = useState(false);
-  const [entries, setEntries] = useState(() => [{ componentId: crypto.randomUUID(), amount: String(invoice.balanceDue), paymentMethod: "cash" as CollectionMethod, referenceNumber: "" }]);
-  const [tender, setTender] = useState(String(invoice.balanceDue)), [confirmed, setConfirmed] = useState(false), [error, setError] = useState("");
-  const [history, setHistory] = useState<CollectionReceipt[]>([]), [cursor, setCursor] = useState<string | null>(null), [historyError, setHistoryError] = useState("");
-  const beginRead = useLatestRead();
-  const loadHistory = useCallback(async (after?: string) => {
-    const request = beginRead(); setHistoryError("");
-    try { const page = await collectionReceiptPage(invoice.id, invoice.locationId, after, request.signal); if (request.isCurrent()) { setHistory(page.items); setCursor(page.nextCursor); } }
-    catch (failure) { if (request.isCurrent()) setHistoryError(errorMessage(failure)); }
-  }, [beginRead, invoice.id, invoice.locationId]);
-  useEffect(() => { void loadHistory(); }, [loadHistory]);
-  function submit(event: React.FormEvent) {
-    event.preventDefault(); if (!canCollect || busy || !drawerReady) return;
-    const values = entries.map(entry => ({ componentId: entry.componentId, amountPaise: parseReceiptPaise(entry.amount), paymentMethod: entry.paymentMethod, ...(entry.referenceNumber.trim() ? { referenceNumber: entry.referenceNumber.trim() } : {}) }));
-    const cash = values.filter(entry => entry.paymentMethod === "cash").reduce((sum, entry) => sum + (entry.amountPaise || 0), 0), cashTenderedPaise = parseReceiptPaise(tender), expectedBalancePaise = parseReceiptPaise(String(invoice.balanceDue));
-    const total = values.reduce((sum, entry) => sum + (entry.amountPaise || 0), 0);
-    if (!confirmed || expectedBalancePaise === null || cashTenderedPaise === null || cashTenderedPaise < cash || cash === 0 && cashTenderedPaise !== 0 || !values.length || values.some(entry => entry.amountPaise === null || entry.amountPaise <= 0 || entry.paymentMethod !== "cash" && (!entry.referenceNumber || entry.referenceNumber.length < 3)) || !Number.isSafeInteger(total) || total > expectedBalancePaise || invoice.customerSnapshot?.anonymous && total !== expectedBalancePaise) { setError("Confirm actual receipt, exact positive amounts, terminal/UPI references and cash tender. Anonymous customers require full settlement."); return; }
-    onSubmit({ locationId: invoice.locationId, expectedPaymentRevision: invoice.paymentRevision, expectedBalancePaise, cashTenderedPaise, manualConfirmed: true, entries: values as CollectionInput["entries"] });
-  }
-  const editable = canCollect && ["unpaid", "partially_paid"].includes(invoice.status) && invoice.balanceDue > 0;
-  return <Modal open title={invoice.documentVersion === 3 ? "Opening balance collections" : "Counter invoice collections"} description={invoice.invoiceNumber} onClose={onClose} busy={busy} size="lg" bodyClassName={styles.dialog} footer={<Button size="sm" variant="outline" disabled={busy} onClick={onClose}>Close collections</Button>}>
-    <p>Total {money(invoice.totalAmount)} · Paid {money(invoice.amountPaid)} · Remaining {money(invoice.balanceDue)}.</p>
-    {Boolean(invoice.creditedPaise || invoice.refundedPaise) && <p>Credits {money((invoice.creditedPaise || 0) / 100)} · Confirmed refunds {money((invoice.refundedPaise || 0) / 100)}. Paid above records gross receipts.</p>}
-    <PharmacyDocumentButton invoice={invoice} />
-    {invoice.customerSnapshot?.anonymous ? <p>Walk-in customer: receive the full remaining amount.</p> : <p>Recorded customer: {invoice.customerSnapshot?.name}. Any uncollected balance remains due.</p>}
-    {error && <Alert variant="error" title="Check collection details">{error}</Alert>}
-    {editable && <PharmacyDrawerGate locationId={invoice.locationId} onReady={setDrawerReady} />}
-    {editable && <form onSubmit={submit} className={styles.form} noValidate><fieldset disabled={busy || !drawerReady} className={styles.form}>
-      {entries.map((entry, index) => { const edit = (field: keyof typeof entry, value: string) => setEntries(previous => previous.map(row => row.componentId === entry.componentId ? { ...row, [field]: value } : row)); return <fieldset key={entry.componentId} className={styles.rx} aria-label={`Collection component ${index + 1}`}>
-        <Select label={`Payment method ${index + 1}`} value={entry.paymentMethod} onChange={event => edit("paymentMethod", event.target.value)} options={[{ value: "cash", label: "Cash received" }, { value: "upi", label: "UPI received and verified" }, { value: "card", label: "Card terminal confirmed" }]} />
-        <Input label={`Amount received ${index + 1} (INR)`} type="number" min="0.01" step="0.01" value={entry.amount} onChange={event => edit("amount", event.target.value)} />{entry.paymentMethod !== "cash" && <Input label={`Actual payment reference ${index + 1}`} value={entry.referenceNumber} maxLength={200} onChange={event => edit("referenceNumber", event.target.value)} />}
-        <Button size="sm" variant="ghost" onClick={() => setEntries(previous => previous.filter(row => row.componentId !== entry.componentId))}>Remove payment component {index + 1}</Button>
-      </fieldset>; })}
-      <Button size="sm" variant="outline" disabled={entries.length >= 10} onClick={() => setEntries(previous => [...previous, { componentId: crypto.randomUUID(), amount: "", paymentMethod: "cash", referenceNumber: "" }])}>Add split payment</Button>
-      <Input label="Cash tendered (INR)" type="number" min="0" step="0.01" value={tender} onChange={event => setTender(event.target.value)} />
-      <Checkbox label="I confirmed that these amounts were actually received" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />
-      <Button size="sm" type="submit" loading={busy}>Record confirmed collection</Button>
-    </fieldset></form>}
-    <section aria-label="Saved collection receipts"><h3>Saved receipts</h3>{historyError && <Alert variant="error" title="Receipt history unavailable">{historyError}<Button size="sm" onClick={() => { void loadHistory(); }}>Retry receipt history</Button></Alert>}{history.map(receipt => <div key={receipt.receiptId}><CollectionReceiptSummary receipt={receipt} /><PharmacyDocumentButton invoice={invoice} receipt={receipt} /></div>)}{cursor && <Button size="sm" variant="outline" onClick={() => { void loadHistory(cursor); }}>Next receipt page</Button>}</section>
-  </Modal>;
 }

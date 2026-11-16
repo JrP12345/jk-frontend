@@ -4,16 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Menu, X } from "lucide-react";
 import EkavyuLogo from "@/components/ui/EkavyuLogo";
-import Button from "@/components/ui/Button";
+import Button, { buttonClassName } from "@/components/ui/Button";
 import { ModeSwitcher } from "@/components/ui/ThemeProvider";
 import { useAuthStore } from "@/store/authStore";
 import styles from "./home.module.css";
 
 const links = [
-  { href: "#for-patients", label: "For patients" },
-  { href: "#for-organizations", label: "For Clinics" },
-  { href: "#stay-connected", label: "WhatsApp" },
-  { href: "#how-it-works", label: "Clinic setup" },
+  { href: "#for-patients", label: "Patients" },
+  { href: "#for-organizations", label: "Clinics & hospitals" },
+  { href: "#for-pharmacies", label: "Pharmacies" },
   { href: "#plans", label: "Plans" },
 ];
 
@@ -29,8 +28,15 @@ export default function HomeNavigation() {
     const dismissOutside = (event: PointerEvent) => {
       if (event.target instanceof Node && !header.current?.contains(event.target)) setOpen(false);
     };
+    const dismissOnDesktop = () => {
+      if (window.innerWidth >= 768) setOpen(false);
+    };
     document.addEventListener("pointerdown", dismissOutside);
-    return () => document.removeEventListener("pointerdown", dismissOutside);
+    window.addEventListener("resize", dismissOnDesktop);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside);
+      window.removeEventListener("resize", dismissOnDesktop);
+    };
   }, [open]);
 
   return (
@@ -41,16 +47,15 @@ export default function HomeNavigation() {
       }
     }}>
       <div className={`${styles.container} ${styles.navBar}`}>
-        <Link href="/" aria-label="Ekavyu home"><EkavyuLogo size="sm" /></Link>
+        <Link href="/" className={styles.brand} aria-label="Ekavyu home"><EkavyuLogo size="sm" /></Link>
         <nav className={styles.desktopNav} aria-label="Main navigation">
           {links.map(link => <a key={link.href} href={link.href}>{link.label}</a>)}
         </nav>
         <div className={styles.navActions}>
           <div className={styles.navAppearance}><ModeSwitcher variant="icon" /></div>
-          <Link href={signedIn ? "/dashboard" : "/login"} prefetch={false} className={styles.signIn} data-home-event="home_sign_in">
+          <Link href={signedIn ? "/dashboard" : "/login"} prefetch={false} className={buttonClassName({ variant: "outline", size: "lg" })} data-home-event="home_sign_in">
             {signedIn ? "Dashboard" : "Sign in"}
           </Link>
-          <Link href="/browse" prefetch={false} className={styles.navCta} data-home-event="home_find_care">Find a Doctor <ArrowRight size={16} aria-hidden="true" /></Link>
           <Button
             ref={menuButton}
             variant="outline"
@@ -71,8 +76,9 @@ export default function HomeNavigation() {
         hidden={!open}
       >
         {links.map(link => <a key={link.href} href={link.href} onClick={() => setOpen(false)}>{link.label}<ArrowRight size={16} aria-hidden="true" /></a>)}
-        <Link href="/browse" prefetch={false} onClick={() => setOpen(false)}>Find a Doctor <ArrowRight size={16} aria-hidden="true" /></Link>
+        <Link href="/browse" prefetch={false} onClick={() => setOpen(false)}>Browse care <ArrowRight size={16} aria-hidden="true" /></Link>
         <Link href="/onboarding?mode=new_org" prefetch={false} onClick={() => setOpen(false)}>Request setup <ArrowRight size={16} aria-hidden="true" /></Link>
+        <Link href="/pharmacy-start" prefetch={false} onClick={() => setOpen(false)}>Start pharmacy onboarding <ArrowRight size={16} aria-hidden="true" /></Link>
         <div className={styles.mobileAppearance}><span>Appearance</span><ModeSwitcher variant="icon" /></div>
       </nav>
     </header>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Select } from "@/components/ui";
 import api from "@/lib/api";
 import { authScopeKey } from "@/lib/authScope";
@@ -11,12 +11,13 @@ import { useAuthStore } from "@/store/authStore";
 
 const descriptions: Record<string, string> = { clinic: "Clinic location", pharmacy: "Standalone pharmacy", pharmacy_addon: "Pharmacy at clinic", extra_doctor: "Additional doctor seats" };
 type ProductPurchase = (plan: ProductPlan, quote: ProductQuote) => void;
-export function ProductQuotePanel({ organizationId, onPurchase, busy = false }: { organizationId?: string; onPurchase?: ProductPurchase; busy?: boolean }) {
+type QuoteActions = (plan: ProductPlan, quote: ProductQuote) => ReactNode;
+export function ProductQuotePanel({ organizationId, onPurchase, busy = false, quoteActions, emptyState }: { organizationId?: string; onPurchase?: ProductPurchase; busy?: boolean; quoteActions?: QuoteActions; emptyState?: ReactNode }) {
   const user = useAuthStore(state => state.user);
   const [retry, setRetry] = useState(0);
-  return <ProductQuoteWorkspace key={`${authScopeKey(user)}:${organizationId || user?.organization_id || ""}:${retry}`} organizationId={organizationId || user?.organization_id} onRetry={() => setRetry(value => value + 1)} onPurchase={onPurchase} busy={busy} />;
+  return <ProductQuoteWorkspace key={`${authScopeKey(user)}:${organizationId || user?.organization_id || ""}:${retry}`} organizationId={organizationId || user?.organization_id} onRetry={() => setRetry(value => value + 1)} onPurchase={onPurchase} busy={busy} quoteActions={quoteActions} emptyState={emptyState} />;
 }
-function ProductQuoteWorkspace({ organizationId, onRetry, onPurchase, busy }: { organizationId?: string; onRetry: () => void; onPurchase?: ProductPurchase; busy: boolean }) {
+function ProductQuoteWorkspace({ organizationId, onRetry, onPurchase, busy, quoteActions, emptyState }: { organizationId?: string; onRetry: () => void; onPurchase?: ProductPurchase; busy: boolean; quoteActions?: QuoteActions; emptyState?: ReactNode }) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user);
   const [plans, setPlans] = useState<ProductPlan[]>([]);
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
@@ -61,7 +62,7 @@ function ProductQuoteWorkspace({ organizationId, onRetry, onPurchase, busy }: { 
   }
   if (loading) return <p role="status">Checking location-product availability...</p>;
   if (loadError) return <Alert variant="error" title="Product quotes unavailable" action={<Button variant="outline" size="sm" onClick={onRetry}>Reload product catalogue</Button>}>{loadError}</Alert>;
-  if (!plans.length) return null;
+  if (!plans.length) return emptyState ?? null;
   return <Card><CardHeader><CardTitle>Location products</CardTitle><CardDescription>Preview clinic, pharmacy and doctor capacity for your locations. A quote does not change your subscription.</CardDescription></CardHeader><CardContent>
     <form onSubmit={preview} className="space-y-4">
       <fieldset disabled={quoting || busy} className="space-y-4">
@@ -74,6 +75,7 @@ function ProductQuoteWorkspace({ organizationId, onRetry, onPurchase, busy }: { 
         <p className="text-sm text-text-secondary">Included doctor capacity and applicable taxes come from the selected catalogue. Every active location needs a selection.</p>
         <Button type="submit" loading={quoting} disabled={!selected || !organizationId || !locations.length}>Preview product quote</Button>
       </fieldset>
+    </form>
       {error && <Alert variant="error" title="Quote unavailable">{error}</Alert>}
       {quote && <section aria-label="Product quote" className="space-y-2 rounded-xl border border-border p-4">
         <ul className="space-y-1">{quote.lines.map(line => <li key={line.id} className="flex justify-between gap-3"><span>{descriptions[line.kind] || line.kind} × {line.quantity}</span><span>{formatCurrency(line.amountPaise / 100, quote.currency)}</span></li>)}</ul>
@@ -84,7 +86,7 @@ function ProductQuoteWorkspace({ organizationId, onRetry, onPurchase, busy }: { 
           if (Date.parse(quote.expiresAt) <= Date.now()) { setQuote(null); setError("Quote expired. Preview the selection again before checkout."); return; }
           if (authScopeKey(useAuthStore.getState().user) === scope) onPurchase(selected, quote);
         }}>{quote.totalPaise === 0 ? "Activate reviewed free selection" : `Pay ${formatCurrency(quote.totalPaise / 100, quote.currency)}`}</Button>}
+        {selected && quoteActions && <div key={quote.fingerprint}>{quoteActions(selected, quote)}</div>}
       </section>}
-    </form>
   </CardContent></Card>;
 }

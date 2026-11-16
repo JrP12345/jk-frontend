@@ -4,6 +4,8 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { pharmacyActions } from "@/lib/pharmacyCapabilities";
 import { PharmacyCapabilitySettings } from "@/components/pharmacy/PharmacyCapabilitySettings";
+import { authScopeKey } from "@/lib/authScope";
+import { stockCountStorageKey } from "@/lib/pharmacyStockReconciliation";
 
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), patch: vi.fn() } }));
 const caps = (revision = 0) => ({ locationId: "clinic", enabled: true, moduleEnabled: true, revision, mode: "legacy_included",
@@ -12,6 +14,7 @@ const response = (data: unknown) => ({ data: { data } });
 const mount = (onSaved = vi.fn(), onClose = vi.fn()) => render(<PharmacyCapabilitySettings location={{ id: "clinic", name: "Existing clinic" }} organizationId="org" onSaved={onSaved} onClose={onClose} />);
 beforeEach(() => {
   vi.clearAllMocks();
+  sessionStorage.clear();
   useAuthStore.setState({ user: { id: "manager", name: "Manager", email: "manager@example.test", role: "branch_manager", organization_id: "org", permissions: ["PHARMACY_MANAGE_SETTINGS"] } });
   vi.mocked(api.get).mockResolvedValue(response(caps()));
   vi.mocked(api.patch).mockResolvedValue(response(caps(1)));
@@ -24,11 +27,29 @@ it("requires an actual review reference and saves against the existing location 
   fireEvent.click(toggle); fireEvent.change(screen.getByLabelText("Review reference *"), { target: { value: "  Local review 42  " } });
   fireEvent.click(screen.getByRole("button", { name: "Save pharmacy settings" }));
   await waitFor(() => expect(onSaved).toHaveBeenCalledOnce()); expect(onClose).toHaveBeenCalledOnce();
-  expect(api.patch).toHaveBeenCalledWith("/pharmacy/locations/clinic/settings?organizationId=org", { enabled: false, expectedRevision: 0, reviewReference: "Local review 42" });
+  expect(api.patch).toHaveBeenCalledWith("/pharmacy/locations/clinic/settings?organizationId=org", { enabled: false, inventoryMode: "tracked", expectedRevision: 0, reviewReference: "Local review 42" });
 });
 it("keeps issuer administration restricted to organization managers and does not load it for branch settings staff", async () => {
   mount(); await screen.findByRole("checkbox"); expect(screen.queryByRole("button", { name: "Review issuer and licence details" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Designated billing PC" })).not.toBeInTheDocument();
   expect(vi.mocked(api.get).mock.calls.every(([url]) => String(url).includes("/settings"))).toBe(true);
+});
+
+it("opens the existing branch PC settings for an owner without nesting forms or writing branch capability", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["MANAGE_ORGANIZATION"] } });
+  mount(); fireEvent.click(await screen.findByRole("button", { name: "Designated billing PC" }));
+  const section = screen.getByRole("region", { name: "Designated pharmacy PC" }); expect(section.closest("form")).toBeNull();
+  await waitFor(() => expect(api.get).toHaveBeenCalledWith("/pharmacy/locations/clinic/offline-device?organizationId=org", expect.anything()));
+  expect(api.patch).not.toHaveBeenCalled();
+});
+it("loads and saves the whole branch billing-only setting with its current revision", async () => {
+  vi.mocked(api.get).mockResolvedValue(response({ ...caps(3), inventoryMode: "billing_only" }));
+  const onSaved = vi.fn(); mount(onSaved);
+  expect(await screen.findByRole("combobox", { name: "Branch inventory mode" })).toHaveTextContent("Billing only — no stock tracking");
+  fireEvent.change(screen.getByLabelText("Review reference *"), { target: { value: "Branch operating decision" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save pharmacy settings" }));
+  await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+  expect(api.patch).toHaveBeenCalledWith(expect.any(String), { enabled: true, inventoryMode: "billing_only", expectedRevision: 3, reviewReference: "Branch operating decision" });
 });
 it("opens owner issuer review for the same branch without changing its capability or creating a location", async () => {
   useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["MANAGE_ORGANIZATION"] } });
@@ -37,6 +58,15 @@ it("opens owner issuer review for the same branch without changing its capabilit
   await waitFor(() => expect(api.get).toHaveBeenCalledWith("/pharmacy/locations/clinic/tax-profile?organizationId=org", expect.anything()));
   const issuer = screen.getByRole("form", { name: "Branch issuer and licence details" });
   expect(issuer.parentElement?.closest("form")).toBeNull(); expect(api.patch).not.toHaveBeenCalled();
+});
+it("opens invoice numbering in the existing owner settings without nesting forms or changing branch access", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["MANAGE_ORGANIZATION"] } });
+  vi.mocked(api.get).mockImplementation(async url => response(String(url).includes("/invoice-numbering") ? { organizationId: "org", locationId: "clinic", revision: 0,
+    financialYear: "2026-27", configuration: null, nextNumber: null, preview: null } : caps()));
+  mount(); fireEvent.click(await screen.findByRole("button", { name: "Configure invoice numbering" }));
+  await screen.findByText("This branch currently uses system numbering.");
+  expect(api.get).toHaveBeenCalledWith("/pharmacy/locations/clinic/invoice-numbering?organizationId=org", expect.anything());
+  expect(screen.getByRole("form", { name: "Branch invoice numbering" }).parentElement?.closest("form")).toBeNull(); expect(api.patch).not.toHaveBeenCalled();
 });
 it("requires reload after a conflict and uses the refreshed revision for the next save", async () => {
   vi.mocked(api.patch).mockRejectedValueOnce({ response: { status: 409, data: { message: "Reload newer settings" } } });
@@ -59,4 +89,32 @@ it("does not save after the effective account loses the settings permission", as
   fireEvent.change(screen.getByLabelText("Review reference *"), { target: { value: "Review 42" } });
   await act(async () => useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: [] } }));
   fireEvent.click(screen.getByRole("button", { name: "Save pharmacy settings" })); expect(api.patch).not.toHaveBeenCalled();
+});
+
+it("pauses a billing-only branch through the existing settings command before opening its physical count", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["PHARMACY_MANAGE_SETTINGS", "MANAGE_MEDICINES"] } });
+  let enabled = true;
+  vi.mocked(api.get).mockImplementation(async url => response(String(url).includes("stock-reconciliation") ? { locationId: "clinic", snapshotHash: "a".repeat(64), revision: 4, products: [] } : { ...caps(enabled ? 3 : 4), inventoryMode: "billing_only", enabled }));
+  vi.mocked(api.patch).mockImplementation(async () => { enabled = false; return response({ ...caps(4), inventoryMode: "billing_only", enabled }); });
+  mount();
+  expect(await screen.findByRole("button", { name: "Pause branch & count stock" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Review reference *"), { target: { value: "Physical count review" } });
+  fireEvent.click(screen.getByRole("button", { name: "Pause branch & count stock" }));
+  await screen.findByRole("dialog", { name: "Reconcile physical stock" });
+  expect(api.patch).toHaveBeenCalledWith(expect.any(String), { enabled: false, inventoryMode: "billing_only", expectedRevision: 3, reviewReference: "Physical count review" });
+  await waitFor(() => expect(screen.getByRole("button", { name: "Close count" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Close count" }));
+  await screen.findByRole("button", { name: "Count stock & enable tracking" });
+  expect(api.patch).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("checkbox")).not.toBeChecked();
+});
+
+it("keeps recovery accessible after a committed count has already changed the branch to tracked mode", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["PHARMACY_MANAGE_SETTINGS", "MANAGE_MEDICINES"] } });
+  sessionStorage.setItem(stockCountStorageKey(authScopeKey(useAuthStore.getState().user), "clinic"), "earlier-count-reference");
+  vi.mocked(api.get).mockResolvedValue(response({ ...caps(4), inventoryMode: "tracked" }));
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Check earlier physical count" }));
+  await screen.findByRole("dialog", { name: "Reconcile physical stock" });
+  expect(api.patch).not.toHaveBeenCalled();
 });

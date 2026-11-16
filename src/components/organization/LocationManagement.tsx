@@ -19,7 +19,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
 import { organizationPath, organizationWorkspaceUrl, saveWithBranding } from "@/services/organization.service";
 import { publicBookingChecklist } from "@/lib/publicBookingSetup";
-import { facilityTypeLabel, facilityTypeOptions, type FacilityType } from "@/lib/facility";
+import { facilityHasDoctorSection, facilityTypeLabel, facilityTypeOptions, type FacilityType } from "@/lib/facility";
 import { hasAnyPermission, isRootUser } from "@/lib/permissions";
 import { RotateCw, Plus, Building2, Phone, Mail, QrCode, MoreHorizontal, Edit3, Archive, RotateCcw, Clock, Link2, Search } from "lucide-react";
 import LocationQrPosterModal from "@/components/dashboard/LocationQrPosterModal";
@@ -50,14 +50,15 @@ interface Location {
   [key: string]: unknown;
 }
 
-export default function LocationManagement({ organizationId, embedded = false }: { organizationId?: string; embedded?: boolean }) {
+export default function LocationManagement({ organizationId, workspaceProfile, embedded = false }: { organizationId?: string; workspaceProfile?: "clinic" | "pharmacy"; embedded?: boolean }) {
   const user = useAuthStore((state) => state.user);
-  return <LocationsWorkspace key={`${authScopeKey(user)}:${organizationId || "session"}`} organizationId={organizationId} embedded={embedded} />;
+  return <LocationsWorkspace key={`${authScopeKey(user)}:${organizationId || "session"}:${workspaceProfile || ""}`} organizationId={organizationId} workspaceProfile={workspaceProfile} embedded={embedded} />;
 }
 
-function LocationsWorkspace({ organizationId, embedded }: { organizationId?: string; embedded: boolean }) {
+function LocationsWorkspace({ organizationId, workspaceProfile, embedded }: { organizationId?: string; workspaceProfile?: "clinic" | "pharmacy"; embedded: boolean }) {
   const scopedPath = (path: string) => organizationPath(path, organizationId);
   const { user } = useAuthStore();
+  const pharmacyWorkspace = workspaceProfile ? workspaceProfile === "pharmacy" : (!organizationId || organizationId === user?.organization_id) && user?.workspaceProfile === "pharmacy";
   const { locations, fetchLocations, isLoading: locationsLoading, error: locationLoadError } = useOrganizationLocations(organizationId);
   const canManageLocations = hasAnyPermission(user, "MANAGE_LOCATIONS");
   const canManagePharmacy = hasAnyPermission(user, "PHARMACY_MANAGE_SETTINGS", "MANAGE_ORGANIZATION");
@@ -98,9 +99,10 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
   const websiteDetailLoading = websiteDetailLoadingFor === websiteLocation?.id;
   const websiteDetailError = websiteDetailErrorFor === websiteLocation?.id;
   const publicBookingStatus = websitePublicDetail ? getPublicBookingStatus({ ...websitePublicDetail, doctorCount: websitePublicDetail.doctors.length }) : null;
-  const websiteButtonLabel = publicBookingStatus === "check_availability" ? "Check appointments" : publicBookingStatus === "contact_location" ? "Contact reception" : "View location";
+  const websiteHasDoctors = facilityHasDoctorSection(websitePublicDetail || websiteLocation || {});
+  const websiteButtonLabel = !websiteHasDoctors ? "View location" : publicBookingStatus === "check_availability" ? "Check appointments" : publicBookingStatus === "contact_location" ? "Contact reception" : "View location";
   const buttonSnippet = websiteUrl ? `<a href="${websiteUrl}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#0F6F66;color:#fff;text-decoration:none;font:600 16px system-ui,sans-serif">${websiteButtonLabel}</a>` : "";
-  const websiteChecklist = websitePublicDetail ? publicBookingChecklist(websitePublicDetail) : [];
+  const websiteChecklist = websitePublicDetail && websiteHasDoctors ? publicBookingChecklist(websitePublicDetail) : [];
 
   const openWebsiteBooking = (location: Location) => {
     setWebsitePublicResponse(null);
@@ -266,7 +268,7 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
     setFormTab("details");
     setEditingId(null);
     const defaultOrgId = organizationId || "";
-    setFormData({ facilityType: "clinic", amenities: [], organizationId: defaultOrgId, upiVpa: "", merchantName: "", brandColor: "#0F6F66" });
+    setFormData({ facilityType: pharmacyWorkspace ? "pharmacy" : "clinic", amenities: [], organizationId: defaultOrgId, upiVpa: "", merchantName: "", brandColor: "#0F6F66" });
     setLocationErrors({});
     setIsModalOpen(true);
   };
@@ -396,8 +398,8 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
     {activeTab === "archived" ? canManageLocations && <Button size="sm" variant="outline" loading={reactivatingId === location.id} disabled={Boolean(reactivatingId && reactivatingId !== location.id)} onClick={() => handleReactivate(location)}><RotateCcw size={15} /> Reactivate</Button> : <>
       {canManageLocations && <Button size="sm" variant="outline" onClick={() => openEditModal(location)}><Edit3 size={15} /> Edit</Button>}
       <Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost" className={styles.iconAction} aria-label={`Actions for ${location.name}`}><MoreHorizontal size={18} /></Button>} items={[
-        { label: "QR poster", icon: <QrCode size={16} />, onClick: () => setQrLocation(location) },
-        { label: "Website booking", icon: <Link2 size={16} />, onClick: () => openWebsiteBooking(location) },
+        ...(!pharmacyWorkspace && location.facilityType !== "pharmacy" ? [{ label: "QR poster", icon: <QrCode size={16} />, onClick: () => setQrLocation(location) }] : []),
+        { label: facilityHasDoctorSection(location) ? "Website booking" : "Public page", icon: <Link2 size={16} />, onClick: () => openWebsiteBooking(location) },
         ...(canManagePharmacy ? [{ label: "Pharmacy settings", onClick: () => setPharmacyLocation(location) }] : []),
         ...(canManageLocations ? [{ divider: true, label: "" }, { label: "Deactivate location", icon: <Archive size={16} />, variant: "danger" as const, onClick: () => setDeletingId(location.id) }] : []),
       ]} />
@@ -406,7 +408,7 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
 
   return <div className={styles.workspace}>
     <header className={styles.header}>
-      <div><Heading>Locations</Heading><p>Contact details, hours and booking pages</p></div>
+      <div><Heading>Locations</Heading><p>{pharmacyWorkspace ? "Branch contact details, hours and pharmacy settings" : "Contact details, hours and booking pages"}</p></div>
       <div className={styles.headerActions}>
         <Button size="sm" variant="ghost" className={styles.iconAction} aria-label="Refresh locations" disabled={isRefreshing} onClick={reloadLocations}><RotateCw size={17} className={isRefreshing ? "animate-spin" : ""} /></Button>
         {canManageLocations && <Button size="sm" onClick={openModal}><Plus size={16} /> Add location</Button>}
@@ -483,7 +485,7 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
           )}
 
 
-            <Select label="Location type" value={formData.facilityType || ""} options={[{ value: "", label: "Unclassified healthcare facility" }, ...facilityTypeOptions]} onChange={(event) => handleFieldChange("facilityType", event.target.value)} required={!editingId} />
+            <Select label="Location type" value={formData.facilityType || ""} options={pharmacyWorkspace && !editingId ? facilityTypeOptions.filter(type => type.value === "pharmacy") : [{ value: "", label: "Unclassified healthcare facility" }, ...facilityTypeOptions]} onChange={(event) => handleFieldChange("facilityType", event.target.value)} required={!editingId} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
               <Input
                 label="Location Name *"
@@ -646,12 +648,13 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
         onClose={() => setQrLocation(null)}
         location={qrLocation}
       />
-      <Modal open={!!websiteLocation} busy={publicationSaving} onClose={() => setWebsiteLocation(null)} title="Website booking" description={websiteLocation?.name} size="lg" bodyClassName={styles.dialogBody} footer={<Button size="sm" variant="outline" disabled={publicationSaving} onClick={() => setWebsiteLocation(null)}>Done</Button>}>
+      <Modal open={!!websiteLocation} busy={publicationSaving} onClose={() => setWebsiteLocation(null)} title={websiteHasDoctors ? "Website booking" : "Public page"} description={websiteLocation?.name} size="lg" bodyClassName={styles.dialogBody} footer={<Button size="sm" variant="outline" disabled={publicationSaving} onClick={() => setWebsiteLocation(null)}>Done</Button>}>
         <div className="space-y-4 text-sm">
           <p className="text-text-secondary">Share this location with patients or add the link to your website.</p>
           <div><label htmlFor="location-booking-url" className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><Input id="location-booking-url" readOnly value={websiteUrl} containerClassName="min-w-0 flex-1" size="sm" variant="filled" /><Button size="sm" disabled={!websiteUrl} onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
           <div className="rounded-xl border border-border p-3"><p className="font-semibold">{websiteLocation?.isPublished === false ? "Public page unpublished" : "Public page published"}</p><p className="mt-1 text-xs text-text-secondary">Publishing controls the public page. Existing appointments and staff access stay available.</p>{canManageLocations && <Button className="mt-3" size="sm" variant="outline" loading={publicationSaving} onClick={changePublication}>{websiteLocation?.isPublished === false ? "Publish page" : "Unpublish page"}</Button>}</div>
-          <details className={styles.readiness} open={websiteDetailError || undefined}><summary>Booking readiness <span>{websiteDetailLoading ? "Checking..." : websiteDetailError ? "Check failed" : publicBookingStatus === "check_availability" ? "Ready for booking" : "Review setup"}</span></summary><div aria-live="polite">
+          {!websiteHasDoctors && <p className="text-sm text-text-secondary">This location can be listed without doctors or appointment booking. For a pharmacy, publish its medicine list and enable pickup requests separately under Pharmacy → Public medicine list.</p>}
+          {websiteHasDoctors && <details className={styles.readiness} open={websiteDetailError || undefined}><summary>Booking readiness <span>{websiteDetailLoading ? "Checking..." : websiteDetailError ? "Check failed" : publicBookingStatus === "check_availability" ? "Ready for booking" : "Review setup"}</span></summary><div aria-live="polite">
             {websiteDetailLoading && <p className="mt-2 text-xs text-text-secondary">Checking the public page…</p>}
             {websiteDetailError && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-secondary"><span>Could not check the public page right now.</span><Button size="sm" variant="outline" onClick={retryWebsiteDetail}>Try again</Button></div>}
             {websitePublicDetail && <>
@@ -659,7 +662,7 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
               <ul className="mt-3 grid gap-1.5 text-xs sm:grid-cols-2">{websiteChecklist.map((item) => <li key={item.label} className="flex items-start gap-2"><span aria-hidden="true" className={item.complete ? "text-success-text" : "text-warning-text"}>{item.complete ? "✓" : "○"}</span><span>{item.label}</span></li>)}</ul>
               {websiteChecklist.some((item) => !item.complete) && <div className="mt-3 flex flex-wrap gap-3"><Button size="sm" variant="outline" onClick={() => { if (websiteLocation) { openEditModal(websiteLocation); setWebsiteLocation(null); } }}>Edit location details</Button><Link href={organizationId ? organizationWorkspaceUrl(organizationId, "members") : "/dashboard/staff"} className="inline-flex min-h-9 items-center text-xs font-semibold text-accent hover:underline">Manage doctors</Link></div>}
             </>}
-          </div></details>
+          </div></details>}
 
           <details className={styles.embedCode}><summary>Website button code</summary><div><Textarea id="location-booking-html" readOnly value={buttonSnippet} rows={4} label="Paste-in HTML button" className="font-mono" /><Button size="sm" variant="outline" disabled={!buttonSnippet} onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div></details>
           <details className={styles.embedCode}><summary>Google Search &amp; Maps setup</summary><div><GoogleBookingLinks locationUrl={websiteUrl} available={publicBookingStatus === "check_availability"} doctors={websitePublicDetail?.doctors.map((doctor) => ({ id: doctor.id, name: doctor.name, url: `${window.location.origin}${doctorPath(doctor, websitePublicDetail)}` })) || []} onCopy={copyWebsiteText} /></div></details>

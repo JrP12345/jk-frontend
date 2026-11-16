@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Badge } from "@/components/ui";
+import { Badge, EkavyuLogo } from "@/components/ui";
 import api from "@/lib/api";
 import { announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
 import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
@@ -628,7 +628,7 @@ export default function WaitingRoomTvQueueBoard() {
       {/* Footer ticker */}
       <div className="bg-surface/90 px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl border border-border text-xs text-text-muted flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <span>If you require emergency medical attention or wheelchair assistance, please notify the reception desk immediately.</span>
-        <span className="font-black text-accent tracking-wide shrink-0">Ekavyu Live Display</span>
+        <span className="flex shrink-0 items-center gap-2"><EkavyuLogo size="sm" /><span>Live display</span></span>
       </div>
     </main>
   );

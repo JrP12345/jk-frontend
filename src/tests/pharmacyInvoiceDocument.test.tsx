@@ -3,11 +3,11 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { UnifiedDocumentModal } from "@/components/clinical/UnifiedDocumentModal";
 import { PharmacyInvoiceDocument } from "@/components/pharmacy/PharmacyInvoiceDocument";
 import { canPrintPharmacyInvoice, type IssuedPharmacyInvoice } from "@/lib/pharmacyInvoice";
-import { printHtml } from "@/lib/printBrand";
+import { printElement, printHtml } from "@/lib/printBrand";
 import { ToastProvider } from "@/components/ui/Toast";
 
-vi.mock("@/lib/printBrand", async () => ({ ...await vi.importActual("@/lib/printBrand"), printHtml: vi.fn(), getPrintBrandStyles: () => "" }));
-beforeEach(() => { vi.mocked(printHtml).mockReset().mockResolvedValue(); });
+vi.mock("@/lib/printBrand", async () => ({ ...await vi.importActual("@/lib/printBrand"), printHtml: vi.fn(), printElement: vi.fn(), getPrintBrandStyles: () => "" }));
+beforeEach(() => { vi.mocked(printHtml).mockReset().mockResolvedValue(); vi.mocked(printElement).mockReset().mockResolvedValue(); });
 afterEach(cleanup);
 const invoice: IssuedPharmacyInvoice = {
   invoiceNumber: "I00012627/000001", documentVersion: 1, financialYear: "2026-27", issuedAt: "2026-10-19T06:30:00Z", status: "unpaid",
@@ -24,15 +24,15 @@ it("prints the captured issuer, recipient, tax, unit and signature fields throug
   const paper = screen.getByRole("article", { name: "Issued pharmacy document" });
   expect(within(paper).getByText("Captured Pharmacy")).toBeInTheDocument();
   expect(within(paper).getByText(/GSTIN: 27ABCDE1234F1Z5/)).toBeInTheDocument();
-  expect(within(paper).getByText(/LIC-20, LIC-21/)).toBeInTheDocument();
-  expect(within(paper).getByText(/Recipient: Captured recipient/)).toBeInTheDocument();
-  expect(within(paper).getByText("2 NOS")).toBeInTheDocument();
+  expect(within(paper).getByText(/LIC-20 \/ LIC-21/)).toBeInTheDocument();
+  expect(within(paper).getByText("Captured recipient")).toBeInTheDocument();
+  expect(within(paper).getByText("NOS").parentElement).toHaveTextContent(/2\s*NOS/);
   expect(within(paper).getByText(/HSN: 300490/)).toBeInTheDocument();
-  expect(within(paper).getByText(/Payment status: unpaid/)).toBeInTheDocument();
+  expect(within(paper).getByText("Payment status").parentElement).toHaveTextContent("unpaid");
   expect(within(paper).queryByText(/Changed doctor|Changed clinic|Attending Physician/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Print invoice" }));
-  await waitFor(() => expect(printHtml).toHaveBeenCalledOnce());
-  const html = vi.mocked(printHtml).mock.calls[0][0];
+  await waitFor(() => expect(printElement).toHaveBeenCalledOnce());
+  const html = vi.mocked(printElement).mock.calls[0][0]!.innerHTML;
   expect(html).toContain("Captured Pharmacy"); expect(html).toContain("300490"); expect(html).toContain("Authorised signature");
   expect(html).not.toContain("Changed clinic"); expect(html).not.toContain("Changed doctor");
 });
@@ -65,11 +65,11 @@ it("prints patient-optional counter evidence, actual lots, discounts and round-o
   expect(canPrintPharmacyInvoice(retail)).toBe(true);
   render(<ToastProvider><UnifiedDocumentModal open onClose={() => {}} document={{ documentType: "invoice", title: "Counter invoice", locationName: "Changed business", patientName: "Unused clinical name", date: "Today", pharmacyInvoice: retail }} /></ToastProvider>);
   const paper = screen.getByRole("article", { name: "Issued pharmacy document" });
-  expect(within(paper).getByText(/Recipient: Walk-in customer/)).toBeInTheDocument(); expect(within(paper).getByText(/Batch CAPTURED-LOT/)).toHaveTextContent(/2099-12/);
-  expect(within(paper).getByText("2 tablet")).toBeInTheDocument(); expect(within(paper).getByText(/Discounts included above:/)).toHaveTextContent(/20(\.00)?/); expect(within(paper).getByText(/Round-off:/)).toHaveTextContent(/0\.01/);
+  expect(within(paper).getByText("Walk-in customer")).toBeInTheDocument(); expect(within(paper).getByText("CAPTURED-LOT").closest("tr")).toHaveTextContent(/2099-12/);
+  expect(within(paper).getByText("tablet").parentElement).toHaveTextContent(/2\s*tablet/); expect(within(paper).getByText(/Discount included:/)).toHaveTextContent(/20(\.00)?/); expect(within(paper).getByText("Round-off").parentElement).toHaveTextContent(/0\.01/);
   expect(within(paper).queryByText(/Unused clinical name|Changed business|Attending Physician/)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Print invoice" })); await waitFor(() => expect(printHtml).toHaveBeenCalledOnce());
-  expect(vi.mocked(printHtml).mock.calls[0][0]).toContain("209.99");
+  fireEvent.click(screen.getByRole("button", { name: "Print invoice" })); await waitFor(() => expect(printElement).toHaveBeenCalledOnce());
+  expect(vi.mocked(printElement).mock.calls[0][0]).toHaveTextContent("209.99");
 });
 it("refuses malformed retail totals, actor/customer snapshots and captured lot evidence", () => {
   expect(canPrintPharmacyInvoice({ ...retail, createdBy: undefined })).toBe(false);
@@ -78,4 +78,12 @@ it("refuses malformed retail totals, actor/customer snapshots and captured lot e
   expect(canPrintPharmacyInvoice({ ...retail, totalAmount: 210 })).toBe(false);
   expect(canPrintPharmacyInvoice({ ...retail, items: [{ ...retail.items[0], batches: [] }] })).toBe(false);
   expect(canPrintPharmacyInvoice({ ...retail, items: [{ ...retail.items[0], batches: [{ ...retail.items[0].batches![0], quantity: 1 }] }] })).toBe(false);
+});
+it("prints the captured owner-defined number and refuses a number without matching captured sequence evidence", () => {
+  const custom: IssuedPharmacyInvoice = { ...retail, invoiceNumber: "PJP/26-27/000137", numberingVersion: 3, invoiceSeries: "PJP/26-27/",
+    numberingSnapshot: { version: 1, prefixTemplate: "PJP/{FY}/", prefix: "PJP/26-27/", digits: 6, sequence: 137, configurationRevision: 4, resetPolicy: "financial_year" } };
+  expect(canPrintPharmacyInvoice(custom)).toBe(true); render(<PharmacyInvoiceDocument invoice={custom} />);
+  expect(screen.getByText("PJP/26-27/000137")).toBeInTheDocument();
+  expect(canPrintPharmacyInvoice({ ...custom, invoiceNumber: "PJP/26-27/000138" })).toBe(false);
+  expect(canPrintPharmacyInvoice({ ...custom, numberingSnapshot: undefined })).toBe(false);
 });

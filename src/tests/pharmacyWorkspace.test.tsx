@@ -6,11 +6,12 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore";
 import { prepareDispense, readMedicinePage } from "@/components/pharmacy/pharmacyWorkspace";
 import { pharmacyActions } from "@/lib/pharmacyCapabilities";
+import { reportFixture, expiryReportRow } from "./fixtures/pharmacyReport";
 
-const fixture = vi.hoisted(() => ({ capabilities: vi.fn(), get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), fetch: vi.fn(), locations: [{ id: "clinic", name: "Sample clinic", city: "Surat" }], activeLocationId: "clinic" as string | null }));
+const fixture = vi.hoisted(() => ({ capabilities: vi.fn(), get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), fetch: vi.fn(), locations: [{ id: "clinic", name: "Sample clinic", city: "Surat" }], activeLocationId: "clinic" as string | null, locationsLoading: false, locationsLoaded: true, locationError: null as string | null }));
 vi.mock("@/lib/api", () => ({ default: { get: (url: string, ...args: unknown[]) => url.endsWith("/capabilities") ? fixture.capabilities(url, ...args) : fixture.get(url, ...args), post: fixture.post, put: fixture.put, delete: fixture.delete } }));
 vi.mock("@/store/locationStore", () => ({ useLocationStore: Object.assign((selector?: (state: unknown) => unknown) => {
-  const state = { locations: fixture.locations, fetchLocations: fixture.fetch, activeLocationId: fixture.activeLocationId, isLoading: false, error: null };
+  const state = { locations: fixture.locations, fetchLocations: fixture.fetch, activeLocationId: fixture.activeLocationId, isLoading: fixture.locationsLoading, isLoaded: fixture.locationsLoaded, error: fixture.locationError };
   return selector ? selector(state) : state;
 }, { getState: () => ({ reset: () => {} }) }) }));
 vi.mock("@/utils/audioChimes", () => ({ playChimeSound: vi.fn() }));
@@ -18,6 +19,19 @@ const medicine = { id: "medicine", locationId: "clinic", name: "Sample medicine 
 const rx = { id: "prescription", medicineId: "medicine", name: medicine.name, dosage: "500 mg", frequency: "1-0-1", duration: "3 days", instructions: "After food" };
 const partialRx = { ...rx, fulfillment: { mode: "quantity" as const, authorizedQuantity: 30, suppliedQuantity: 10, remainingQuantity: 20, baseUnit: "tablet", revision: 1, medicineId: "medicine" } };
 const partialStock = { ...medicine, unitDefinition: { version: 1, baseUnit: "tablet", packUnit: "strip", unitsPerPack: 10 } };
+it("returns to the selected pharmacy tab after an administrator closes pharmacist registration review", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, role: "admin", permissions: ["MANAGE_ORGANIZATION", "MANAGE_MEDICINES"] } });
+  fixture.capabilities.mockResolvedValue(response({ ...capabilities([...pharmacyActions]), actions: { ...capabilities([...pharmacyActions]).actions, viewSales: true } }));
+  const get = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation(async (url: string) => url.includes("/members") ? response({ members: [] }) : get(url));
+  mount();
+  fireEvent.click(await screen.findByRole("tab", { name: "Sales & collections" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Pharmacist registrations" }));
+  const dialog = await screen.findByRole("dialog", { name: "Pharmacist registrations" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Close", exact: true }));
+  await waitFor(() => expect(screen.getByRole("tab", { name: "Sales & collections" })).toHaveAttribute("aria-selected", "true"));
+  expect(screen.queryByRole("dialog", { name: "Pharmacist registrations" })).not.toBeInTheDocument();
+});
 it("sends exact remaining allowance and revision with a partial supply", () => {
   expect(prepareDispense([partialRx], [{ medicineId: "medicine", quantity: 20 }], [partialStock], "clinic").prescriptionAllocations).toEqual([
     { prescriptionId: "prescription", medicineId: "medicine", quantity: 20, expectedFulfillmentRevision: 1, expectedRemainingQuantity: 20 },
@@ -40,6 +54,7 @@ const mount = () => render(tree());
 async function menu(label: string) { fireEvent.click((await screen.findAllByRole("button", { name: `Actions for ${medicine.name}` }))[0]); fireEvent.click(await screen.findByRole("menuitem", { name: label })); }
 async function openDispense() { await screen.findAllByText(medicine.name); fireEvent.click(screen.getByRole("tab", { name: /Dispense\s*1/ })); fireEvent.click(screen.getAllByRole("button", { name: "Dispense", exact: true })[0]); await waitFor(() => expect(screen.queryByText("Loading prescribed stock...")).not.toBeInTheDocument()); return screen.getByRole("dialog", { name: "Dispense prescription" }); }
 beforeEach(() => {
+  fixture.locationsLoading = false; fixture.locationsLoaded = true; fixture.locationError = null;
   localStorage.clear();
   fixture.locations = [{ id: "clinic", name: "Sample clinic", city: "Surat" }]; fixture.activeLocationId = "clinic";
   fixture.fetch.mockReset().mockResolvedValue(fixture.locations);
@@ -55,6 +70,47 @@ beforeEach(() => {
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
 afterEach(() => { vi.unstubAllGlobals(); });
+it("opens expiry return review for purchase-and-return staff without granting money settlement access", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["PHARMACY_VIEW_STOCK", "PHARMACY_PURCHASE", "PHARMACY_RETURN"] } });
+  fixture.capabilities.mockResolvedValue(response({ ...capabilities(["viewStock"]), actions: { ...capabilities(["viewStock"]).actions, viewPurchases: true, managePurchases: true, processReturn: true, settle: false, viewSettlements: false } }));
+  fixture.get.mockImplementation(async (url: string) => {
+    if (url.startsWith("/medicines")) return response([partialStock]);
+    if (url.endsWith("/expiry")) return response(reportFixture("expiry", "clinic", [{ ...expiryReportRow, purchaseId: "purchase" }], { days: 60 }));
+    if (url.endsWith("/low_stock")) return response(reportFixture("low_stock", "clinic", []));
+    throw new Error("Source unavailable");
+  });
+  mount(); fireEvent.click(await screen.findByRole("tab", { name: "Alerts" })); fireEvent.click(screen.getByRole("tab", { name: "Expired" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Review supplier return" }));
+  await waitFor(() => expect(screen.getByRole("tab", { name: "Finance & dues" })).toHaveAttribute("aria-selected", "true"));
+  expect(await screen.findByText("Source unavailable")).toBeInTheDocument();
+  expect(fixture.get.mock.calls.some(([url]) => url.includes("/purchases/purchase/return-source?"))).toBe(true);
+  expect(fixture.post).not.toHaveBeenCalled();
+});
+it("shows loading until locations are ready instead of prompting for a missing location", async () => {
+  fixture.locations = []; fixture.locationsLoaded = false; fixture.locationsLoading = true; fixture.activeLocationId = null;
+  const view = mount();
+  expect(screen.getByRole("status", { name: "Loading pharmacy" })).toBeInTheDocument();
+  expect(screen.queryByText(/Choose a location to view pharmacy records/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  expect(fixture.capabilities).not.toHaveBeenCalled();
+  fixture.locations = [{ id: "clinic", name: "Sample clinic", city: "Surat" }]; fixture.locationsLoaded = true; fixture.locationsLoading = false;
+  view.rerender(tree()); await screen.findAllByText(medicine.name);
+  expect(screen.queryByRole("status", { name: "Loading pharmacy" })).not.toBeInTheDocument();
+});
+it("shows loading while the initial pharmacy capability check is pending", async () => {
+  const pending = deferred(); fixture.capabilities.mockReturnValue(pending.promise); mount();
+  expect(screen.getByRole("status", { name: "Loading pharmacy" })).toBeInTheDocument();
+  expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  await act(async () => { pending.resolve(response(capabilities(["viewStock"]))); });
+  await screen.findAllByText(medicine.name);
+  expect(screen.getByRole("tab", { name: /Inventory/ })).toBeInTheDocument();
+});
+it("shows an assignment explanation rather than empty tabs when no locations are assigned", async () => {
+  fixture.locations = []; fixture.activeLocationId = null; mount();
+  expect(screen.getByText(/No locations are assigned to your account/)).toBeInTheDocument();
+  expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  expect(fixture.capabilities).not.toHaveBeenCalled();
+});
 it("shows supplied and remaining quantities and sends the current revision from the desk", async () => {
   fixture.get.mockImplementation(async (url: string) => response(url.startsWith("/medicines") ? [partialStock] : url.startsWith("/pharmacy/pending") ? [{ ...group, prescriptions: [partialRx] }] : []));
   mount(); const dialog = await openDispense();
@@ -72,11 +128,23 @@ it("keeps tab counts and filters inventory without a selector for the sole locat
 });
 
 it("opens the counter for sales-only staff without inventory, prescription or purchase access", async () => {
-  useAuthStore.setState({ user: { id: "seller", name: "Seller", email: "seller@example.test", role: "cashier", organization_id: "org", permissions: ["PHARMACY_SELL"] } });
-  fixture.capabilities.mockResolvedValue(response({ ...capabilities([]), actions: { ...capabilities([]).actions, sell: true, viewSales: true, collect: false } }));
+  useAuthStore.setState({ user: { id: "seller", name: "Seller", email: "seller@example.test", role: "pharmacy_counter_sales", workspaceProfile: "pharmacy", organization_id: "org", permissions: ["VIEW_LOCATIONS", "PHARMACY_SELL", "PHARMACY_COLLECT_PAYMENT", "PHARMACY_CLOSE_TILL"] } });
+  fixture.capabilities.mockResolvedValue(response({ ...capabilities([]), actions: { ...capabilities([]).actions, sell: true, viewSales: true, collect: true, viewTill: true, openTill: true, closeTill: true, moveTillCash: false } }));
   fixture.get.mockResolvedValue(response({ items: [], nextCursor: null })); mount();
   await screen.findByRole("region", { name: "Pharmacy counter checkout" }); expect(screen.getByRole("tab", { name: "Counter sale" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("heading", { level: 1, name: "Counter sales" })).toBeInTheDocument();
+  expect(screen.getAllByRole("tab").map(tab => tab.textContent?.trim())).toEqual(["Counter sale", "Sales & collections", "Walk-in", "Recorded"]);
+  expect(screen.queryByRole("button", { name: /Add medicine|Import source CSV/ })).not.toBeInTheDocument();
   expect(fixture.get.mock.calls.some(([url]) => /medicines|pending-prescriptions|purchases/.test(url))).toBe(false); expect(screen.queryByRole("tab", { name: /Inventory/ })).not.toBeInTheDocument();
+});
+it("keeps stock tools available when a standalone pharmacy falls back to inventory without sales access", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, workspaceProfile: "pharmacy" } });
+  fixture.capabilities.mockResolvedValue(response({ ...capabilities(["viewStock", "manageCatalog"]), importKinds: ["catalogue"] }));
+  mount(); await screen.findAllByText(medicine.name);
+  expect(screen.getByRole("tab", { name: /Inventory/ })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("button", { name: "Add medicine", exact: true })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Import source CSV" })).toBeEnabled();
+  expect(screen.queryByRole("tab", { name: "Counter sale" })).not.toBeInTheDocument();
 });
 it("opens operational reports for report-only staff without clinical or catalogue requests", async () => {
   useAuthStore.setState({ user: { id: "reporter", name: "Reporter", email: "reporter@example.test", role: "stock", organization_id: "org", permissions: ["PHARMACY_VIEW_REPORTS"] } });
@@ -163,9 +231,10 @@ it("registers a zero-stock catalogue item without requiring cost, batch or expir
   fireEvent.change(within(dialog).getByLabelText("Barcode aliases"), { target: { value: "000123, SKU-500" } });
   fireEvent.click(within(dialog).getByRole("button", { name: "Save medicine" })); expect(within(dialog).getByRole("tab", { name: "Stock & pricing", selected: true })).toBeInTheDocument();
   fireEvent.change(within(dialog).getByLabelText("Retail price *"), { target: { value: "0" } });
+  fireEvent.change(within(dialog).getByLabelText("Rack / shelf (optional)"), { target: { value: "A3 / Shelf 2" } });
   expect(within(dialog).queryByLabelText("Purchase cost *")).not.toBeInTheDocument(); expect(within(dialog).queryByLabelText("Expiry date *")).not.toBeInTheDocument();
   const submit = within(dialog).getByRole("button", { name: "Save medicine" }); expect((submit as HTMLButtonElement).form?.id).toBe("medicine-form"); fireEvent.click(submit);
-  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/medicines", expect.objectContaining({ name: "New medicine", genericName: "New generic", stockQuantity: 0, price: 0, locationId: "clinic", barcodes: ["000123", "SKU-500"], unitDefinition: { baseUnit: "tablet", packUnit: "strip", unitsPerPack: 10 } })));
+  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/medicines", expect.objectContaining({ name: "New medicine", genericName: "New generic", stockQuantity: 0, price: 0, rackLocation: "A3 / Shelf 2", locationId: "clinic", barcodes: ["000123", "SKU-500"], unitDefinition: { baseUnit: "tablet", packUnit: "strip", unitsPerPack: 10 } })));
   for (const field of ["costPrice", "expiryDate", "batchNumber"]) expect(fixture.post.mock.calls[0][1]).not.toHaveProperty(field);
 });
 
@@ -371,6 +440,20 @@ it("saves catalogue edits without sending or displaying a cost outside the effec
   await waitFor(() => expect(fixture.put).toHaveBeenCalled());
   expect(fixture.put.mock.calls[0][1]).not.toHaveProperty("costPrice");
 });
+it("records printed billing-only supply details without receiving or changing stock", async () => {
+  fixture.capabilities.mockResolvedValue(response({ ...capabilities(["viewStock", "manageCatalog"]), inventoryMode: "billing_only" }));
+  mount(); await screen.findAllByText(medicine.name); await menu("Edit medicine");
+  const dialog = screen.getByRole("dialog", { name: "Edit medicine" });
+  fireEvent.click(within(dialog).getByRole("tab", { name: "Stock & pricing" }));
+  expect(within(dialog).queryByLabelText("Stock quantity")).not.toBeInTheDocument();
+  fireEvent.change(within(dialog).getByLabelText("Supply batch number"), { target: { value: "PRINTED-42" } });
+  fireEvent.change(datePickerInput(within(dialog).getByLabelText("Printed supply expiry")), { target: { value: "2099-12" } });
+  fireEvent.change(within(dialog).getByLabelText("MRP per base unit (INR)"), { target: { value: "12.50" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save medicine" }));
+  await waitFor(() => expect(fixture.put).toHaveBeenCalled());
+  expect(fixture.put.mock.calls[0][1]).toMatchObject({ stockQuantity: 30, billingSupply: { batchNumber: "PRINTED-42", expiry: { precision: "month", value: "2099-12" }, mrpPaise: 1250 } });
+  expect(fixture.post).not.toHaveBeenCalled();
+});
 
 it("clears private records and closes stock forms when the capability check fails", async () => {
   mount(); await screen.findAllByText(medicine.name); await menu("Edit medicine");
@@ -466,4 +549,13 @@ it("bounds the pinned dispense payload to the backend item and prescription limi
   const quantities = repeated.map(() => ({ medicineId: medicine.id, quantity: 1 }));
   expect(prepareDispense(repeated, quantities, [{ ...medicine, stockQuantity: 1000 }], "clinic").error).toContain("200 prescriptions");
   expect(prepareDispense(repeated.slice(0, 200), quantities.slice(0, 200), [{ ...medicine, stockQuantity: 1000 }], "clinic").items).toEqual([{ medicineId: medicine.id, quantity: 200 }]);
+});
+it("opens the shared product review from inventory for an authorized organization administrator", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, role: "admin", permissions: ["MANAGE_MEDICINES", "MANAGE_ORGANIZATION"] } });
+  mount(); await screen.findAllByText(medicine.name);
+  await menu("Review product");
+  const dialog = await screen.findByRole("dialog", { name: "Review product" });
+  await within(dialog).findByRole("form", { name: "Sale classification review" });
+  expect(within(dialog).getByRole("form", { name: "Tax classification review" })).toBeInTheDocument();
+  expect(fixture.put).not.toHaveBeenCalled();
 });

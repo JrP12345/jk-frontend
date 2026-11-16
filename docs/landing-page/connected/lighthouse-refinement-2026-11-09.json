@@ -1,0 +1,40 @@
+{
+  "measuredAt": "2026-11-09T08:01:29.671Z",
+  "environment": "Local production preview; isolated synthetic catalogue; no external services or writes",
+  "observations": [
+    {
+      "profile": "desktop",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 66
+      },
+      "metrics": {
+        "first-contentful-paint": 306.909,
+        "largest-contentful-paint": 780.8634999999999,
+        "total-blocking-time": 0,
+        "cumulative-layout-shift": 0
+      },
+      "errors": [],
+      "blockedWrites": []
+    },
+    {
+      "profile": "mobile",
+      "scores": {
+        "performance": 94,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 66
+      },
+      "metrics": {
+        "first-contentful-paint": 1067.2673,
+        "largest-contentful-paint": 2968.1682499999997,
+        "total-blocking-time": 69.5,
+        "cumulative-layout-shift": 0
+      },
+      "errors": [],
+      "blockedWrites": []
+    }
+  ]
+}

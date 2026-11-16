@@ -1,17 +1,50 @@
 .workspace { display: grid; gap: 12px; width: 100%; margin-inline: 0; min-width: 0; color: var(--text-primary); overflow-anchor: none; padding-bottom: 16px; }
 .workspace :where(div, section, article, header), .dialog :where(div, form, section) { min-width: 0; }
+.workspaceHeading { display: grid; gap: 12px; }
 .header, .actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.header { flex-wrap: wrap; gap: 12px; }
+.header > .actions { flex-wrap: wrap; max-width: 100%; flex-shrink: 1; }
+.header > .actions button { white-space: nowrap; }
 .header h1 { font-size: 1.25rem; font-weight: 650; letter-spacing: -.025em; }
 .header p { margin-top: 3px; color: var(--text-muted); font-size: .75rem; }
-.actions { justify-content: flex-end; flex-shrink: 0; }
+.actions { justify-content: flex-end; flex-shrink: 1; flex-wrap: wrap; min-width: 0; }
 .actions button { min-height: 44px; }
+form.actions { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; }
 .icon { width: 44px; min-width: 44px; min-height: 44px; padding: 0; }
 .context { display: flex; align-items: center; gap: 8px; font-size: .8125rem; color: var(--text-secondary); }
 .context > div { width: min(100%, 24rem); }
 .context p { overflow-wrap: anywhere; }
 .tabs > [role=tablist] { border: 1px solid var(--border); background: var(--surface); box-shadow: none; }
-.tabs > [role=tabpanel] { padding-top: 10px; animation: none; }
+.tabs > [role=tabpanel] { padding-top: 20px; animation: none; }
 .tabs [role=tab] { font-size: .8125rem; min-height: 44px; }
+.primaryNav > [role=tablist] { border: 0; background: none; box-shadow: none; backdrop-filter: none; }
+.primaryNav [role=tab][aria-selected=true] { color: var(--accent); background: var(--selected); }
+.counterNavigation { display: grid; gap: 8px; min-width: 0; }
+/* Let the existing scroll viewport size the counter, rather than adding a guessed vh height to its padding. */
+@media (min-width:1360px) and (min-height:650px) {
+  :global([data-pharmacy-compact]):has(.workspace[data-counter-layout=true] [data-counter-ready]) { overflow-y: hidden; }
+  :global([data-pharmacy-compact]):has(.workspace[data-counter-layout=true] [data-counter-ready]) > :global([data-dashboard-content]) { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+  :global([data-pharmacy-compact]) > :global([data-dashboard-content]) > div:has(> .workspace[data-counter-layout=true] [data-counter-ready]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .workspace[data-counter-layout=true]:has([data-counter-ready]) { flex: 1; height: 100%; min-height: 0; display: flex; flex-direction: column; padding-bottom: 0; }
+  .workspace[data-counter-layout=true]:has([data-counter-ready]) .counterNavigation { flex: 1; min-height: 0; grid-template-rows: auto minmax(0,1fr); }
+  .workspace[data-counter-layout=true] .counterNavigation > section { min-height: 0; }
+}
+.counterToolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; min-width: 0; min-height: 48px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.toolbarContext { flex: 0 1 auto; max-width: 20rem; }
+.toolbarContext .context { font-size: .75rem; }
+.toolbarContext .context > div { max-width: 16rem; }
+.toolbarContext p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toolbarTabs { min-width: 0; flex: 1; }
+.toolbarTabs [role=tablist] { margin-bottom: 0; padding: 2px; }
+.toolbarTabs [role=tablist] > div { display: none; }
+.toolbarTabs [role=tab] { font-size: .75rem; font-weight: 600; min-height: 36px; padding-inline: 12px; }
+.toolbarRefresh .icon { min-height: 36px; height: 36px; width: 36px; min-width: 36px; }
+@media (max-width:767px) {
+  .toolbarContext { flex: 1 0 calc(100% - 48px); max-width: calc(100% - 48px); }
+  .toolbarTabs { order: 2; }
+  .counterToolbar > .mobileMore { order: 3; }
+  .toolbarRefresh { order: 1; }
+}
 .panel { min-width: 0; border: 1px solid var(--border); background: var(--surface); border-radius: 14px; overflow: hidden; }
 .toolbar { display: grid; grid-template-columns: minmax(0,1fr) 210px; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border); }
 .toolbarSingle { grid-template-columns: 1fr; }
@@ -30,11 +63,18 @@
 .danger { color: var(--danger-text); }
 .count { padding: 10px 12px; border-top: 1px solid var(--border); font-size: .75rem; color: var(--text-muted); }
 .empty { padding: 28px 16px; text-align: center; font-size: .8125rem; color: var(--text-muted); }
-.list { display: grid; gap: 8px; }
+.list { display: grid; gap: 16px; min-width: 0; }
+.list > header { display: grid; gap: 5px; }
+.list > header h2 { font-size: 1.0625rem; line-height: 1.4; font-weight: 600; letter-spacing: -.015em; }
+.list > header > p { max-width: 70ch; color: var(--text-secondary); font-size: .8125rem; line-height: 1.65; }
+.list > .card:has(> button:last-child) { grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; }
+.list :where([role=alert]) button + button { margin-inline-start: 8px; }
 .list .card { border-radius: 12px; }
 .alertHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .alertHeader h2 { font-size: 1rem; font-weight: 600; }
-.alertHeader > div { width: min(100%, 12rem); }
+.list > header.alertHeader { display: flex; }
+.alertHeader > div { width: auto; max-width: 100%; }
+.alertHeader > div:not(:has(button)) { width: min(100%, 12rem); }
 .dialog [role=tablist] { box-shadow: none; margin-bottom: 16px; }
 .dialog [role=tab] { min-height: 44px; font-size: .8125rem; }
 .form { display: grid; gap: 16px; }
@@ -44,6 +84,7 @@
 .summary { border: 1px solid var(--border); background: var(--surface-alt); padding: 10px 12px; border-radius: 12px; font-size: .8125rem; line-height: 1.6; }
 .reference { overflow-wrap: anywhere; }
 .rx { padding: 12px; border: 1px solid var(--border); border-radius: 12px; display: grid; gap: 10px; }
+.dialog .rx { padding: 16px; gap: 14px; background: var(--surface); }
 .rx h3 { font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; }
 .rx p { color: var(--text-muted); font-size: .75rem; line-height: 1.6; }
 .mapping { display: grid; grid-template-columns: minmax(0,1fr) 100px; gap: 10px; align-items: start; }
@@ -60,16 +101,21 @@
   .panel { background: transparent; border: 0; }
   .panel div:has(> div > .card) { padding: 8px 0 0; }
   .count { border: 0; padding: 10px 2px; }
-  .tabs > [role=tablist], .alertTabs > [role=tablist] { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 2px; }
-  .tabs > [role=tablist]:has(> [role=tab]:nth-child(4)) { grid-template-columns: repeat(4,minmax(0,1fr)); }
-  .tabs > [role=tablist]:has(> [role=tab]:nth-child(5)) { grid-template-columns: repeat(3,minmax(0,1fr)); }
-  .tabs > [role=tablist] [role=tab], .alertTabs > [role=tablist] [role=tab] { min-width: 0; justify-content: center; gap: 4px; padding-inline: 4px; font-size: .75rem; }
+  .tabs > [role=tablist] { display: flex; gap: 4px; overscroll-behavior-inline: contain; }
+  .tabs > [role=tablist] [role=tab] { min-width: max-content; gap: 4px; padding-inline: 12px; font-size: .8125rem; }
+  .alertTabs > [role=tablist] { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 2px; }
+  .alertTabs > [role=tablist] [role=tab] { min-width: 0; justify-content: center; gap: 4px; padding-inline: 4px; font-size: .75rem; }
 }
 @media (max-width:430px) {
+  .toolbar, form.actions { grid-template-columns: minmax(0,1fr); }
+  .list > .card:has(> button:last-child) { grid-template-columns: minmax(0,1fr); }
+  .list > .card > button:last-child { width: 100%; }
   .mapping { grid-template-columns: minmax(0,1fr) 80px; }
   .fieldGrid { grid-template-columns: 1fr; }
 }
-.reportTable { overflow-x: auto; max-width: 100%; }
+.reportTable { overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.reportTable caption { padding: 12px; text-align: left; color: var(--text-secondary); font-size: .75rem; }
+.reportTable thead { background: var(--surface-alt); }
 .reportTable table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
 .reportTable th, .reportTable td { padding: 0.625rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; min-width: 7rem; overflow-wrap: anywhere; }
 .reportTable tfoot { font-weight: 600; }

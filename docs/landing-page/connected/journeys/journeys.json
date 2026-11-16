@@ -4,7 +4,7 @@
     "checks": [
       {
         "route": "/browse",
-        "heading": "Find and book care that fits your needs",
+        "heading": "Clinics & hospitals near you",
         "passed": true
       },
       {
@@ -15,6 +15,11 @@
       {
         "route": "/onboarding",
         "heading": "Request organization setup",
+        "passed": true
+      },
+      {
+        "route": "/pharmacy-start",
+        "heading": "Start your pharmacy workspace",
         "passed": true
       }
     ],
@@ -27,7 +32,7 @@
     "checks": [
       {
         "route": "/browse",
-        "heading": "Find and book care that fits your needs",
+        "heading": "Clinics & hospitals near you",
         "passed": true
       },
       {
@@ -38,6 +43,11 @@
       {
         "route": "/onboarding",
         "heading": "Request organization setup",
+        "passed": true
+      },
+      {
+        "route": "/pharmacy-start",
+        "heading": "Start your pharmacy workspace",
         "passed": true
       }
     ],

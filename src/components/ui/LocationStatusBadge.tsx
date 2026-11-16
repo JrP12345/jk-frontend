@@ -12,6 +12,7 @@ export interface LocationStatusBadgeProps {
   className?: string;
   pill?: boolean;
   timezone?: string;
+  context?: "appointments" | "services";
 }
 
 export function LocationStatusBadge({
@@ -20,6 +21,7 @@ export function LocationStatusBadge({
   className = "",
   pill = false,
   timezone,
+  context = "appointments",
 }: LocationStatusBadgeProps) {
   const [status, setStatus] = useState<OperationalStatusResult>(() =>
     getLocationOperationalStatus(timings, new Date(), timezone)
@@ -41,7 +43,7 @@ export function LocationStatusBadge({
 
   const getSecondaryLabel = (): string => {
     if (status.status === "open_24_7") {
-      return "Emergency & OPD open 24 hours";
+      return context === "services" ? "Open 24 hours" : "Emergency & OPD open 24 hours";
     }
     if (status.status === "on_break" && status.nextOpenTime) {
       return `Reopens today at ${status.nextOpenTime}`;
@@ -63,7 +65,7 @@ export function LocationStatusBadge({
         return `Opens ${status.nextOpenDay} at ${status.nextOpenTime}`;
       }
     }
-    return status.secondaryText;
+    return context === "services" ? status.secondaryText?.replace(/reception/g, "this location") || "" : status.secondaryText;
   };
 
   const secondaryLabel = getSecondaryLabel();

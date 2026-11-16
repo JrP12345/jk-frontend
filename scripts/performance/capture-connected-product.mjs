@@ -11,7 +11,7 @@ import { fixture, ids, demoClock, doctors, patients, appointments, invoices } fr
 const requireTool = createRequire(path.resolve(process.env.PLAYWRIGHT_TOOLS_DIR || '.next/landing-tools', 'tool.cjs'));
 const { chromium } = requireTool('playwright-core');
 const origin = 'http://localhost:3105', api = 'http://127.0.0.1:5118';
-const output = path.resolve('docs/landing-page/connected/product'), assets = path.resolve('public/landing/product');
+const output = path.resolve(process.env.PRODUCT_CAPTURE_OUTPUT || 'docs/landing-page/connected/product'), assets = path.resolve(process.env.PRODUCT_CAPTURE_ASSETS || 'public/landing/product');
 await fs.mkdir(output, { recursive: true });
 await fs.mkdir(assets, { recursive: true });
 let role = 'admin', scene = '', logs = '', browser;
@@ -61,7 +61,7 @@ try {
     { name: 'billing', route: '/dashboard/billing', role: 'admin', expected: 'DEMO-1021' },
     { name: 'overview', route: '/dashboard', role: 'admin', expected: 'Aditi Rao' },
     { name: 'whatsapp', route: '/dashboard/organizations?organizationId=' + ids.org + '&section=configuration', role: 'admin', expected: 'Connection and delivery' },
-    { name: 'notifications', route: '/dashboard/notifications', role: 'admin', expected: 'Anaya Sen checked in' },
+    { name: 'pharmacy', route: '/dashboard/pharmacy', role: 'admin', expected: 'Paracetamol' },
   ].filter(screen => !process.env.PRODUCT_CAPTURE_SCREENS || process.env.PRODUCT_CAPTURE_SCREENS.split(',').includes(screen.name))) for (const mobile of [false, true]) {
     role = screen.role || 'patient'; scene = screen.name; reads.length = 0; unknown.clear();
     const writesStart = blockedWrites.length, initializationsStart = simulatedInitializations.length;
@@ -72,7 +72,10 @@ try {
     if (screen.role) await page.clock.setFixedTime(new Date(demoClock));
     await context.addInitScript(locationId => { localStorage.setItem('ekavyu-mode', 'light'); localStorage.setItem('ekavyu_active_location_id', locationId); }, ids.location);
     if (screen.role) await context.addCookies(['access_token', 'refresh_token', 'ekavyu_session'].map(name => ({ name, value: 'isolated-demo-session', domain: 'localhost', path: '/' })));
-    await page.routeWebSocket('**/*', socket => socket.close());
+    await page.routeWebSocket('**/*', socket => {
+      if (socket.url().includes('/_next/')) socket.connectToServer();
+      else socket.close();
+    });
     await page.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
       if (url.hostname === 'api.example.invalid') {
@@ -88,9 +91,10 @@ try {
     const response = await page.goto(origin + screen.route, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(text => document.querySelector('main')?.innerText.includes(text), screen.expected, { timeout: 60000 });
     if (screen.name === 'booking') {
-      const dates = page.locator('#booking button').filter({ hasText: /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun).*\d/is });
-      await dates.first().click();
-      const time = page.locator('#booking button').filter({ hasText: /10:30/ });
+      const dates = page.getByRole('group', { name: 'Appointment dates', exact: true }).getByRole('button');
+      // Use a future date so captures remain valid after today's morning has passed.
+      await dates.nth(1).click();
+      const time = page.getByRole('button', { name: /^10:30(?: AM)?$/ });
       await time.first().click({ timeout: 20000 });
     }
     if (screen.name === 'whatsapp') await page.getByText('Recent message delivery', { exact: true }).click();
@@ -100,8 +104,8 @@ try {
     await page.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); document.querySelector('main')?.scrollTo({ top: 0, behavior: 'instant' }); });
     let box = await page.locator('main').boundingBox();
     if (screen.name === 'booking' && mobile) {
-      await page.locator('#booking').scrollIntoViewIfNeeded();
-      await page.evaluate(() => { const node = document.querySelector('#booking'); window.scrollTo({ top: node.getBoundingClientRect().top + window.scrollY - 70, behavior: 'instant' }); });
+      await page.getByRole('heading', { name: 'Book a visit', exact: true }).scrollIntoViewIfNeeded();
+      await page.evaluate(() => { const node = [...document.querySelectorAll('h2')].find(heading => heading.textContent === 'Book a visit'); window.scrollTo({ top: node.getBoundingClientRect().top + window.scrollY - 70, behavior: 'instant' }); });
       box = { x: 0, y: 70, width: 420, height: 800 };
     }
     if (screen.name === 'whatsapp') {
@@ -127,6 +131,9 @@ try {
   }
 } catch (error) { throw new Error(error.message + '\nPreview log: ' + logs.slice(-1800)); }
 finally {
+  try {
   await fs.writeFile(path.join(output, 'capture-provenance.json'), JSON.stringify({ capturedAt: new Date().toISOString(), tool: 'Playwright ' + requireTool('playwright-core/package.json').version, dataset: { source: 'landing-demo.mjs; entirely fictional, loopback only', clock: demoClock, doctors: doctors.length, patients: patients.length, appointments: appointments.length, invoices: invoices.length, locations: 2, storage: 'In-memory API responses; no database changes' }, captures, blockedWrites, simulatedInitializations }, null, 2));
-  await browser?.close(); next.kill(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+  } finally {
+    await browser?.close(); next.kill(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+  }
 }

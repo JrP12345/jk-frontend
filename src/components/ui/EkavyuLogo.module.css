@@ -1,0 +1,27 @@
+@layer components {
+.icon { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; vertical-align: middle; }
+.artwork { display: block; width: 100%; height: 100%; object-fit: contain; }
+.inverse { display: none; }
+.appearance[data-brand-appearance="on-dark"] .normal { display: none; }
+.appearance[data-brand-appearance="on-dark"] .inverse { display: block; }
+:global([data-mode="dark"]) .appearance[data-brand-appearance="auto"] .normal { display: none; }
+:global([data-mode="dark"]) .appearance[data-brand-appearance="auto"] .inverse { display: block; }
+.logo { display: inline-flex; flex-shrink: 0; align-items: center; vertical-align: middle; user-select: none; }
+.horizontal { gap: 6px; min-height: 36px; }
+.horizontalSymbol { display: block; flex: 0 0 32px; height: 28px; }
+.horizontalWordmark { display: block; flex: 1; height: 23px; }
+.sm { width: 150px; }
+.md { width: 168px; }
+.lg { width: 208px; }
+.xl { width: 240px; }
+.stacked { height: auto; aspect-ratio: 595 / 370; }
+.stacked.sm { width: 56px; }
+.stacked.md { width: 80px; }
+.stacked.lg { width: 180px; }
+.stacked.xl, .descriptor { width: 240px; }
+.descriptor { height: auto; aspect-ratio: 595 / 420; }
+@media print {
+  .appearance[data-brand-appearance] .normal, :global([data-mode="dark"]) .appearance[data-brand-appearance] .normal { display: block; }
+  .appearance[data-brand-appearance] .inverse, :global([data-mode="dark"]) .appearance[data-brand-appearance] .inverse { display: none; }
+}
+}

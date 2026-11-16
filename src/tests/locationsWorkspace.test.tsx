@@ -12,6 +12,18 @@ const location = { id: "clinic", organizationId: "org-a", slug: "sample-clinic",
 const response = (data: unknown) => ({ data: { data } });
 const deferred = () => { let resolve!: (value: unknown) => void; let reject!: (reason: unknown) => void; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 function mount(organizationId = "org-a") { return render(<ToastProvider><Locations organizationId={organizationId} embedded /></ToastProvider>); }
+
+it("defaults new pharmacy branches correctly and omits clinical booking actions", async () => {
+  useAuthStore.setState({ user: { id: "root", name: "Root", email: "root@example.test", role: "root" } });
+  fixture.locations = [{ ...location, facilityType: "pharmacy" }];
+  render(<ToastProvider><Locations organizationId="org-a" workspaceProfile="pharmacy" embedded /></ToastProvider>);
+  fireEvent.click((await screen.findAllByRole("button", { name: "Actions for Sample clinic" }))[0]);
+  expect(screen.getByRole("menuitem", { name: "Pharmacy settings" })).toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", { name: "Website booking" })).not.toBeInTheDocument();
+  fireEvent.keyDown(document, { key: "Escape" });
+  fireEvent.click(screen.getByRole("button", { name: /Add Location/i }));
+  expect(screen.getByRole("combobox", { name: "Location type" })).toHaveTextContent("Pharmacy");
+});
 async function edit() { fireEvent.click((await screen.findAllByRole("button", { name: "Edit", exact: true }))[0]); return screen.getByRole("dialog", { name: "Edit Location" }); }
 async function action(name: string) { fireEvent.click((await screen.findAllByRole("button", { name: "Actions for Sample clinic" }))[0]); fireEvent.click(await screen.findByRole("menuitem", { name, exact: true })); }
 const tab = (dialog: HTMLElement, name: string) => fireEvent.click(within(dialog).getByRole("tab", { name, exact: true }));

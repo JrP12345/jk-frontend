@@ -14,7 +14,7 @@ const results = [];
 try {
   for (const scenario of [
     { name: 'desktop', width: 1440, height: 1000 },
-    { name: 'tablet', width: 820, height: 1180, touch: true },
+    { name: 'tablet', width: 768, height: 1180, touch: true },
     { name: 'mobile', width: 390, height: 844, touch: true },
     { name: 'narrow-mobile', width: 320, height: 740, touch: true },
     { name: 'reduced-motion', width: 1440, height: 1000, reduced: true },
@@ -22,6 +22,7 @@ try {
     { name: 'no-javascript', width: 390, height: 844, noJs: true },
     { name: 'slow-mobile', width: 390, height: 844, touch: true, slow: true },
     { name: 'dark-desktop', width: 1440, height: 1000, dark: true },
+    { name: 'dark-mobile', width: 390, height: 844, touch: true, dark: true },
   ].filter(scenario => !process.env.LANDING_QA_SCENARIOS || process.env.LANDING_QA_SCENARIOS.split(',').includes(scenario.name))) {
     const context = await browser.newContext({ viewport: { width: scenario.width, height: scenario.height }, isMobile: !!scenario.touch, hasTouch: !!scenario.touch, javaScriptEnabled: !scenario.noJs, reducedMotion: scenario.reduced ? 'reduce' : 'no-preference' });
     const page = await context.newPage(), errors = [], consoleErrors = [], writes = [];
@@ -50,10 +51,12 @@ try {
     }
     const response = await page.goto(origin, { waitUntil: 'networkidle', timeout: 90000 });
     await page.locator('h1').waitFor();
+    if (!scenario.noJs && await page.locator('nextjs-portal').count()) await page.addStyleTag({ content: 'nextjs-portal { display:none!important }' });
     const row = { scenario: scenario.name, status: response.status(), errors, consoleErrors };
     row.layout = await page.evaluate(() => ({ heading: document.querySelector('h1').textContent, main: document.querySelectorAll('main').length, overflow: document.documentElement.scrollWidth > innerWidth, canvas: document.querySelectorAll('main canvas').length, brokenAnchors: [...document.querySelectorAll('a[href^="#"]')].filter(link => !document.getElementById(link.getAttribute('href').slice(1))).map(link => link.getAttribute('href')) }));
     if (!scenario.noJs) {
-      await page.addScriptTag({ path: requireAudit.resolve('axe-core/axe.min.js') });
+      // DevTools evaluation lets the audit run without weakening the app's CSP.
+      await page.evaluate(await fs.readFile(requireAudit.resolve('axe-core/axe.min.js'), 'utf8'));
       const audit = async () => page.evaluate(async () => {
         const result = await window.axe.run(document.querySelector('main').parentElement, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } });
         return { violations: result.violations.map(item => ({ id: item.id, nodes: item.nodes.map(node => node.target) })), incomplete: result.incomplete.map(item => item.id) };
@@ -64,15 +67,21 @@ try {
         const toggle = page.getByRole('button', { name: 'Open navigation', exact: true });
         await toggle.click(); await page.keyboard.press('Escape');
         row.menuFocusRecovered = await toggle.evaluate(node => document.activeElement === node && node.getAttribute('aria-expanded') === 'false');
+        await toggle.click();
+        await page.setViewportSize({ width: 1024, height: 844 });
+        await page.waitForFunction(() => document.querySelector('[aria-controls="home-mobile-navigation"]')?.getAttribute('aria-expanded') === 'false');
+        row.menuResizeDismissed = !await page.getByRole('navigation', { name: 'Mobile navigation' }).isVisible();
+        await page.setViewportSize({ width: scenario.width, height: scenario.height });
       }
-      const consult = page.getByRole('group', { name: 'Explore an example appointment' }).getByRole('button', { name: /Consult/ });
-      await consult.evaluate(node => node.scrollIntoView({ block: 'center', behavior: 'instant' })); await consult.focus(); await consult.press('Enter');
-      await page.getByText('The doctor opens the consultation.', { exact: true }).waitFor();
-      row.keyboardStageWorks = true;
+      const booking = page.getByRole('group', { name: 'Explore patient screens' }).getByRole('button', { name: 'Plan a visit', exact: true });
+      await booking.evaluate(node => node.scrollIntoView({ block: 'center', behavior: 'instant' })); await booking.focus(); await booking.press('Enter');
+      row.keyboardEvidenceWorks = await booking.getAttribute('aria-pressed') === 'true';
       row.evidence = [];
-      for (const audience of ['patient', 'clinic', 'communications']) {
+      row.frameChanges = [];
+      for (const audience of ['patient', 'clinic']) {
         const controls = page.getByRole('group', { name: `Explore ${audience} screens`, exact: true });
         const buttons = controls.getByRole('button');
+        const initialFrame = await page.locator(`[data-audience="${audience}"] [class*="screenshotFrame"]`).boundingBox();
         for (let index = 0; index < await buttons.count(); index++) {
           const button = buttons.nth(index), label = await button.textContent();
           await select(button);
@@ -80,16 +89,38 @@ try {
           await image.scrollIntoViewIfNeeded();
           await page.waitForFunction(selector => { const image = document.querySelector(selector); return image?.complete && image.naturalWidth > 0; }, `#${audience}-product-screen img`, { timeout: 20000 });
           row.evidence.push({ audience, label, pressed: await button.getAttribute('aria-pressed'), source: await image.evaluate(node => node.currentSrc) });
-          if (['desktop', 'mobile'].includes(scenario.name) && ['Doctor', 'WhatsApp delivery'].includes(label)) await page.screenshot({ path: path.join(output, `${scenario.name}-${audience}-detail.png`) });
+          const frame = await page.locator(`[data-audience="${audience}"] [class*="screenshotFrame"]`).boundingBox();
+          row.frameChanges.push({ audience, label, heightDelta: Math.abs(frame.height - initialFrame.height) });
+          if (['desktop', 'mobile'].includes(scenario.name) && ['Consultation', 'Patient updates'].includes(label)) await page.screenshot({ path: path.join(output, `${scenario.name}-${audience}-${label.replaceAll(' ', '-')}.png`) });
         }
         await select(buttons.first());
       }
-      const whatsappQuestion = page.locator('summary').filter({ hasText: 'What can clinics send through WhatsApp?' });
+      const pharmacy = page.locator('#pharmacy-product-screen img');
+      await pharmacy.scrollIntoViewIfNeeded();
+      await page.waitForFunction(() => { const image = document.querySelector('#pharmacy-product-screen img'); return image?.complete && image.naturalWidth > 0; });
+      row.pharmacyEvidence = await pharmacy.evaluate(image => image.currentSrc.includes('/pharmacy-'));
+      row.destinations = await page.evaluate(() => ['/browse', '/onboarding?mode=new_org', '/pharmacy-start', '/login'].every(path => [...document.querySelectorAll('a')].some(link => link.getAttribute('href') === path)));
+      row.screenControlsVisible = await page.locator('[aria-controls="clinic-product-screen"]').evaluateAll(buttons => buttons.every(button => {
+        const box = button.getBoundingClientRect(), parent = button.parentElement.getBoundingClientRect();
+        return box.left >= parent.left - 1 && box.right <= parent.right + 1;
+      }));
+      await select(page.getByRole('link', { name: 'See messaging requirements', exact: true }));
+      const whatsappAnswer = page.locator('#whatsapp-question');
+      row.requirementsRevealed = await whatsappAnswer.isVisible() && await whatsappAnswer.evaluate(node => node.closest('details').open);
+      const whatsappQuestion = page.locator('summary').filter({ hasText: 'What is required for WhatsApp updates?' });
+      if (await whatsappAnswer.isVisible()) await select(whatsappQuestion);
       await select(whatsappQuestion);
       row.whatsappDisclosure = await whatsappQuestion.evaluate(node => node.parentElement.open && node.parentElement.textContent.includes('recorded consent'));
       row.changedStateAccessibility = await audit();
       await select(whatsappQuestion);
-      await select(page.getByRole('group', { name: 'Explore an example appointment' }).getByRole('button', { name: /Book/ }));
+      await page.locator('#plans').scrollIntoViewIfNeeded();
+      const plans = page.getByRole('region', { name: 'Current organization plans', exact: true });
+      await plans.scrollIntoViewIfNeeded();
+      await plans.getByRole('article').first().waitFor();
+      row.planLayout = await plans.evaluate(node => {
+        const cards = [...node.querySelectorAll('article')].map(card => card.getBoundingClientRect());
+        return { sameRow: cards.every(card => Math.abs(card.top - cards[0].top) < 1), scrollable: node.scrollWidth > node.clientWidth };
+      });
     }
     if (['desktop', 'tablet', 'mobile', 'dark-desktop'].includes(scenario.name)) {
       await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 700) { window.scrollTo({ top: y, behavior: 'instant' }); await new Promise(resolve => setTimeout(resolve, 70)); } });
@@ -97,15 +128,17 @@ try {
       await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo({ top: 0, behavior: 'instant' }); });
       await page.screenshot({ path: path.join(output, scenario.name + '-hero.png') });
       await page.screenshot({ path: path.join(output, scenario.name + '-full.png'), fullPage: true });
-      if (['desktop', 'mobile'].includes(scenario.name)) for (const section of ['for-patients', 'for-organizations', 'stay-connected']) {
+      row.pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+      if (['desktop', 'tablet', 'mobile'].includes(scenario.name)) for (const section of ['for-patients', 'for-organizations', 'for-pharmacies', 'how-it-works', 'plans']) {
         await page.locator('#' + section).evaluate(node => window.scrollTo({ top: node.getBoundingClientRect().top + window.scrollY - 80, behavior: 'instant' }));
         await page.screenshot({ path: path.join(output, scenario.name + '-' + section + '.png') });
       }
     }
     row.writes = writes;
     row.passed = row.status === 200 && !errors.length && row.layout.main === 1 && !row.layout.overflow && row.layout.canvas === 0 && !row.layout.brokenAnchors.length && !writes.length;
-    if (!scenario.noJs) row.passed &&= !row.accessibility.violations.length && !row.changedStateAccessibility.violations.length && row.keyboardStageWorks && row.whatsappDisclosure && row.evidence.length === 9 && row.evidence.every(item => item.pressed === 'true');
-    if (scenario.name === 'mobile') row.passed &&= row.menuFocusRecovered;
+    if (!scenario.noJs) row.passed &&= !row.accessibility.violations.length && !row.changedStateAccessibility.violations.length && row.keyboardEvidenceWorks && row.whatsappDisclosure && row.evidence.length === 7 && row.evidence.every(item => item.pressed === 'true') && row.pharmacyEvidence && row.destinations && row.requirementsRevealed && row.frameChanges.every(item => item.heightDelta <= 1) && row.planLayout.sameRow;
+    if (!scenario.noJs) row.passed &&= row.screenControlsVisible;
+    if (scenario.name === 'mobile') row.passed &&= row.menuFocusRecovered && row.menuResizeDismissed;
     results.push(row); console.log(JSON.stringify({ scenario: row.scenario, passed: row.passed, errors, accessibility: row.accessibility, changedStateAccessibility: row.changedStateAccessibility }));
     await context.close();
   }

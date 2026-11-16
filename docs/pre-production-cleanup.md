@@ -2,6 +2,12 @@
 
 Working plan: 24 October 2026. Scope: frontend, sibling backend and static coming-soon site. Preserve pre-existing frontend work. No database, index application, provider send, secret rotation or deployment is authorized by this source cleanup. Baseline logs and analysis are ignored under `.next/cleanup-baseline`.
 
+## Frontend follow-up, 9 November 2026
+
+Removed 37 superseded files (5,815,541 bytes): 28 unused/obsolete images, eight earlier visual/performance reports, and the replaced Browse review harness. Removed its unused fixture filter and five unreferenced CSS classes. Consolidated the homepage, public interaction and audit-tool guides around the current implementation; updated Browse evidence links and capture provenance. The product capture tool now generates only the nine screens used by the landing page. Current handoffs and website-wide performance baselines remain useful and are retained.
+
+Verification for this cleanup: 20 focused homepage tests, changed-script ESLint and syntax checks, diff whitespace, local Markdown links, deleted-file references, module reachability and all 18 retained PNG hashes/WebP byte counts passed. No orphan application module was found by the import scan. The remaining CSS scan candidates are external/global selectors or dynamically selected dialog sizes. This is a Level 1 removal of unused presentation rules/assets and superseded tooling; no application behavior or types changed, so the full suite and build were not repeated. Earlier cross-repository findings below retain their original scope and dates.
+
 ## Inventory and progress
 
 The second entry/import pass covers 563 frontend JS/TS files, 75 framework/runtime entries and 362 reachable modules; backend covers 799 JS/TS files, 35 API/worker/operational entries and 563 reachable modules. Tests, configs, scripts, dynamic loading and model relations are checked separately from imports. The coming-soon page and its three brand images remain referenced.

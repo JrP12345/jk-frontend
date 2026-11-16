@@ -30,6 +30,19 @@ describe("organization management", () => {
   });
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView; router.push.mockReset(); router.replace.mockReset(); window.history.replaceState(null, "", "/"); });
 
+  it("uses pharmacy readiness and target pharmacy invitation roles from the Root workspace", async () => {
+    const pharmacy = { ...org, workspaceProfile: "pharmacy", staffMfaRequired: true };
+    window.history.replaceState(null, "", `/dashboard/organizations?organizationId=${org.id}`);
+    vi.mocked(api.get).mockImplementation(async path => ({ data: { data: String(path) === "/organizations" ? [pharmacy] : [] } }));
+    mount(<OrganizationsPage />);
+    expect(await screen.findByRole("heading", { name: "Pharmacy setup" })).toBeInTheDocument();
+    expect(screen.queryByText("Public booking setup")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Members" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Invite member" }));
+    expect(screen.getByRole("combobox", { name: "Role" })).toHaveTextContent("pharmacist");
+    expect(useAuthStore.getState().user?.role).toBe("root");
+  });
+
   it("opens from Root overview and persists the selected trial and uploaded logo reference", async () => {
     window.history.replaceState(null, "", "/dashboard/organizations?create=1");
     mount(<React.StrictMode><OrganizationsPage /></React.StrictMode>);

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/build-pharmacy-offline.mjs",
+    "prebuild": "node scripts/build-pharmacy-offline.mjs",
+    "build:pharmacy-offline": "node scripts/build-pharmacy-offline.mjs",
     "dev": "next dev --hostname 0.0.0.0",
     "clean": "node -e \"require('node:fs').rmSync('.next', {recursive: true, force: true})\"",
     "build": "next build",

@@ -6,6 +6,7 @@ import { NavigationPending } from "@/components/ui/RouteProgress";
 import { LayoutDashboard, Calendar, Clock, Users, FileText, Receipt, Building2, Menu, FlaskConical, Pill } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { isPharmacyWorkspace, pharmacyWorkspaceRoute } from "@/lib/workspaceProfile";
+import { isCounterSalesUser } from "@/lib/pharmacyCapabilities";
 
 interface MobileBottomNavProps {
   user: any;
@@ -33,6 +34,10 @@ export function MobileBottomNav({
 
   // Determine top 4 tabs based on user role + 5th tab is always "More" (drawer)
   const getTabsForRole = (): NavTab[] => {
+    if (isCounterSalesUser(user)) return [
+      { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Counter sales", href: "/dashboard/pharmacy", icon: Pill },
+    ];
     if (isPharmacyWorkspace(user)) return [
       { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
       { label: "Pharmacy", href: "/dashboard/pharmacy", icon: Pill },

@@ -10,3 +10,81 @@
 .thermal :global(tr) { padding-block: 6px; border-bottom: 1px solid var(--border); }
 .thermal :global(td) { border: 0; padding: 1px 0; }
 .thermal :global(td)::before { content: attr(data-label) ": "; font-weight: 600; }
+
+.document { box-sizing: border-box; width: 100%; padding: 24px; background: #fff; color: #18232d; font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.45; }
+.document :where(h1,h2,h3,p,dl,dd) { margin: 0; }
+.documentHeader { display: grid; grid-template-columns: minmax(0,1fr) minmax(190px,.65fr); gap: 24px; padding-bottom: 20px; border-bottom: 2px solid #205e54; }
+.eyebrow { margin-bottom: 5px !important; color: #205e54; font-size: 9px; font-weight: 700; letter-spacing: .18em; }
+.issuer h1 { margin-bottom: 8px; font-size: 23px; font-weight: 700; line-height: 1.2; }
+.issuer > p { margin-top: 4px; }
+.registration { color: #43515a; font-size: 10px; }
+.documentMeta { text-align: right; }
+.documentMeta h2 { margin-bottom: 7px; font-size: 14px; font-weight: 700; }
+.documentMeta > strong { display: block; margin-bottom: 12px; font-size: 13px; }
+.document dl > div { display: flex; justify-content: space-between; gap: 12px; }
+.document dl dt { color: #52606a; }
+.document dl dd { text-align: right; font-variant-numeric: tabular-nums; }
+.documentMeta dl { display: grid; gap: 4px; font-size: 11px; }
+.recipientGrid { display: grid; grid-template-columns: minmax(0,1fr) minmax(190px,.65fr); gap: 24px; padding-block: 18px; }
+.document h3 { margin-bottom: 6px; color: #52606a; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.recipientGrid > div > strong { display: block; margin-bottom: 4px; font-size: 12px; }
+.recipientGrid dl { display: grid; align-content: start; gap: 5px; font-size: 11px; }
+.paymentStatus { font-weight: 700; text-transform: capitalize; }
+.documentNotice { margin-bottom: 14px !important; padding: 8px 10px; border: 1px solid #d3dce0; font-size: 10px; font-weight: 600; }
+.document .items { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; }
+.document .items th { padding: 9px 5px; border-block: 1px solid #bdc9ce; background: #edf2f2; color: #35444c; text-align: right; font-size: 9px; font-weight: 700; }
+.document .items th:nth-child(1), .document .items th:nth-child(2) { text-align: left; }
+.document .items td { padding: 10px 5px 5px; text-align: right; vertical-align: top; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.document .items td:first-child, .document .items td:nth-child(2) { text-align: left; }
+.document .items small { display: block; margin-top: 3px; color: #52606a; font-size: 10px; }
+.document .items .batchRow td { padding-top: 2px; padding-bottom: 8px; border-bottom: 1px solid #e0e6e9; text-align: left; color: #52606a; font-size: 9px; }
+.batchRow td > div { display: flex; flex-wrap: wrap; gap: 2px 14px; }
+.itemRow:has(+ .itemRow) td, .itemRow:last-child td { padding-bottom: 10px; border-bottom: 1px solid #e0e6e9; }
+.closing { break-inside: avoid; }
+.summaryGrid { display: grid; grid-template-columns: minmax(0,1fr) minmax(230px,.75fr); gap: 32px; padding-top: 20px; }
+.documentNotes { color: #52606a; font-size: 11px; }
+.documentNotes p { margin-bottom: 7px; }
+.documentTotals { display: grid; gap: 6px; }
+.documentTotals .grandTotal { align-items: baseline; margin-block: 3px; padding-block: 10px; border-block: 1px solid #bdc9ce; font-size: 16px; font-weight: 700; }
+.documentTotals .grandTotal dt { color: #18232d; font-size: 11px; }
+.documentFooter { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: end; margin-top: 30px; padding-top: 14px; border-top: 1px solid #d3dce0; color: #52606a; font-size: 9px; }
+.signature { text-align: right; }
+.signature > div { width: 80%; height: 35px; margin-left: auto; border-bottom: 1px solid #89969e; }
+.signature strong { display: block; margin-top: 6px; color: #18232d; }
+.thermal .document { padding: 0; font-size: 10px; }
+.thermal .document .items { font-size: 10px; }
+.thermal .documentHeader, .thermal .recipientGrid, .thermal .summaryGrid, .thermal .documentFooter { display: block; }
+.thermal .documentHeader { padding-bottom: 10px; }
+.thermal .issuer h1 { font-size: 16px; }
+.thermal .documentMeta { margin-top: 12px; text-align: left; }
+.thermal .documentMeta h2 { font-size: 12px; }
+.thermal .documentMeta > strong { font-size: 11px; margin-bottom: 6px; }
+.thermal .recipientGrid { padding-block: 10px; }
+.thermal .recipientGrid dl { margin-top: 8px; }
+.thermal .document .items colgroup, .thermal .document .items thead, .thermal .document .items .ordinal { display: none; }
+.thermal .document .items tr { padding-block: 6px; border-bottom: 1px solid #bdc9ce; }
+.thermal .document .items td { display: block; width: auto; padding: 2px 0; border: 0; text-align: left; }
+.thermal .document .items small { display: inline; margin-left: 4px; }
+.thermal .document .items .batchRow td:empty { display: none; }
+.thermal .document .items .batchRow td::before { content: none; }
+.thermal .batchRow td > div { gap: 2px 7px; }
+.thermal .summaryGrid { padding-top: 12px; }
+.thermal .documentNotes { margin-bottom: 12px; font-size: 9px; }
+.thermal .documentTotals .grandTotal { font-size: 14px; }
+.thermal .documentFooter { margin-top: 16px; padding-top: 10px; }
+.thermal .signature { margin-top: 12px; }
+.thermal .signature > div { height: 25px; }
+@media print {
+  .document { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* The dashboard print reset hides all semantic headers/footers and pads every cell. Scope paper overrides here. */
+  .paper :global(header), .paper :global(footer) { display: block !important; }
+  .document .documentHeader, .document .documentFooter { display: grid !important; }
+  .document .items th { padding: 9px 5px !important; border: 0 !important; border-block: 1px solid #bdc9ce !important; background: #edf2f2 !important; color: #35444c !important; }
+  .document .items td { padding: 10px 5px 5px !important; border: 0 !important; color: #18232d !important; }
+  .document .items .batchRow td { padding: 2px 5px 8px !important; border-bottom: 1px solid #e0e6e9 !important; color: #52606a !important; }
+  .document .items .itemRow:last-child td { border-bottom: 1px solid #e0e6e9 !important; }
+  .document .items thead { display: table-header-group; }
+  .thermal .document .documentHeader, .thermal .document .documentFooter { display: block !important; }
+  .thermal .document .items td, .thermal .document .items .batchRow td { padding: 2px 0 !important; border: 0 !important; }
+  .thermal .document .items thead { display: none; }
+}

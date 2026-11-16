@@ -148,9 +148,10 @@ it("keeps leave unavailable after a failed read and supports retry before saving
   expect(await within(dialog).findByText("Leave could not be loaded")).toBeInTheDocument(); expect(within(dialog).getByRole("button", { name: "Save leave" })).toBeDisabled();
   fixture.get.mockImplementation(original); fireEvent.click(within(dialog).getByRole("button", { name: "Try again" }));
   await waitFor(() => expect(within(dialog).getByRole("button", { name: "Save leave" })).toBeEnabled());
-  fireEvent.change(datePickerInput(within(dialog).getByLabelText("Leave date *")), { target: { value: "2026-11-01" } }); fireEvent.change(within(dialog).getByLabelText("Reason *"), { target: { value: "Conference" } });
+  const leaveDate = datePickerInput(within(dialog).getByLabelText("Leave date *")).value;
+  fireEvent.change(within(dialog).getByLabelText("Reason *"), { target: { value: "Conference" } });
   const submit = within(dialog).getByRole("button", { name: "Save leave" }); expect((submit as HTMLButtonElement).form?.id).toBe("doctor-leave"); fireEvent.click(submit);
-  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/doctor-overrides?organizationId=org", { doctorId: "doctor", locationId: "all", date: "2026-11-01", status: "unavailable", reason: "Conference" }));
+  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/doctor-overrides?organizationId=org", { doctorId: "doctor", locationId: "all", date: leaveDate, status: "unavailable", reason: "Conference" }));
 });
 
 it("cancels only the selected leave entry and preserves failures for retry", async () => {

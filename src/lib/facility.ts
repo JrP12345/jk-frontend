@@ -15,6 +15,11 @@ export function facilityTypeLabel(value: unknown): string {
   return facilityTypeOptions.find(option => option.value === value)?.label || "Healthcare facility";
 }
 
+/** A pharmacy or diagnostic branch can be a complete profile without a doctor. */
+export function facilityHasDoctorSection(location: { facilityType?: FacilityType | null; doctors?: readonly unknown[]; doctorCount?: number }) {
+  return Boolean(location.doctors?.length || (location.doctorCount || 0) > 0) || !["pharmacy", "diagnostic_center", "other"].includes(location.facilityType || "");
+}
+
 /** Reports may use all locations; physical actions still use validSingleChoice. */
 export function resolveLocationSelection(locations: readonly { id: string }[], selected: string | null): string | null {
   if (locations.length === 1) return locations[0].id;

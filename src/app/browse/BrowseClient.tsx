@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import api from "@/lib/api";
 import { facilityTypeOptions, type FacilityType } from "@/lib/facility";
-import { Alert, Button, Select, Card, EmptyState, Modal, cn } from "@/components/ui";
+import { Alert, Button, Select, Card, EmptyState, Modal, EkavyuLogo, cn } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import LocationCardSkeletons from "@/components/ui/LocationCardSkeletons";
 import LocationCard from "./LocationCard";
@@ -34,6 +34,7 @@ export interface Location {
   slug?: string;
   name: string;
   facilityType?: FacilityType | null;
+  pharmacy?: { catalogueEnabled: boolean; pickupEnabled: boolean };
   city: string;
   address: string;
   phone: string;
@@ -333,7 +334,7 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
   const resultCount = <>{locations.length} {locations.length === 1 ? "facility" : "facilities"} {nextCursor ? "shown" : "found"}</>;
 
   return <div className={cn(marketplace.page, styles.page)} data-browse-view={view}>
-    <MarketplaceNavbar showSearch={false} showSignUp navigationSlot={<><Link href="/browse" aria-current="page" className="font-medium text-accent">Find care</Link><Link href="/" className="text-text-secondary hover:text-text">For patients</Link><Link href="/pricing" className="text-text-secondary hover:text-text">For providers</Link></>} />
+    <MarketplaceNavbar showSearch={false} showSignUp showProviderRequest />
     <main>
       <section className={styles.hero} aria-labelledby="browse-title">
         <div className={cn(marketplace.content, styles.heroInner)}>
@@ -341,7 +342,7 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
           <BrowseSearch search={searchQuery} city={values.city} cities={filters.cities} disabled={loadingOnly} onSearch={value => { setSearchQuery(value); setBounds(null); }} onCity={city => changeFilters({ ...values, city })} onSubmit={submitSearch} />
         </div>
       </section>
-      {view === "list" && <div className={cn(marketplace.content, styles.quickFilters)} aria-label="Quick filters">
+      {view === "list" && <div className={cn(marketplace.content, styles.quickFilters)} role="group" aria-label="Quick filters">
         <Button variant="outline" onClick={() => setFiltersOpen(true)} aria-label="Filters" aria-expanded={filtersOpen} aria-haspopup="dialog" icon={<SlidersHorizontal aria-hidden="true" />}>Filters{hasActiveFilters && <span className={styles.filterDot} />}</Button>
         <Button variant={values.openNow ? "secondary" : "outline"} aria-pressed={values.openNow} onClick={() => changeFilters({ ...values, openNow: !values.openNow })}>Open now</Button>
         <Button variant={values.onlineBooking ? "secondary" : "outline"} aria-pressed={Boolean(values.onlineBooking)} onClick={() => changeFilters({ ...values, onlineBooking: !values.onlineBooking })}>Online booking</Button>
@@ -376,7 +377,7 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
         </div>
       </div>
     </main>
-    <footer className={styles.footer}><div className={cn(marketplace.content, styles.footerContent, "text-sm")}><div><strong className="text-xl">Ekavyu</strong><p>Find care, explore facilities, and choose your next visit.</p></div><nav aria-label="Patient links"><strong>Patients</strong><Link href="/browse">Find care</Link><Link href="/register">Create an account</Link></nav><nav aria-label="Provider links"><strong>Providers</strong><Link href="/pricing">Plans for your practice</Link><Link href="/login">Provider sign in</Link></nav></div></footer>
+    <footer className={styles.footer}><div className={cn(marketplace.content, styles.footerContent, "text-sm")}><div><Link href="/" aria-label="Ekavyu home" className="inline-flex min-h-11 items-center"><EkavyuLogo size="sm" appearance="on-dark" /></Link><p>Find care, explore facilities, and choose your next visit.</p></div><nav aria-label="Patient links"><strong>Patients</strong><Link href="/browse">Find care</Link><Link href="/login?mode=register">Create an account</Link></nav><nav aria-label="Provider links"><strong>Providers</strong><Link href="/pricing">Plans for your practice</Link><Link href="/login?audience=staff">Provider sign in</Link></nav></div></footer>
     <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter locations" presentation="sheet" size="md" footer={<div className="flex w-full gap-2"><Button variant="outline" className="shrink-0" onClick={resetFilters}>Clear all</Button><Button fullWidth aria-label="Show results" onClick={() => setFiltersOpen(false)}>{loading || nextCursor ? "Show results" : "Show " + locations.length + (locations.length === 1 ? " result" : " results")}</Button></div>}><BrowseFilters {...filterProps} showCity /></Modal>
   </div>;
 }

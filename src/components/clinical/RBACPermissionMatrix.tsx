@@ -64,6 +64,22 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
 
   // Search Query States
   const [customSearchQuery, setCustomSearchQuery] = useState("");
+  const [activePanel, setActivePanel] = useState("matrix");
+  const counterRoleExists = roles.some(role => role.name === "pharmacy_counter_sales");
+  const selectedPharmacyTemplate = pharmacyPresets.find(preset => preset.permissions.length === newRolePermissions.length && preset.permissions.every(code => newRolePermissions.includes(code)))?.name || "";
+
+  const applyPharmacyTemplate = (name: string) => {
+    const preset = pharmacyPresets.find(item => item.name === name);
+    if (!preset || !preset.permissions.length || preset.permissions.some(code => !permissionsCatalog.some(item => item.code === code))) {
+      toast({ title: "Access template unavailable", description: "Refresh roles and permissions before using this template.", variant: "error" });
+      return false;
+    }
+    // A narrow template replaces the draft; combining it could retain management grants.
+    setNewRolePermissions([...preset.permissions]);
+    setNewRoleName(preset.name);
+    setNewRoleDesc(preset.name === "pharmacy_counter_sales" ? "Counter sales, payments and own drawer. No inventory management, costs, purchases, returns or setup." : preset.label);
+    return true;
+  };
 
   const getPresetPermissions = (presetRoleName: string): string[] => {
     const pharmacyPreset = pharmacyPresets.find(preset => preset.name === presetRoleName);
@@ -335,8 +351,15 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
         </div>
       </div>
 
+      {pharmacyPresets.some(preset => preset.name === "pharmacy_counter_sales") && <Card padding="sm" contentClassName="gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0"><h3 className="text-sm font-semibold">Give staff counter sales access</h3><p className="mt-1 text-xs leading-relaxed text-text-secondary">Create a separate role for sales and payments. Then assign it under Member roles and limit the member to their branch. Keep your owner account for setup, stock and reports.</p></div>
+        <Button size="sm" variant="outline" className="shrink-0" onClick={() => { if (counterRoleExists) { handleRoleSelectChange("pharmacy_counter_sales"); setActivePanel("matrix"); } else if (applyPharmacyTemplate("pharmacy_counter_sales")) setCustomModalOpen(true); }}>{counterRoleExists ? "Review counter sales role" : "Create counter sales role"}</Button>
+      </Card>}
+
       <Tabs
         variant="pills"
+        activeTab={activePanel}
+        onChange={setActivePanel}
         scrollActiveIntoView={false}
         tabs={[
           {
@@ -423,30 +446,28 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                               const isChecked = isProtectedAdminPerm || matrixPermissions.includes(perm.code);
 
                               return (
-                                <button
-                                  type="button"
-                                  role="checkbox"
-                                  aria-checked={isChecked}
+                                <div
                                   key={perm.code}
-                                  onClick={() => handleToggleMatrixPermission(perm.code)}
                                   className={cn(
-                                    "w-full text-left p-3 rounded-xl border transition-all cursor-pointer select-none relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
+                                    "w-full text-left p-3 rounded-xl border transition-all [overflow-wrap:anywhere]",
                                     isProtectedAdminPerm
                                       ? "bg-warning/10 border-warning/40 text-text shadow-2xs"
                                       : isChecked
-                                      ? "bg-primary-500/10 border-primary-500/40 text-text shadow-2xs"
+                                      ? "bg-surface-alt border-primary-500/40 text-text shadow-2xs"
                                       : "bg-surface-alt/50 border-border/60 text-text-muted hover:border-border"
                                   )}
                                 >
-                                  <div className="flex items-start gap-2.5">
+                                  <div className="space-y-2">
                                     <Checkbox
+                                      label={perm.name}
+                                      description={perm.description}
                                       checked={isChecked}
-                                      onChange={() => {}}
-                                      className="mt-0.5 pointer-events-none"
+                                      disabled={isProtectedAdminPerm}
+                                      onChange={() => handleToggleMatrixPermission(perm.code)}
+                                      className="min-w-0 flex-1"
                                     />
                                       <div className="space-y-0.5 min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-1.5 justify-between">
-                                          <p className="font-bold text-xs text-text [overflow-wrap:anywhere]">{perm.name}</p>
                                           {isProtectedAdminPerm && (
                                             <span
                                               title="Mandatory System Core Entitlement: Protected to prevent administrative lockout."
@@ -456,8 +477,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                                             </span>
                                           )}
                                         </div>
-                                        <p className="font-mono text-[10px] text-text-muted [overflow-wrap:anywhere]">{perm.code}</p>
-                                        <p className="text-[11px] text-text-secondary leading-snug">{perm.description}</p>
+                                        <p className="font-mono text-xs text-text-secondary [overflow-wrap:anywhere]">{perm.code}</p>
                                         {isProtectedAdminPerm && (
                                           <p className="text-[10px] text-warning-text dark:text-warning-text font-semibold pt-1 flex items-center gap-1">
                                             <span>🔒</span> Mandatory Admin Entitlement (Prevents Self-Lockout)
@@ -465,7 +485,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                                         )}
                                       </div>
                                   </div>
-                                </button>
+                                </div>
                               );
                             })}
                           </div>
@@ -615,6 +635,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
         size="2xl"
       >
         <form id="staff-custom-role" onSubmit={handleCreateCustomRole} className="space-y-4 text-xs">
+          {pharmacyPresets.length > 0 && <div className="space-y-2 rounded-xl border border-border bg-surface-alt p-3"><Select label="Pharmacy access template" value={selectedPharmacyTemplate} onChange={event => { if (event.target.value) applyPharmacyTemplate(event.target.value); }} options={[{ value: "", label: newRolePermissions.length ? "Custom permissions" : "Choose a template" }, ...pharmacyPresets.map(preset => ({ value: preset.name, label: preset.label }))]} /><p className="text-xs leading-relaxed text-text-secondary">Counter sales only includes bills, payments and opening/closing the staff member's drawer. It excludes inventory screens, costs, purchases, returns, finance reports, cash movements and setup. Selecting a template replaces the current draft; review before saving.</p></div>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Role Name *"
@@ -643,7 +664,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                 { id: "doctor", label: "Doctor Clinical" },
                 { id: "lab_tech", label: "Lab Tech LIS" },
                 { id: "location_manager", label: "Practice manager" },
-                ...pharmacyPresets.map(preset => ({ id: preset.name, label: preset.label })),
+                ...pharmacyPresets.filter(preset => preset.name !== "pharmacy_counter_sales").map(preset => ({ id: preset.name, label: preset.label })),
               ].map((preset) => {
                 const active = isPresetActive(preset.id);
                 return (
@@ -742,36 +763,24 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                       {catPerms.map((perm) => {
                         const isChecked = newRolePermissions.includes(perm.code);
                         return (
-                          <button
-                            type="button"
-                            role="checkbox"
-                            aria-checked={isChecked}
+                          <div
                             key={perm.code}
-                            onClick={() => {
-                              if (isChecked) {
-                                setNewRolePermissions(newRolePermissions.filter((p) => p !== perm.code));
-                              } else {
-                                setNewRolePermissions([...newRolePermissions, perm.code]);
-                              }
-                            }}
-                            className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                            className={`w-full text-left p-2.5 rounded-xl border transition-all [overflow-wrap:anywhere] ${
                               isChecked
-                                ? "bg-primary-500/10 border-primary-500/40 text-text shadow-2xs font-semibold"
+                                ? "bg-surface-alt border-primary-500/40 text-text shadow-2xs font-semibold"
                                 : "bg-surface/60 border-border/60 text-text-muted hover:border-border"
                             }`}
                           >
                             <div className="flex items-start gap-2">
                               <Checkbox
+                                label={perm.name}
                                 checked={isChecked}
-                                onChange={() => {}}
-                                className="mt-0.5 pointer-events-none"
+                                onChange={() => setNewRolePermissions(previous => previous.includes(perm.code) ? previous.filter(code => code !== perm.code) : [...previous, perm.code])}
+                                className="min-w-0 flex-1"
                               />
-                              <div className="min-w-0">
-                                <p className="font-bold text-xs text-text truncate">{perm.name}</p>
-                                <p className="font-mono text-[9px] text-text-muted">{perm.code}</p>
-                              </div>
                             </div>
-                          </button>
+                            <p className="mt-2 pl-7 font-mono text-xs text-text-secondary [overflow-wrap:anywhere]">{perm.code}</p>
+                          </div>
                         );
                       })}
                     </div>

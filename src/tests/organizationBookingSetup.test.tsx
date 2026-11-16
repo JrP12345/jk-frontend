@@ -18,6 +18,15 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const mount = (onNavigate = vi.fn()) => render(<OrganizationBookingSetup organizationId="org" onNavigate={onNavigate} />);
 
 describe("Organization public booking readiness", () => {
+  it("accepts a published pharmacy with no doctors and keeps doctor setup out of its checklist", async () => {
+    vi.mocked(api.get).mockImplementation(async path => response(String(path).startsWith("/public/") ? { ...detail, facilityType: "pharmacy", doctors: [], bookingStatus: "no_doctors" } : [location]));
+    mount();
+    await screen.findByText("Public page available");
+    expect(screen.queryByText("Location assignment required")).not.toBeInTheDocument();
+    expect(screen.queryByText("At least one doctor is listed")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open clinical team setup" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Preview public location page" })).toBeInTheDocument();
+  });
   it("reviews the sole location and previews canonical location and doctor links", async () => {
     mount();
     await screen.findByText("Public page available");

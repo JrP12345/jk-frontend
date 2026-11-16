@@ -49,6 +49,21 @@ describe("On-demand copilot", () => {
     render(<AICopilotLauncher />);
     expect(screen.queryByRole("button", { name: "Toggle AI Copilot" })).not.toBeInTheDocument();
   });
+
+  it("keeps the existing copilot mounted when pharmacy docks its trigger in the header", async () => {
+    useAuthStore.setState({ user: { id: "doctor", role: "doctor", name: "Doctor", email: "doctor@example.test", organization_id: "org", permissions: ["VIEW_EHR"] } });
+    vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
+    vi.spyOn(api, "post").mockResolvedValue({ data: { data: { id: "inline-chat", messages: [] } } });
+    const { rerender } = render(<AICopilotLauncher inline />);
+    expect(screen.getByRole("button", { name: "Toggle AI Copilot" }).closest("[data-copilot-placement]")).toHaveAttribute("data-copilot-placement", "inline");
+    fireEvent.click(screen.getByRole("button", { name: "Toggle AI Copilot" }));
+    const input = await screen.findByRole("textbox", { name: "Message to AI Copilot" });
+    await waitFor(() => expect(input).toBeEnabled());
+    fireEvent.change(input, { target: { value: "Unsent draft question" } });
+    rerender(<AICopilotLauncher />);
+    expect(screen.getByRole("textbox", { name: "Message to AI Copilot" })).toHaveValue("Unsent draft question");
+    expect(screen.getByRole("button", { name: "Toggle AI Copilot" }).closest("[data-copilot-placement]")).toHaveAttribute("data-copilot-placement", "floating");
+  });
 });
 
 describe("Production install assets", () => {
