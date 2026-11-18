@@ -14,7 +14,8 @@ export function cleanCatalogueProduct(p: CounterProduct): CounterProduct {
   if (!p || !p.id || typeof p.name !== "string" || typeof p.genericName !== "string" || !safe(p.stockQuantity) || typeof p.eligible !== "boolean") throw Error("Saved catalogue needs review");
   const unit = p.unitDefinition;
   if (unit && (!safe(unit.version) || unit.version < 1 || !safe(unit.unitsPerPack) || unit.unitsPerPack < 1 || typeof unit.baseUnit !== "string" || typeof unit.packUnit !== "string")) throw Error("Saved catalogue units need review");
-  return { id: p.id, name: p.name, genericName: p.genericName, stockQuantity: p.stockQuantity, eligible: p.eligible,
+  return { id: p.id, name: p.name, genericName: p.genericName, stockQuantity: p.stockQuantity, eligible: p.eligible && p.saleBlocked !== true,
+    ...(p.saleBlocked === true ? { saleBlocked: true, saleBlockReason: typeof p.saleBlockReason === "string" ? p.saleBlockReason.slice(0, 500) : "Sale hold" } : {}),
     ...(typeof p.strength === "string" ? { strength: p.strength } : {}), ...(typeof p.manufacturer === "string" ? { manufacturer: p.manufacturer } : {}),
     ...(typeof p.rackLocation === "string" && p.rackLocation.length <= 60 ? { rackLocation: p.rackLocation } : {}),
     ...(safe(p.retailPricePaise) ? { retailPricePaise: p.retailPricePaise } : {}),

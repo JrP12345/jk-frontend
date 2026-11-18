@@ -4,6 +4,8 @@ The approved P0/P1 engineering work and selected-development-database activation
 
 The [original audit](pharmacy-priority-audit-2026-11-14.md) is the pre-change baseline. Earlier reports cover [Save and recovery](pharmacy-p0-save-reliability-2026-11-14.md), [search](pharmacy-p1-search-2026-11-14.md), [purchase CSV](pharmacy-p1-purchase-csv-2026-11-14.md), [supplier mappings](pharmacy-p1-supplier-mappings-2026-11-14.md), [receiving](pharmacy-p1-purchase-receiving-2026-11-14.md) and [branch catalogue preparation](pharmacy-p1-branch-catalogue-2026-11-15.md).
 
+Development clarification, 16 November: no physical store equipment is connected or required to finish the agreed development scope. The [fallback follow-up](pharmacy-offline-operating-acceptance-2026-11-16.md) covers printer/PDF recovery, remembered A4/thermal formats, non-blocking post-Save history and honest backup download status. Equipment-specific operating checks belong to future rollout; optional P2 and broader offline modes remain deferred.
+
 ## Remaining code gaps addressed
 
 | Problem | Implemented change | Boundary retained |
@@ -75,7 +77,7 @@ After the user authorized development setup, the identified local API watcher an
 | `invoices.items.pharmacyDispenseLineId_1` | `pharmacyDispenseLineIds_1`. The current dedicated source-ID array avoids indexing missing source IDs in mixed clinical items. All 21 existing invoices had matching source projections; 20 had dispense sources. No invoice was rewritten. |
 | `medicinebatches.medicineId_1_locationId_1_batchNumber_1` | `pharmacy_receipt_line_v1`. Actual receipt-line identity remains unique; separate receipts can retain the same manufacturer's printed batch label with their own cost/MRP evidence. No lot or quantity was rewritten. |
 
-This was an explicit, reviewed removal of those two named constraints, not an automatic index synchronization. Index definitions were captured in the ignored backend `.cache/pharmacy-reviewed-index-metadata.json`. `ChainTransitionRecord` and `OrgInvite` collections were prepared with their schema indexes; the medicine's derived keys were populated with source-identity comparison. No stock, prices, invoices, payments or audit records were rewritten. No backup or restore was performed.
+This was an explicit, reviewed removal of those two named constraints, not an automatic index synchronization. The captured index definitions are preserved in the backend [development evidence archive](../../backend/docs/measurements/pharmacy-development-2026-11/pharmacy-reviewed-index-metadata.json). `ChainTransitionRecord` and `OrgInvite` collections were prepared with their schema indexes; the medicine's derived keys were populated with source-identity comparison. No stock, prices, invoices, payments or audit records were rewritten. No backup or restore was performed.
 
 After API restart, the read-only checks reported:
 

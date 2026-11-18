@@ -7,13 +7,16 @@ import { readCounterInvoice, type CounterInvoice } from "@/lib/pharmacyCollectio
 import { canPrintPharmacyInvoice, type IssuedPharmacyInvoice } from "@/lib/pharmacyInvoice";
 import { getPrintErrorMessage, printElement } from "@/lib/printBrand";
 import { measurePharmacyStep } from "@/lib/pharmacySavePerformance";
+import { readPharmacyPaper, type PharmacyPaper } from "@/lib/pharmacyPrintPreferences";
 import { PharmacyInvoiceDocument } from "./PharmacyInvoiceDocument";
+import { PharmacyDocumentButton } from "./PharmacyDocumentButton";
 import styles from "./PharmacyPrint.module.css";
 
 /** A print failure never retries either financial command. Only the saved document is read. */
 export function PharmacySavedBillPrint({ invoiceId, locationId, savedDocument, onClose }: { invoiceId: string; locationId: string; savedDocument?: CounterInvoice; onClose: () => void }) {
   const [invoice, setInvoice] = useState<CounterInvoice | null>(null), [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [paper, setPaper] = useState<PharmacyPaper>("A4");
   const preview = useRef<HTMLDivElement>(null), printed = useRef<CounterInvoice | null>(null);
   const loaded = useRef<CounterInvoice | null>(null);
   const close = useRef(onClose);
@@ -25,7 +28,7 @@ export function PharmacySavedBillPrint({ invoiceId, locationId, savedDocument, o
     void (cached ? Promise.resolve(cached) : readCounterInvoice(invoiceId, locationId, request.signal)).then(bill => {
       if (!request.isCurrent()) return;
       if (bill.id !== invoiceId || bill.locationId !== locationId || !canPrintPharmacyInvoice(bill)) throw new Error("Saved bill evidence is incomplete. Open the saved bill before printing.");
-      loaded.current = bill; setError(""); setInvoice(bill);
+      loaded.current = bill; setError(""); setPaper(readPharmacyPaper(locationId)); setInvoice(bill);
     }).catch(failure => { if (request.isCurrent()) setError(failure instanceof Error ? failure.message : "Saved bill could not be loaded for printing."); });
   }, [invoiceId, locationId, savedDocument, attempt, beginRead]);
   useEffect(() => {
@@ -34,12 +37,13 @@ export function PharmacySavedBillPrint({ invoiceId, locationId, savedDocument, o
     let active = true;
     const element = preview.current;
     // This phase includes asset preparation and time spent in the native print dialog.
-    void measurePharmacyStep("print_handoff", () => printElement(element, { title: invoice.invoiceNumber })).then(() => { if (active) close.current(); }).catch(failure => { if (active) setError(getPrintErrorMessage(failure)); });
+    void measurePharmacyStep("print_handoff", () => printElement(element, { title: invoice.invoiceNumber, paper,
+      ...(paper !== "A4" ? { css: `html,body{width:calc(${paper} - 4mm)!important}` } : {}) })).then(() => { if (active) close.current(); }).catch(failure => { if (active) setError(getPrintErrorMessage(failure)); });
     return () => { active = false; };
-  }, [invoice]);
+  }, [invoice, paper]);
   return <>
     {!invoice && !error && <p role="status" className="fixed inset-x-4 bottom-20 z-[var(--layer-toast)] mx-auto w-fit rounded-control border border-border bg-surface px-4 py-2 text-sm text-text shadow-sm">Preparing saved bill for printing…</p>}
-    <div aria-hidden="true" style={{ position: "fixed", left: -10000, top: 0, width: 800 }}><div ref={preview} className={styles.paper}>{invoice && <PharmacyInvoiceDocument invoice={invoice as IssuedPharmacyInvoice} />}</div></div>
-    {error && <div className="fixed inset-x-4 bottom-36 z-[var(--layer-toast)] mx-auto max-w-md"><Alert variant="warning" title="Bill saved; printing needs attention"><p>{error}</p><div className="mt-2 flex gap-2"><Button size="sm" onClick={() => { printed.current = null; setError(""); setInvoice(null); setAttempt(value => value + 1); }}>Retry printing</Button><Button size="sm" variant="outline" onClick={onClose}>Close</Button></div></Alert></div>}
+    <div aria-hidden="true" style={{ position: "fixed", left: -10000, top: 0, width: 800 }}><div ref={preview} className={`${styles.paper} ${paper !== "A4" ? styles.thermal : ""}`}>{invoice && <PharmacyInvoiceDocument invoice={invoice as IssuedPharmacyInvoice} />}</div></div>
+    {error && <div className="fixed inset-x-4 bottom-36 z-[var(--layer-toast)] mx-auto max-w-md"><Alert variant="warning" title="Bill saved; printing needs attention"><p>{error}</p><p>The bill remains saved. Choose a printer or Save as PDF in the print dialog; no printer is required to save a bill.</p><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" onClick={() => { printed.current = null; setError(""); setInvoice(null); setAttempt(value => value + 1); }}>Retry printing</Button>{invoice && <PharmacyDocumentButton invoice={invoice} />}<Button size="sm" variant="outline" onClick={onClose}>Close</Button></div></Alert></div>}
   </>;
 }

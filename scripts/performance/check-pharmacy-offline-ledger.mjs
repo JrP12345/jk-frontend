@@ -432,7 +432,7 @@ try {
     const cold = await browser.newPage(), failures = []; cold.on('pageerror', error => failures.push(error.message));
     // Capture the OS print handoff in headless Chrome; generate the same saved
     // paper with printToPDF below. Physical printer acceptance is separate.
-    await cold.addInitScript(() => { window.syntheticPrintCalls = 0; window.print = () => { window.syntheticPrintCalls++; }; });
+    await cold.addInitScript(() => { window.syntheticPrintCalls = 0; window.print = () => { throw Error('Synthetic printer unavailable'); }; });
     await cold.setViewportSize({ width: 1440, height: 900 }); await cold.goto(`${origin}/pharmacy-offline.html`);
     await cold.getByLabel('Offline passphrase').fill('Synthetic offline passphrase 2026!'); await cold.getByRole('button', { name: 'Unlock counter', exact: true }).click();
     console.log(JSON.stringify({ probe: 'public-shell-unlock-clicked' }));
@@ -451,6 +451,11 @@ try {
     await cold.waitForFunction(() => document.querySelector('#pharmacy-final-paper strong')?.textContent?.includes('/000101'));
     console.log(JSON.stringify({ probe: 'offline-public-print-snapshot-ready' }));
     assert.equal(await cold.locator('#pharmacy-final-paper').getByText(/Synthetic prepared cotton/).count(), 1);
+    await cold.getByRole('button', { name: /Retry printing .*000101/ }).waitFor({ state: 'visible' });
+    assert.match(await cold.locator('[role=alert]').innerText(), /Bill .* saved.*Synthetic printer unavailable/);
+    assert.equal(await cold.evaluate(() => window.syntheticPrintCalls), 0);
+    await cold.evaluate(() => { window.print = () => { window.syntheticPrintCalls++; }; });
+    await cold.getByRole('button', { name: /Retry printing .*000101/ }).click();
     assert.equal(await cold.evaluate(() => window.syntheticPrintCalls), 1);
     await cold.pdf({ path: path.join(output, 'synthetic-offline-invoice.pdf'), format: 'A4', printBackground: true });
     await cold.screenshot({ path: path.join(output, 'synthetic-offline-counter.png'), fullPage: true });

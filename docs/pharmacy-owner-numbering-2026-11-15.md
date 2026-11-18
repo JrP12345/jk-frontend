@@ -35,7 +35,7 @@ The internal offline ledger accepts a matching captured custom format in a numbe
 
 ## Selected development database
 
-Read-only inspection found both organization-scoped replacement indexes already present, alongside obsolete global constraints. The identified local API/watch processes were paused; no local background worker was found. Exact definitions and retained replacements were checked and recorded in the ignored backend `.cache/pharmacy-numbering-index-review.json` before removing only:
+Read-only inspection found both organization-scoped replacement indexes already present, alongside obsolete global constraints. The identified local API/watch processes were paused; no local background worker was found. Exact definitions and retained replacements were checked and recorded before the operation; they are now preserved in the backend [development evidence archive](../../backend/docs/measurements/pharmacy-development-2026-11/pharmacy-numbering-index-review.json). The operation removed only:
 
 | Removed index | Retained unique replacement |
 | --- | --- |

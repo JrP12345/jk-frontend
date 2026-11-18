@@ -4,6 +4,7 @@ import api from "@/lib/api";
 import { PharmacyImports } from "@/components/pharmacy/PharmacyImports";
 import { parseImportView, type ImportView } from "@/lib/pharmacyImports";
 import { useAuthStore } from "@/store/authStore";
+import { strToU8, zipSync } from "fflate";
 
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 const locationId = "a".repeat(24), importId = "b".repeat(24);
@@ -28,7 +29,7 @@ beforeEach(() => {
   vi.mocked(api.post).mockImplementation(async url => response(String(url).endsWith("/inspect") ? { headers: fields, fields, optionalFields: [], rowCount: 1 } : fixture()));
 });
 async function reviewed() {
-  fireEvent.change(screen.getByLabelText("UTF-8 source CSV"), { target: { files: [sourceFile()] } });
+  fireEvent.change(screen.getByLabelText("Source CSV or values-only Excel"), { target: { files: [sourceFile()] } });
   await screen.findByText("actual-source.csv: 1 source rows.");
   fireEvent.change(screen.getByLabelText("Actual source/count reference *"), { target: { value: "Actual source file" } });
   fireEvent.change(screen.getByLabelText("Source review reference *"), { target: { value: "Reviewed source count" } });
@@ -36,6 +37,20 @@ async function reviewed() {
   await screen.findByRole("button", { name: /Post next/ });
 }
 const renderImport = () => render(<PharmacyImports locationId={locationId} allowedKinds={["catalogue"]} onCommitted={vi.fn()} />);
+
+it("converts a values-only Excel list into the same server-reviewed catalogue import without posting products", async () => {
+  renderImport();
+  const rows = [fields, ["0001", "Synthetic product", "Synthetic salt", "tablet", "general", "tablet", "strip", "10", "0.29"]];
+  const sheet = rows.map((cells, index) => `<row r="${index + 1}">${cells.map((value, column) => `<c r="${String.fromCharCode(65 + column)}${index + 1}" t="inlineStr"><is><t>${value}</t></is></c>`).join("")}</row>`).join("");
+  const bytes = zipSync({ "xl/workbook.xml": strToU8('<workbook xmlns:r="rel"><sheets><sheet name="Products" r:id="rId1"/></sheets></workbook>'),
+    "xl/_rels/workbook.xml.rels": strToU8('<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>'),
+    "xl/worksheets/sheet1.xml": strToU8(`<worksheet><sheetData>${sheet}</sheetData></worksheet>`) });
+  const file = new File([bytes], "products.xlsx"); Object.defineProperty(file, "arrayBuffer", { value: async () => bytes.buffer });
+  fireEvent.change(screen.getByLabelText("Source CSV or values-only Excel"), { target: { files: [file] } });
+  await screen.findByText("products.xlsx: 1 source rows.");
+  expect(api.post).toHaveBeenCalledTimes(1); expect(api.post).toHaveBeenCalledWith("/pharmacy/imports/inspect", expect.objectContaining({ kind: "catalogue", csv: expect.stringContaining('"0001","Synthetic product"') }), expect.anything());
+  expect(screen.queryByRole("button", { name: /Post next/ })).not.toBeInTheDocument();
+});
 
 it("requires review and explicit confirmation before posting only the server-selected source keys", async () => {
   renderImport(); await reviewed();
@@ -75,7 +90,7 @@ it("discards a late private preview on branch changes", async () => {
   let finish!: (value: ReturnType<typeof response>) => void;
   vi.mocked(api.post).mockImplementation(async url => String(url).endsWith("/inspect") ? response({ headers: fields, fields, optionalFields: [], rowCount: 1 }) : new Promise(resolve => { finish = resolve; }));
   const view = renderImport();
-  fireEvent.change(screen.getByLabelText("UTF-8 source CSV"), { target: { files: [sourceFile()] } }); await screen.findByText("actual-source.csv: 1 source rows.");
+  fireEvent.change(screen.getByLabelText("Source CSV or values-only Excel"), { target: { files: [sourceFile()] } }); await screen.findByText("actual-source.csv: 1 source rows.");
   fireEvent.change(screen.getByLabelText("Actual source/count reference *"), { target: { value: "Actual source file" } }); fireEvent.change(screen.getByLabelText("Source review reference *"), { target: { value: "Reviewed source count" } });
   fireEvent.click(screen.getByRole("button", { name: "Preview source import" })); await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
   view.rerender(<PharmacyImports locationId={"c".repeat(24)} allowedKinds={["catalogue"]} onCommitted={vi.fn()} />);
@@ -83,8 +98,8 @@ it("discards a late private preview on branch changes", async () => {
   expect(screen.queryByRole("button", { name: /Post next/ })).not.toBeInTheDocument(); expect(screen.getByLabelText("Actual source/count reference *")).toHaveValue("");
 });
 it("clears the previous valid file before rejecting invalid UTF-8 or an oversized replacement", async () => {
-  renderImport(); fireEvent.change(screen.getByLabelText("UTF-8 source CSV"), { target: { files: [sourceFile()] } }); await screen.findByText("actual-source.csv: 1 source rows.");
-  fireEvent.change(screen.getByLabelText("UTF-8 source CSV"), { target: { files: [sourceFile(new Uint8Array([0xff, 0xff]))] } });
+  renderImport(); fireEvent.change(screen.getByLabelText("Source CSV or values-only Excel"), { target: { files: [sourceFile()] } }); await screen.findByText("actual-source.csv: 1 source rows.");
+  fireEvent.change(screen.getByLabelText("Source CSV or values-only Excel"), { target: { files: [sourceFile(new Uint8Array([0xff, 0xff]))] } });
   await screen.findByText("Save the source as UTF-8 CSV before importing."); expect(screen.queryByText("actual-source.csv: 1 source rows.")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Preview source import" })).toBeDisabled();
 });

@@ -4,6 +4,43 @@ import { createPharmacyOfflineSync } from "@/lib/pharmacyOfflineSync";
 import type { StoredOfflineReceipt } from "@/lib/pharmacyOfflineLedger";
 afterEach(() => vi.useRealTimers());
 
+it("durably stops new issuance after a safety change while importing original receipts", async () => {
+  const f = fixture(), suspendIssuance = vi.fn().mockResolvedValue(undefined), checkedAt = "2026-11-17T10:00:00Z";
+  const checkIssuance = vi.fn().mockResolvedValue({ continueIssuance: false, checkedAt, controlsUpdatedAt: checkedAt });
+  const sync = createPharmacyOfflineSync({ ...f.queue, suspendIssuance }, async original => f.ack(original), { online: () => true, checkIssuance });
+  expect(await sync.flush()).toMatchObject({ status: "idle", imported: 2, issuanceStopped: true, controlsCheckedAt: checkedAt });
+  expect(suspendIssuance).toHaveBeenCalledOnce(); expect(f.pending).toHaveLength(0);
+  sync.retryOriginal(); expect(sync.state().issuanceStopped).toBe(true);
+  await sync.flush(); expect(checkIssuance).toHaveBeenCalledOnce();
+});
+
+it("checks an empty queue at most once per thirty seconds and retains the last confirmed time when offline", async () => {
+  const f = fixture(0); let time = 0, online = true;
+  const checkedAt = "2026-11-17T10:00:00Z", checkIssuance = vi.fn().mockResolvedValue({ continueIssuance: true, checkedAt, controlsUpdatedAt: null });
+  const sync = createPharmacyOfflineSync(f.queue, async original => f.ack(original), { online: () => online, now: () => time, checkIssuance });
+  await sync.flush(); time = 29999; await sync.flush(); expect(checkIssuance).toHaveBeenCalledOnce();
+  time = 30000; await sync.flush(); expect(checkIssuance).toHaveBeenCalledTimes(2);
+  online = false; time = 60000; expect(await sync.flush()).toMatchObject({ status: "offline", controlsCheckedAt: checkedAt });
+});
+
+it("does not report a failed network safety check as fresh or delay original imports indefinitely", async () => {
+  vi.useFakeTimers(); const f = fixture(1), suspendIssuance = vi.fn();
+  const checkIssuance = vi.fn(() => new Promise<never>(() => {}));
+  const sync = createPharmacyOfflineSync({ ...f.queue, suspendIssuance }, async original => f.ack(original), { online: () => true, checkIssuance });
+  const task = sync.flush(); await vi.advanceTimersByTimeAsync(8000);
+  expect(await task).toMatchObject({ status: "idle", imported: 1 });
+  expect(sync.state().controlsCheckedAt).toBeUndefined(); expect(suspendIssuance).not.toHaveBeenCalled();
+});
+
+it("fails closed on a malformed authenticated safety result without losing original receipts", async () => {
+  const f = fixture(1), suspendIssuance = vi.fn().mockResolvedValue(undefined);
+  const sync = createPharmacyOfflineSync({ ...f.queue, suspendIssuance }, async original => f.ack(original), {
+    online: () => true, checkIssuance: async () => ({ continueIssuance: "yes" } as never),
+  });
+  expect(await sync.flush()).toMatchObject({ status: "idle", imported: 1, issuanceStopped: true });
+  expect(suspendIssuance).toHaveBeenCalledOnce(); expect(sync.state().controlsCheckedAt).toBeUndefined();
+});
+
 function fixture(count = 2) {
   const pending = Array.from({ length: count }, (_, index) => ({ receipt: { version: 2, authorityId: "original-authority", commandId: `original-command-${index}`, sequence: index + 1, invoice: { invoiceNumber: `ORIGINAL/${index + 1}` } }, digest: String(index).repeat(64), deviceSignature: "A".repeat(86) })) as StoredOfflineReceipt[];
   const acknowledge = vi.fn(async () => { pending.shift(); });

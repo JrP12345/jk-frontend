@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { createPharmacyCatalogue, estimateDraft } from "@/lib/pharmacyCatalogue";
+import { cleanCatalogueProduct, createPharmacyCatalogue, estimateDraft } from "@/lib/pharmacyCatalogue";
 import { clearPharmacyDrafts } from "@/lib/pharmacyDrafts";
 import type { CounterProduct, CounterQuote } from "@/lib/pharmacyCounter";
 const product: CounterProduct = { id: "product", name: "Cotton roll", genericName: "Absorbent cotton", eligible: true, stockQuantity: 100, barcodes: ["000123"], unitDefinition: { version: 1, baseUnit: "piece", packUnit: "box", unitsPerPack: 10 } };
+it("retains a sale hold in the local catalogue and cannot restore eligibility from stale flags", () => {
+  expect(cleanCatalogueProduct({ ...product, eligible: true, saleBlocked: true, saleBlockReason: "Reviewed recall" })).toMatchObject({ eligible: false, saleBlocked: true, saleBlockReason: "Reviewed recall" });
+});
 const price = { lines: [{ medicineId: "product", lineId: "line", quantity: 2, batches: [{ batchNumber: "LOT", quantity: 2, expiryValue: "2028-12", sellingPricePaise: 1500, mrpPaise: 1800 }] }], calculation: { lines: [{ lineId: "line", quantity: 2, grossAmountPaise: 3000, gstRateBps: 0 }] }, customer: { name: "Private customer", address: "Private address" }, issueInput: { expectedQuoteHash: "private" } } as unknown as CounterQuote;
 beforeEach(async () => { vi.stubGlobal("indexedDB", undefined); sessionStorage.clear(); await clearPharmacyDrafts(); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });

@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import api from "@/lib/api";
 import { PharmacyPurchaseCsv } from "@/components/pharmacy/PharmacyPurchaseCsv";
 import { purchaseCsvLabels, inspectPurchaseCsv, previewPurchaseCsv, type PurchaseCsvPreview } from "@/lib/pharmacyPurchaseCsv";
+import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }));
 const fields = Object.keys(purchaseCsvLabels), cells = Object.fromEntries(fields.map(field => [field, field === "source" ? "001" : "0"]));
@@ -23,7 +24,7 @@ function change(label: string, value: string) {
 }
 const mount = (remaining = 100) => { const onApply = vi.fn(), onCancel = vi.fn(); return { ...render(<PharmacyPurchaseCsv locationId="branch" supplierId="supplier" remaining={remaining} onApply={onApply} onCancel={onCancel} />), onApply, onCancel }; };
 async function choose() {
-  fireEvent.change(screen.getByLabelText("Supplier invoice CSV"), { target: { files: [file()] } });
+  fireEvent.change(screen.getByLabelText("Supplier invoice CSV or values-only Excel"), { target: { files: [file()] } });
   await screen.findByText("invoice.csv · 1 lines");
 }
 async function match() {
@@ -48,6 +49,23 @@ it("maps exact columns and explicit medicines, reviews source amounts and applie
   const apply = screen.getByRole("button", { name: "Add 1 CSV lines to draft" }); expect(apply).toBeDisabled();
   fireEvent.click(screen.getByRole("checkbox")); fireEvent.click(apply);
   expect(view.onApply).toHaveBeenCalledWith(preview.rows); expect(api.post).toHaveBeenCalledTimes(2); expect(api.put).not.toHaveBeenCalled();
+});
+it("discovers a missing shared product and explicitly matches its empty branch product before purchase preview", async () => {
+  useAuthStore.setState({ user: { id: "operator", name: "Owner", email: "owner@example.test", role: "admin", organization_id: "org", permissions: ["MANAGE_ORGANIZATION"] } });
+  const globalId = "a".repeat(24), ownedId = "b".repeat(24);
+  const globalProduct = { id: globalId, name: "Shared Cotton", genericName: "Cotton", composition: "Cotton", strength: "25 g", dosageForm: "Other", manufacturer: "Synthetic Maker", packSize: "10 pieces", barcodes: [], provider: "reviewed", sourceId: "SYNTHETIC", release: "TEST-ONLY", revision: 1, alreadyAdded: false };
+  const owned = { ...product, id: ownedId, name: "Shared Cotton", unitDefinition: { ...product.unitDefinition, version: 1 } };
+  vi.mocked(api.get).mockImplementation(async url => response(String(url).includes("catalogue/global") ? { items: [globalProduct], nextCursor: null } : { items: [product], nextCursor: null }));
+  vi.mocked(api.post).mockImplementation(async url => response(String(url).endsWith("/inspect") ? inspection : String(url).endsWith("/adopt") ? { medicine: owned, reused: false } : preview));
+  mount(); await choose(); fireEvent.click(screen.getByRole("button", { name: "Match source item 1: 001" }));
+  fireEvent.click(screen.getByRole("button", { name: "Missing product? Find in catalogue" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Review & add" }));
+  change("Medicine form", "other"); change("Base unit", "piece"); change("Pack unit", "box"); change("Base units per pack", "10"); change("Branch selling price per base unit (INR)", "10");
+  fireEvent.click(screen.getByRole("checkbox")); fireEvent.click(screen.getByRole("button", { name: "Add empty product" }));
+  await screen.findByText(/Shared Cotton · Maker/);
+  fireEvent.click(screen.getByRole("button", { name: "Preview purchase lines" }));
+  await waitFor(() => expect(api.post).toHaveBeenLastCalledWith("/pharmacy/purchase-csv/preview", expect.objectContaining({ matches: [{ sourceValue: "001", medicineId: ownedId, expectedUnitVersion: 1 }] }), expect.anything()));
+  expect(vi.mocked(api.post).mock.calls.some(([url]) => /stock|receipt|purchase-drafts/.test(String(url)))).toBe(false);
 });
 it("invalidates the reviewed preview and confirmation when column mapping or a medicine changes", async () => {
   mount(); await reviewed(); fireEvent.click(screen.getByRole("checkbox"));
@@ -85,15 +103,15 @@ it("shows preview failure without mutating the draft and supports an explicit re
 });
 it("bounds line budget, rejects non-CSV/invalid UTF-8 before sending data and keeps quantities literal", async () => {
   mount(0);
-  fireEvent.change(screen.getByLabelText("Supplier invoice CSV"), { target: { files: [file("invoice.xlsx")] } });
-  await screen.findByText(/Choose a UTF-8 .csv file/); expect(api.post).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Supplier invoice CSV"), { target: { files: [file("invoice.csv", new Uint8Array([0xff]))] } });
-  await screen.findByText("Save the file as UTF-8 CSV before importing."); expect(api.post).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Supplier invoice CSV or values-only Excel"), { target: { files: [file("invoice.xlsx")] } });
+  await screen.findByText(/Excel archive is invalid/); expect(api.post).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Supplier invoice CSV or values-only Excel"), { target: { files: [file("invoice.csv", new Uint8Array([0xff]))] } });
+  await screen.findByText("Save the source as UTF-8 CSV before importing."); expect(api.post).not.toHaveBeenCalled();
   await choose(); expect(screen.getByRole("button", { name: "Preview purchase lines" })).toBeDisabled();
 });
 it("ignores a late private file inspection after the editor closes", async () => {
   let finish!: (value: unknown) => void; vi.mocked(api.post).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
-  const view = mount(); fireEvent.change(screen.getByLabelText("Supplier invoice CSV"), { target: { files: [file()] } });
+  const view = mount(); fireEvent.change(screen.getByLabelText("Supplier invoice CSV or values-only Excel"), { target: { files: [file()] } });
   await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1)); view.unmount();
   await act(async () => finish(response(inspection))); expect(view.onApply).not.toHaveBeenCalled(); expect(screen.queryByText("invoice.csv · 1 lines")).not.toBeInTheDocument();
 });

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PharmacyPreparedCounter } from "@/components/pharmacy/PharmacyPreparedCounter";
 import { ToastProvider } from "@/components/ui";
@@ -30,6 +30,16 @@ function fixture() {
 let f: ReturnType<typeof fixture>;
 beforeEach(() => { vi.clearAllMocks(); f = fixture(); sdk.open.mockResolvedValue(f.runtime); });
 afterEach(cleanup);
+it("disables new billing when the authenticated stop signal arrives", async () => {
+  sdk.open.mockImplementationOnce(async (_control, _actor, _phrase, onState) => {
+    queueMicrotask(() => onState({ status: "idle", imported: 0, issuanceStopped: true, controlsCheckedAt: "2026-11-17T10:00:00Z" }));
+    return f.runtime;
+  });
+  await unlock(); await screen.findByText("Prepared billing stopped");
+  expect(screen.getByRole("button", { name: "Add Prepared cotton" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Save counter bill" })).toBeDisabled();
+  fireEvent.keyDown(window, { key: "F10" }); expect(f.runtime.save).not.toHaveBeenCalled();
+});
 async function unlock() {
   render(<ToastProvider><PharmacyPreparedCounter control={control} actorId={actorId} /></ToastProvider>);
   fireEvent.change(screen.getByLabelText("Offline passphrase"), { target: { value: "Synthetic offline phrase" } });
@@ -56,6 +66,25 @@ it("keeps held carts when another bill saves and prevents cash underpayment", as
   fireEvent.change(screen.getByLabelText("Cash received (INR)"), { target: { value: "10" } }); expect(screen.getByRole("button", { name: "Save counter bill" })).toBeDisabled();
   fireEvent.change(screen.getByLabelText("Cash received (INR)"), { target: { value: "20" } }); fireEvent.keyDown(window, { key: "F10" });
   await waitFor(() => expect(f.runtime.save).toHaveBeenCalledTimes(1)); await waitFor(() => expect(f.draft()).toMatchObject({ cart: [], held: [{ cart: [{ medicineId: productId }] }] }));
+});
+it("keeps the committed bill available for reprinting when the recent-bills read fails after Save", async () => {
+  await unlock(); f.runtime.ledger.recent.mockRejectedValueOnce(new Error("History read failed"));
+  fireEvent.click(screen.getByRole("button", { name: "Add Prepared cotton" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save counter bill" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Save counter bill" }));
+  await screen.findByText(/Bill OWNER\/000137 is saved on this PC/);
+  expect(screen.getByText("Your cart is empty")).toBeVisible(); expect(f.runtime.save).toHaveBeenCalledOnce(); expect(f.runtime.ledger.finishSale).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: /OWNER\/000137/ })); await screen.findByTestId("local-print"); expect(f.runtime.save).toHaveBeenCalledOnce();
+});
+it("allows the next bill while a post-Save history refresh is still pending", async () => {
+  await unlock(); let finish!: (value: never[]) => void;
+  f.runtime.ledger.recent.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  fireEvent.click(screen.getByRole("button", { name: "Add Prepared cotton" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save counter bill" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Save counter bill" })); await screen.findByText("Your cart is empty");
+  fireEvent.click(screen.getByRole("button", { name: "Add Prepared cotton" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save counter bill" })).toBeEnabled());
+  expect(f.runtime.save).toHaveBeenCalledOnce(); await act(async () => { finish([]); });
 });
 it("locks financial plaintext and refuses an operator other than the prepared actor", async () => {
   const view = render(<ToastProvider><PharmacyPreparedCounter control={control} actorId={"0".repeat(24)} /></ToastProvider>);

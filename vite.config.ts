@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { patchCssModules } from "vite-css-modules";
 import path from "node:path";
 import nextConfig from "./next.config";
+import postcssConfig from "./postcss.config.mjs";
 
 export default defineConfig({
   plugins: [
@@ -19,6 +20,16 @@ export default defineConfig({
     }),
   ],
   css: {
+    // Reuse Next's plugin declarations, but import their ESM entry points directly.
+    // Vite's string loader resolves CJS and adds a cache-busting query, which fails
+    // while loading this configuration in the current multi-environment build.
+    postcss: {
+      ...postcssConfig,
+      plugins: await Promise.all(Object.entries(postcssConfig.plugins).map(async ([name, options]) => {
+        const { default: plugin } = await import(name);
+        return plugin(options);
+      })),
+    },
     modules: {
       generateScopedName(name: string, filename: string) {
         const relativePath = path.relative(import.meta.dirname, filename.replace(/\?.*$/, "")).replaceAll("\\", "/");

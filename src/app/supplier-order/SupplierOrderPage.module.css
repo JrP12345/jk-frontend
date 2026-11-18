@@ -1,0 +1,6 @@
+.page { min-width: 0; overflow-wrap: anywhere; }
+.page :where(h1, h2, h3, p, strong, span, label) { overflow-wrap: anywhere; }
+.page button { white-space: normal; }
+.identity { min-width: 0; flex: 1; }
+.quantity { max-width: 35%; text-align: right; }
+.fields, .fields :where(form, div) { min-width: 0; }

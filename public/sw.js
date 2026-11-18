@@ -1,7 +1,7 @@
 // Only explicit public resources can enter the offline cache.
-const CACHE_NAME = 'ekavyu-cache-v24';
+const CACHE_NAME = 'ekavyu-cache-v25';
 const POS_SHELL = '/pharmacy-offline.html';
-const POS_FILES = ["/pharmacy-offline.html","/pharmacy-offline.css","/pharmacy-offline/pharmacyDrafts.js","/pharmacy-offline/pharmacyCatalogue.js","/pharmacy-offline/pharmacyBranchCatalogue.js","/pharmacy-offline/pharmacyBackgroundWork.js","/pharmacy-offline/authScope.js","/pharmacy-offline/entry.js","/pharmacy-offline/pharmacyFinal.js","/pharmacy-offline/pharmacyOfflineLedger.js","/pharmacy-offline/pharmacyOfflineCrypto.js","/pharmacy-offline/pharmacyOfflineGrant.js","/pharmacy-offline/pharmacyOfflineSession.js","/pharmacy-offline/pharmacyOfflineIdentity.js","/pharmacy-offline/pharmacyOfflinePrint.js","/pharmacy-offline/pharmacyOfflinePricing.js","/pharmacy-offline/pharmacyInvoice.js","/pharmacy-offline/pharmacyInvoiceNumberFormat.js","/pharmacy-offline/pharmacyCalculation.js","/pharmacy-offline/pharmacyOfflineDocument.js","/pharmacy-offline/manifest.json"];
+const POS_FILES = ["/pharmacy-offline.html","/pharmacy-offline.css","/pharmacy-offline/pharmacyDrafts.js","/pharmacy-offline/pharmacyCatalogue.js","/pharmacy-offline/pharmacyBranchCatalogue.js","/pharmacy-offline/pharmacyBackgroundWork.js","/pharmacy-offline/authScope.js","/pharmacy-offline/entry.js","/pharmacy-offline/pharmacyFinal.js","/pharmacy-offline/pharmacyOfflineLedger.js","/pharmacy-offline/pharmacyOfflineCrypto.js","/pharmacy-offline/pharmacyOfflineGrant.js","/pharmacy-offline/pharmacyOfflineSession.js","/pharmacy-offline/pharmacyOfflineIdentity.js","/pharmacy-offline/pharmacyOfflinePrint.js","/pharmacy-offline/pharmacyPrintPreferences.js","/pharmacy-offline/pharmacyOfflinePricing.js","/pharmacy-offline/pharmacyInvoice.js","/pharmacy-offline/pharmacyInvoiceNumberFormat.js","/pharmacy-offline/pharmacyCalculation.js","/pharmacy-offline/pharmacyOfflineDocument.js","/pharmacy-offline/manifest.json"];
 const PUBLIC_PAGES = new Set(['/browse', '/pricing']);
 const PUBLIC_FILES = new Set(['/manifest.json', '/brand/ekavyu-symbol-black.svg', '/brand/ekavyu-symbol-white.svg', '/brand/ekavyu-wordmark-black.svg', '/brand/ekavyu-wordmark-white.svg', '/brand/ekavyu-stacked-black.svg', '/brand/ekavyu-stacked-white.svg', '/brand/ekavyu-stacked-without-descriptor-black.svg', '/brand/ekavyu-stacked-without-descriptor-white.svg', '/ekavyu-home-social.png', '/favicon.ico', '/favicon-16.png', '/favicon-32.png', '/favicon-dark-16.png', '/favicon-dark-32.png', '/app-icon-180.png', '/app-icon-192.png', '/app-icon-512.png', '/app-icon-maskable-512.png']);
 function allowed(url) {
@@ -26,7 +26,15 @@ async function store(cache, request, response) {
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    for (const path of [...PUBLIC_FILES, ...POS_FILES]) {
+    // A partial counter cannot replace the prior worker and its usable cache.
+    // Reject installation on any required-module or storage failure; browsers
+    // retain the previous active worker and retry an update after reconnection.
+    for (const path of POS_FILES) {
+      const response = await fetch(path, { cache: 'reload' });
+      if (!cacheable(response) || new URL(response.url).pathname !== path) throw new Error('Offline counter update is incomplete. Retain the previous installation.');
+      await store(cache, path, response);
+    }
+    for (const path of PUBLIC_FILES) {
       try { const response = await fetch(path, { cache: 'reload' }); await store(cache, path, response); } catch {}
     }
     await self.skipWaiting();

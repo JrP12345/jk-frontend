@@ -26,9 +26,11 @@ import { PharmacyCollections } from "@/components/pharmacy/PharmacyCollections";
 import { PharmacyReturns } from "@/components/pharmacy/PharmacyReturns";
 import { PharmacyCounter } from "@/components/pharmacy/PharmacyCounter";
 import { PharmacyProductReview } from "@/components/pharmacy/PharmacyProductReview";
+import { PharmacySaleControls } from "@/components/pharmacy/PharmacySaleControls";
 import { PharmacyDocumentButton } from "@/components/pharmacy/PharmacyDocumentButton";
 import { PharmacyReports } from "@/components/pharmacy/PharmacyReports";
 import { PharmacyImports } from "@/components/pharmacy/PharmacyImports";
+import { PharmacyCatalogueDiscovery } from "@/components/pharmacy/PharmacyCatalogueDiscovery";
 import { PharmacyNavigation } from "@/components/pharmacy/PharmacyNavigation";
 import { PharmacyTill } from "@/components/pharmacy/PharmacyTill";
 import { PharmacySkeleton } from "@/components/pharmacy/PharmacySkeleton";
@@ -71,6 +73,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const [capabilities, setCapabilities] = useState<PharmacyCapabilities | null>(null);
   const [capabilityError, setCapabilityError] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
   const canManage = Boolean(capabilities?.actions.dispense);
   const canRecover = Boolean(capabilities?.actions.recoverDispense);
   const canCatalog = Boolean(capabilities?.actions.manageCatalog);
@@ -112,6 +115,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const [batchTarget, setBatchTarget] = useState<Medicine | null>(null);
   const [receiptTarget, setReceiptTarget] = useState<Medicine | null>(null);
   const [reviewTarget, setReviewTarget] = useState<string | null>(null);
+  const [saleControlTarget, setSaleControlTarget] = useState<string | null>(null);
   const stockReferenceScope = stockReceiptScope(user, locationId);
   const pendingStockReceipt = useSyncExternalStore(subscribeStockReceiptReferences, () => readStockReceiptReference(stockReferenceScope), () => null);
   const [batchForm, setBatchForm] = useState(blankBatch);
@@ -365,10 +369,11 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const stockActions = (medicine: Medicine) => (canCatalog || canReceive || canReviewProducts) && <Dropdown align="right" trigger={<Button variant="ghost" size="sm" className={styles.icon} aria-label={`Actions for ${medicine.name}`} disabled={!actionable}><MoreHorizontal size={18} /></Button>} items={[
     ...(canReceive ? [{ label: "Add batch", icon: <Plus size={16} />, onClick: () => openBatch(medicine) }] : []),
     ...(canReviewProducts ? [{ label: "Review product", icon: <ClipboardCheck size={16} />, onClick: () => setReviewTarget(medicine.id) }] : []),
+    ...(canReviewProducts ? [{ label: "Product / batch sale holds", icon: <ClipboardCheck size={16} />, onClick: () => setSaleControlTarget(medicine.id) }] : []),
     ...(canCatalog ? [{ label: "Edit medicine", icon: <Edit3 size={16} />, onClick: () => openMedicine(medicine) },
       { label: "Delete medicine", icon: <Trash2 size={16} />, variant: "danger" as const, onClick: () => setDeleting(medicine) }] : []),
   ]} />;
-  const medicineIdentity = (medicine: Medicine) => <div className={styles.identity}><strong>{medicine.name}</strong><small>{[medicine.genericName, medicine.strength, medicine.manufacturer, medicine.rackLocation ? `Rack ${medicine.rackLocation}` : ""].filter(Boolean).join(" · ")}</small>{medicine.unitDefinition && <small>1 {medicine.unitDefinition.packUnit} = {medicine.unitDefinition.unitsPerPack} {medicine.unitDefinition.baseUnit}</small>}</div>;
+  const medicineIdentity = (medicine: Medicine) => <div className={styles.identity}><strong>{medicine.name}</strong>{medicine.saleControl?.blocked && <Badge variant="warning">Sale hold</Badge>}<small>{[medicine.genericName, medicine.strength, medicine.manufacturer, medicine.rackLocation ? `Rack ${medicine.rackLocation}` : ""].filter(Boolean).join(" · ")}</small>{medicine.unitDefinition && <small>1 {medicine.unitDefinition.packUnit} = {medicine.unitDefinition.unitsPerPack} {medicine.unitDefinition.baseUnit}</small>}</div>;
   const quantity = (medicine: Medicine) => capabilities?.inventoryMode === "billing_only" ? <span>Not tracked</span> : <span className={medicine.stockQuantity === 0 || lowStock(medicine) ? styles.danger : ""}>{medicine.stockQuantity} {medicine.stockQuantity === 0 ? "(out of stock)" : lowStock(medicine) ? "(low)" : ""}</span>;
   const reviewOrganizationId = capabilities?.organizationId || user?.organization_id || "";
   const canProfessionalReview = Boolean(reviewOrganizationId && capabilities?.moduleEnabled && hasAnyPermission(user, "MANAGE_ORGANIZATION"));
@@ -382,6 +387,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const stockTools = <>
     {showStockTools && Boolean(capabilities?.importKinds?.length) && <Button size="sm" variant="outline" aria-label="Import source CSV" disabled={!locationId} onClick={() => setImportOpen(true)}><Upload size={16} aria-hidden="true" /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import source CSV</span></Button>}
     {showStockTools && canCreate && <Button size="sm" disabled={!locationId || !actionable || reading} onClick={() => openMedicine()}><Plus size={16} aria-hidden="true" />Add medicine</Button>}
+    {showStockTools && canCreate && <Button size="sm" variant="outline" disabled={!locationId || !actionable || reading} onClick={() => setCatalogueOpen(true)}>Find in catalogue</Button>}
   </>;
   const inventory = <div className={styles.list}>
     {compactWorkspace && <div className={styles.actions}>{stockTools}</div>}
@@ -429,6 +435,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     <Modal open={importOpen && Boolean(capabilities?.importKinds?.length)} onClose={() => setImportOpen(false)} title="Reviewed pharmacy import" size="lg" bodyClassName={styles.dialog}>
       {importOpen && capabilities?.importKinds?.length && <PharmacyImports locationId={locationId} allowedKinds={capabilities.importKinds} onCommitted={() => { void fetchData(); }} />}
     </Modal>
+    {catalogueOpen && canCreate && locationId && <PharmacyCatalogueDiscovery inventoryMode={capabilities?.inventoryMode || "tracked"} locationId={locationId} onClose={() => setCatalogueOpen(false)} onAdded={() => { setCatalogueOpen(false); void fetchData(); }} onCreateLocal={() => { setCatalogueOpen(false); openMedicine(); }} />}
     {locationError && <Alert variant="error" title="Locations could not be loaded" action={<Button size="sm" variant="outline" onClick={onRetryLocations}>Retry locations</Button>}>{locationError}</Alert>}
     {capabilityError && <Alert variant="error" title="Pharmacy access unavailable" action={<Button size="sm" variant="outline" onClick={fetchData}>Retry access check</Button>}>{capabilityError}</Alert>}
     {capabilities && user?.workspaceProfile === "pharmacy" && user.role === "pharmacist" && !hasAnyPermission(user, "PHARMACY_SELL", "MANAGE_ORGANIZATION") && <Alert variant="info" title="Counter sales access is not assigned">Your current role provides inventory access. Ask the owner to assign a counter sales role in Roles & permissions if you work at the sales counter.</Alert>}
@@ -437,6 +444,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     {capabilities?.commercialEntitlement === "unavailable" && <Alert variant="warning" title="Pharmacy product unavailable">An active pharmacy product at this branch is required for new sales and stock receipts. Authorized records, recovery, collections, returns and reports remain available. Contact your organization administrator to review the subscription.</Alert>}
     <PharmacyStockReceipts medicine={receiptTarget} locationId={locationId} canReceive={canReceive} canRecover={Boolean(capabilities?.actions.readMovements)} onClose={() => setReceiptTarget(null)} onCommitted={() => { void fetchData(); }} />
     {reviewTarget && canReviewProducts && <PharmacyProductReview medicineId={reviewTarget} locationId={locationId} onClose={() => setReviewTarget(null)} onReviewed={() => { void fetchData(); }} />}
+    {saleControlTarget && canReviewProducts && <PharmacySaleControls medicineId={saleControlTarget} locationId={locationId} onClose={() => setSaleControlTarget(null)} onChanged={() => { void fetchData(); }} />}
     {!locationId && !locationError && <p className={styles.empty}>{locations.length ? "Choose a location to view pharmacy records." : "No locations are assigned to your account. Ask your administrator to assign your pharmacy branch."}</p>}
     {canRecover && pendingDispenseKey && (confirmedDispense ? <Alert variant="success" title="Dispense confirmed" action={<Button size="sm" variant="outline" disabled={Boolean(busy)} onClick={acknowledgeDispense}>Done</Button>}>
       Invoice <strong>{confirmedDispense.dispenseOperation.invoiceNumber}</strong>. Added {money(confirmedDispense.dispenseOperation.addedAmount)}{confirmedDispense.dispenseOperation.appendedToExisting ? " to the existing bill" : " to a new bill"}. Total at posting: {money(confirmedDispense.totalAmount)}.
@@ -451,7 +459,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
       { id: "dispensing", label: "Dispense", badge: locationId && pendingLoaded ? pending.length : undefined, content: dispensing },
       { id: "alerts", label: "Alerts", content: <>{compactWorkspace && <div className={styles.actions}>{stockTools}</div>}<PharmacyAlertsCenter locationId={locationId} medicines={medicines} canManage={canReceive && actionable} onOpenAddBatch={openBatch} refreshKey={dataRevision} onShortbook={capabilities?.actions.managePurchases ? medicine => { if (medicine.unitDefinition) { setShortbookProduct({ ...medicine, unitDefinition: medicine.unitDefinition }); setActiveTab("purchases"); } } : undefined} onSupplierReturn={capabilities?.actions.viewPurchases && capabilities.actions.processReturn ? source => { setSupplierReturnTarget(source); setActiveTab("finance"); } : undefined} /></> },
       { id: "purchases", label: "Purchases", content: <PharmacyPurchases initialShortbookProduct={shortbookProduct} locationId={locationId} canManage={Boolean(capabilities?.actions.managePurchases)} canReceive={Boolean(capabilities?.actions.receiveStock)} /> },
-      { id: "counter", label: "Counter sale", content: <PharmacyCounter compact={user?.workspaceProfile === "pharmacy" || counterOnly} locationId={locationId} inventoryMode={capabilities?.inventoryMode || "tracked"} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} canReviewProducts={canReviewProducts} onProductReviewed={() => { void fetchData(); }} /> },
+      { id: "counter", label: "Counter sale", content: <PharmacyCounter compact={user?.workspaceProfile === "pharmacy" || counterOnly} locationId={locationId} inventoryMode={capabilities?.inventoryMode || "tracked"} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} canManageCatalog={canCatalog} canReviewProducts={canReviewProducts} onProductReviewed={() => { void fetchData(); }} /> },
       { id: "returns", label: "Returns", content: <PharmacyReturns locationId={locationId} canProcess={Boolean(capabilities?.actions.processReturn)} canApprove={Boolean(capabilities?.actions.approveReturn)} /> },
       { id: "reports", label: "Reports & exports", content: <PharmacyReports locationId={locationId} /> },
       { id: "till", label: "Cash drawer", content: <PharmacyTill locationId={locationId} canOpen={Boolean(capabilities?.actions.openTill)} canClose={Boolean(capabilities?.actions.closeTill)} canMove={Boolean(capabilities?.actions.moveTillCash)} compact={user?.workspaceProfile === "pharmacy" || counterOnly} /> },

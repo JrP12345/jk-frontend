@@ -4,6 +4,37 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 describe("service worker cache privacy", () => {
+  it.each(["network", "storage", "missing", "redirect", "private"])("retains the prior worker when a required counter update fails through %s", async failure => {
+    let install!: (event: { waitUntil: (job: Promise<void>) => void }) => void;
+    const skipWaiting = vi.fn(), remove = vi.fn(), failedPath = "/pharmacy-offline/pharmacyPrintPreferences.js";
+    const put = vi.fn(async (request: string) => { if (failure === "storage" && request === failedPath) throw new DOMException("Quota", "QuotaExceededError"); });
+    const fetch = vi.fn(async (path: string) => {
+      if (path === failedPath && failure === "network") throw new Error("Disconnected during update");
+      const response = new Response("Public module", { status: path === failedPath && failure === "missing" ? 404 : 200,
+        headers: { "cache-control": path === failedPath && failure === "private" ? "private, no-store" : "public" } });
+      Object.defineProperty(response, "url", { value: `https://app.test${path}` });
+      if (path === failedPath && failure === "redirect") Object.defineProperty(response, "redirected", { value: true });
+      return response;
+    });
+    const context = vm.createContext({ URL, Response, fetch, self: { location: { origin: "https://app.test" }, skipWaiting,
+      addEventListener: (name: string, handler: typeof install) => { if (name === "install") install = handler; } }, caches: { open: async () => ({ put, keys: async () => [] }), delete: remove } });
+    vm.runInContext(fs.readFileSync("public/sw.js", "utf8"), context);
+    let job!: Promise<void>; install({ waitUntil: value => { job = value; } });
+    await expect(job).rejects.toThrow(); expect(skipWaiting).not.toHaveBeenCalled(); expect(remove).not.toHaveBeenCalled();
+  });
+  it("activates a complete public counter even when unrelated optional icons cannot download", async () => {
+    let install!: (event: { waitUntil: (job: Promise<void>) => void }) => void;
+    const skipWaiting = vi.fn(), put = vi.fn(), source = fs.readFileSync("public/sw.js", "utf8");
+    const files: string[] = JSON.parse(source.match(/const POS_FILES = (\[[^\n]+\]);/)![1]);
+    const fetch = vi.fn(async (path: string) => {
+      if (!files.includes(path)) throw new Error("Optional icon unavailable");
+      const response = new Response("Public counter"); Object.defineProperty(response, "url", { value: `https://app.test${path}` }); return response;
+    });
+    const context = vm.createContext({ URL, Response, fetch, self: { location: { origin: "https://app.test" }, skipWaiting,
+      addEventListener: (name: string, handler: typeof install) => { if (name === "install") install = handler; } }, caches: { open: async () => ({ put, keys: async () => [] }) } });
+    vm.runInContext(source, context); let job!: Promise<void>; install({ waitUntil: value => { job = value; } }); await job;
+    expect(put.mock.calls.map(([path]) => path)).toEqual(files); expect(skipWaiting).toHaveBeenCalledOnce();
+  });
   it.each(["open", "put", "keys"])("preserves a successful network response when cache %s fails", async failure => {
     let handler!: (event: { request: Request; respondWith: (job: Promise<Response>) => void }) => void;
     const response = new Response("Current asset", { status: 200 });

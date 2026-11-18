@@ -288,7 +288,7 @@ export const AreaChart = memo(function AreaChart({
                 className="opacity-75"
               />
 
-              {seriesPaths.map(({ series: s, color, points }, idx) => {
+              {seriesPaths.map(({ color, points }, idx) => {
                 const pt = points[hoverIndex];
                 if (!pt) return null;
                 return (
@@ -328,7 +328,7 @@ export const AreaChart = memo(function AreaChart({
           {/* Static dots when idle */}
           {showDots && hoverIndex === null && data.length <= 14 && (
             <g className="static-dots pointer-events-none">
-              {seriesPaths.map(({ series: s, color, points }, sIdx) =>
+              {seriesPaths.map(({ color, points }, sIdx) =>
                 points.map((pt, pIdx) => (
                   <circle
                     key={`${sIdx}-${pIdx}`}

@@ -1,6 +1,98 @@
 ﻿# Ekavyu pre-production cleanup
 
-Working plan: 24 October 2026. Scope: frontend, sibling backend and static coming-soon site. Preserve pre-existing frontend work. No database, index application, provider send, secret rotation or deployment is authorized by this source cleanup. Baseline logs and analysis are ignored under `.next/cleanup-baseline`.
+Current cleanup: 18 November 2026. Scope: frontend, sibling backend and static coming-soon site. Existing uncommitted feature work is preserved. No database, index application, provider send, secret rotation or deployment was performed. Earlier checkpoints below retain their original dates and verification scope.
+
+## Repository hygiene, 18 November 2026
+
+The whole tracked/untracked source inventory, package manifests/lockfiles,
+documentation, assets, script/configuration references, file-system routes and
+literal dynamic imports were inspected. Static no-import findings were reviewed
+against framework entries and runtime generation before deciding on removal.
+This is evidence-based cleanup, not a guarantee that every export has a caller.
+
+### Removed and preserved files
+
+- Backend: removed 75 obsolete generated executables in 15
+  `.cache/pharmacy-*-build/` trees: billing-only, catalogue, device, external,
+  followups, numbering, ownership, p0, p1-search, pricing, purchase-csv,
+  reconciliation, save, snapshot and supplier-mappings. Current API and four
+  workers build through the retained `scripts/build.mjs` into ignored `dist`.
+- Backend: removed two completed, unreferenced one-off index-removal scripts
+  (`apply-pharmacy-numbering-indexes.mjs`,
+  `apply-pharmacy-reviewed-development.mjs`), obsolete
+  `pharmacy-activation-paused.json` process IDs, and 11 raw runner/debug reports
+  from `.cache`: p0 benchmark/final, purchase-csv access-final/final/tests,
+  search benchmark/phone/tests, supplier-mapping-debug and supplier-mappings
+  final/tests. Test sources and assertions remain intact.
+- Preserved both reviewed index-definition records, four save/concurrency
+  benchmark records and the search sample in the backend
+  [development evidence archive](../../backend/docs/measurements/pharmacy-development-2026-11/README.md).
+  Current setup/search commands, migration reviews, recovery, replay, backup,
+  restore and MFA tools remain. No operational action was run as a test.
+- Removed the three generated architecture inventory JSON snapshots (frontend,
+  backend and landing site). The maintained architecture findings, inventory
+  generator and its test remain; future output belongs in ignored `build`.
+  Removed the byte-identical backend pre-audit advisory report; the unchanged
+  post-audit result, frontend before/after results and database readiness record
+  remain dated evidence.
+
+Total: **93 files removed, 7 evidence files relocated**, approximately **70.68 MB**
+of removed working-tree files (67.4 MiB). Git history is not rewritten, so this
+does not shrink already-published Git history.
+
+### Code, configuration, documentation and assets
+
+Removed three unused chart destructuring bindings and the unreferenced
+`WORKER_BACKPRESSURE_POLL_MULTIPLIER` export/imports. Worker polling/backpressure
+behavior and chart output are unchanged. No API, product workflow, collection,
+public prop or financial algorithm was removed.
+
+Backend Git, Docker and TypeScript now exclude cache/build/coverage outputs;
+landing-site build artifacts are ignored too. Frontend build outputs were
+already ignored. Maintained dependency tables now reflect the actual lockfiles,
+include the existing `fflate` dependency and no longer advertise the previously
+removed direct `fastify-plugin` declaration. No dependency or lockfile was
+changed during this cleanup; remaining direct packages have runtime, CLI,
+type, peer or build uses.
+
+The pharmacy guide index now links current catalogue, supplier, billing-only and
+final-offline contracts. Its obsolete draft-only offline statement is replaced.
+Historical index-operation links point to the preserved archive. Reproducible
+audit snapshots are replaced by generation commands and compact findings.
+
+All public assets, brand source exports, dynamic desktop/mobile screenshots,
+offline public modules and legal/third-party notices are retained. Original
+product PNGs are inputs/evidence for the retained capture workflow; filename-only
+search does not justify deleting them. Existing dated performance and screenshot
+reports remain where referenced by current guides or generators.
+
+### Tests, commands and verification
+
+No unit, integration, regression, tenant/security, financial, pharmacy or recovery
+test source was deleted or consolidated: no obsolete duplicate suite was proven.
+All package/CI/release commands remain. The raw runner outputs removed above are
+generated reports, not tests.
+
+Highest changed-code risk: Level 3 (shared chart/worker/configuration).
+
+| Check | Result |
+| --- | --- |
+| Native frontend production build | `npm run build` passed, including offline asset generation, application types and route compilation; isolated `.next/hygiene-production`, non-routable API fixture. Removed only the two generated TypeScript include paths added by this verification. |
+| Cloudflare/Vinext production build | Passed with explicit native exit code 0. Existing plugin/optimization warnings remain; build success does not resolve the previously documented missing-profile HTTP 404 acceptance blocker. No deployment performed. |
+| Backend production build | API plus four worker executables passed. First sandbox attempt could not overwrite existing `dist` worker files; the authorized filesystem retry passed. |
+| Backend types | `npm run check:fast` passed with current configured rules. A separate exploratory no-unused diagnostic emitted candidates; it is not an enabled project gate and was not reported as passing. |
+| Backend regression tests | 25/25 across `domainEventOutbox`, `whatsappReliability` and `scalabilityAndCoordination`, using disposable MongoDB fixtures. |
+| Frontend consumer tests | 8/8 across `analyticsReadRecovery` and `staffSecondaryPanels`. |
+| Retained tooling tests | Five glob-contract cases and one architecture-inventory case passed. |
+| Lint | Full repository baseline: zero errors, 230 warnings. After removing three unused chart bindings, both changed chart files lint clean. Other existing warnings remain; no rule was disabled or downgraded. |
+| References and assets | 101 Markdown files checked: zero broken local file links. All 18 product PNG hashes and corresponding WebP sizes match the retained provenance. Static landing site: seven local asset references and its inline script checked; it has no package/build command. |
+| History, dependencies and configuration | Seven archived records match original tracked bytes exactly. Both package manifests match root lockfile declarations and all direct packages appear in refreshed dependency tables. Cache/build/coverage ignore checks pass. No environment, deployment, legal or secret file was removed. |
+| Diff hygiene | All three repositories' whitespace checks passed. Existing pharmacy, security and architecture changes remain in the working tree. |
+
+Total focused cases: **39 passed**. The complete clinical/financial suites and
+live provider/device/restore acceptance were not repeated for these nonfunctional
+removals. CI/release gates remain unchanged. Full type/build checks do not provide
+frontend test-file type coverage.
 
 ## Frontend follow-up, 9 November 2026
 
@@ -37,23 +129,29 @@ The second entry/import pass covers 563 frontend JS/TS files, 75 framework/runti
 
 No complete critical browser E2E, hardware passkey, provider settlement, real WhatsApp delivery, cloud grant or restore was exercised. Synthetic component and disposable-database tests do not certify deployment readiness. See [frontend release gates](production-readiness-tracker.md) and [backend release gates](../../backend/docs/production-readiness-tracker.md).
 
-## Outstanding work and exact continuation
+## Remaining maintenance
 
-24 October follow-up: the refreshed import/entry scan covered 567 frontend and
-800 backend JS/TS files and found no orphan application modules (363 and 564
-reachable modules respectively). This is module-level evidence, not proof that
-every export or endpoint is used. The performance checkpoint reports remain
-referenced by their active generator. Automatic approval review rejected a
-broad generator rewrite as exceeding demonstrable stale-file cleanup; no part
-of that rewrite or report deletion was applied. The independent branding-upload
-false-positive fix is recorded in [organization management](organization-management.md#branding-persistence),
-with scoped integration tests, types and build evidence. No new Markdown report
-was added, and no production data or clinical/financial authority was changed.
+The October source pass did not establish that every export or external endpoint
+was unused. The 18 November pass also found no proven orphan application module.
+Keep changes scoped to actual callers and contracts.
 
-1. **Explicit approval pending:** automatic review rejected removing the completed CRM role-upgrade service, CLI and upgrade-only tests because it changes permission governance. All proposed permission edits were restored. Exact patch: `.next/cleanup-baseline/role-upgrade-removal.patch`; the async approval request is pending. If approved, apply it, retain current role-seeding and explicit-denial tests, update `crm-migration-pilot.md`, and run focused role/permission/cache tests plus backend types. Otherwise retain the tooling with its reason.
-2. **Exports/services:** automatic review rejected heuristic bulk export removal and deletion of old notification helpers before application. No bulk edits were applied; the one-off bulk helper and its dry-run artifacts were removed. Continue with manual caller/registration/contract evidence and narrowly reviewable batches. Module reachability does not establish that every exported function or endpoint has callers.
-3. **Remaining source pass:** unused-local findings, duplicate implementations, individual exports/endpoints and active runtime cycles need further review. Documentation consolidation is complete for this batch: current guides retain professional/provider/device/release prerequisites and optional diagnostic contracts; superseded implementation prompts, task timelines and hypothetical historical migration requirements were removed. Preserve current pharmacy aggregate/batch workflows, commercial entitlement mappings, CRM follow-up review actions and external APIs unless intended contracts are changed with all consumers. Finish critical clinical/financial/auth/browser checks for any later changes before claiming full completion.
-4. Repeat affected reference/orphan checks per batch using [verification-workflow.md](verification-workflow.md). Do not repeat the 98-minute backend suite for unrelated docs or local UI edits.
+- Retain CRM role-upgrade/review tools and their permission tests. They implement
+  explicit operator governance; source cleanup does not authorize changing that
+  behavior. The earlier unsubmitted patch and permission question are historical,
+  not a pending step in this cleanup.
+- Retain required notification helpers, external API endpoints, operational
+  scripts and frozen offline calculations. No bulk export deletion is justified
+  by import counts.
+- Remaining lint and unused-local candidates need individual review: omitted
+  callbacks, deliberate password omission, model-registration imports, writes
+  whose return values are unused and shared public props are not safe automatic
+  deletions. No lint/type rule was weakened to hide these candidates.
+- The two sensitive backend cycles and large domain controllers remain
+  architectural maintenance described in the architecture audit. Refactoring
+  them is outside nonfunctional repository cleanup.
+
+Use [the verification workflow](verification-workflow.md) for each future batch.
+CI retains full suites; no test or release gate was removed.
 
 ## Retained architectural decisions
 

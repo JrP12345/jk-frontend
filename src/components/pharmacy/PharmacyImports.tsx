@@ -5,6 +5,7 @@ import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { downloadImport, importError, inspectImport, listImports, pharmacyImportLabels, postImportChunk, previewImport, readImport, type ImportInspection, type ImportView, type PharmacyImportKind } from "@/lib/pharmacyImports";
 import styles from "./PharmacyWorkspace.module.css";
+import { readPharmacyImportFile } from "@/lib/pharmacyImportFile";
 
 const fieldLabel = (field: string) => ({ sourceId: "Actual source row ID", medicineId: "Existing product ID", partyId: "Existing party ID", sourceDate: "Actual source date (YYYY-MM-DD)",
   baseUnit: "Base unit", packUnit: "Pack unit", unitsPerPack: "Units per pack", packs: "Full packs", looseUnits: "Loose base units", batchNumber: "Printed batch", expiryPrecision: "Printed expiry precision (day/month)",
@@ -46,9 +47,7 @@ function ImportSession({ locationId, allowedKinds, onCommitted }: Props) {
     if (!file) return;
     await perform(async signal => {
       setCsv(""); setFileName(""); setInspection(null); setMapping({}); setView(null); setConfirmed(false);
-      if (file.size > 512000) throw new Error("Choose a UTF-8 CSV of at most 512,000 bytes and 200 source rows.");
-      let text: string;
-      try { text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer()); } catch { throw new Error("Save the source as UTF-8 CSV before importing."); }
+      const text = await readPharmacyImportFile(file);
       if (!current()) return;
       const result = await inspectImport(locationId, kind, text, signal);
       if (current()) { setCsv(text); setFileName(file.name); setInspection(result); setMapping(Object.fromEntries(result.fields.filter(field => result.headers.includes(field)).map(field => [field, field]))); setView(null); setConfirmed(false); }
@@ -89,7 +88,7 @@ function ImportSession({ locationId, allowedKinds, onCommitted }: Props) {
     {error && <Alert variant="error" title="Import needs attention">{error}</Alert>}
     {!view ? <form onSubmit={preview} className="space-y-4"><fieldset disabled={busy} className="space-y-4">
       <Select label="Import kind" value={kind} onChange={event => { setKind(event.target.value as PharmacyImportKind); newFile(); }} options={allowedKinds.map(value => ({ value, label: pharmacyImportLabels[value] }))} />
-      <Input label="UTF-8 source CSV" type="file" accept=".csv,text/csv" key={`${kind}:${fileVersion}`} onChange={event => { void chooseFile(event.target.files?.[0]); }} />
+      <Input label="Source CSV or values-only Excel" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" key={`${kind}:${fileVersion}`} onChange={event => { void chooseFile(event.target.files?.[0]); }} />
       {fileName && <p>{fileName}: {inspection?.rowCount} source rows.</p>}
       <Input label="Actual source/count reference *" value={sourceReference} maxLength={50} onChange={event => setSourceReference(event.target.value)} required />
       <Input label="Source review reference *" value={reviewReference} maxLength={200} onChange={event => setReviewReference(event.target.value)} required />

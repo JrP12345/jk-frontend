@@ -221,7 +221,7 @@ try {
     assert.ok(closes.some(value => value.code === 1000 && value.reason === "fixture done"));
   });
   await check("Worker artifact and Free bundle/asset size", async () => {
-    const directory = ".cloudflare/output/v0/workers/default";
+    const directory = ".cloudflare/output/v1/workers/default";
     const config = JSON.parse(await readFile(`${directory}/worker.config.json`, "utf8"));
     assert.equal(config.name, "ekavyu-dev"); assert.equal(config.env.BACKEND_INTERNAL_URL.value, "http://127.0.0.1:5099");
     assert.deepEqual(config.assets.runWorkerFirst, ["/*", "!/_next/static/*", "!/*/_next/static/*"]);

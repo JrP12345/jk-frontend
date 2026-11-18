@@ -122,7 +122,13 @@ export async function openOfflineCheckout(control: OfflineSessionControl, actorI
     if (!prepared || prepared.actorId !== actorId || prepared.authorityId !== control.authorityId) throw new Error("Original prepared operator differs from this ledger.");
     const persistent = await navigator.storage?.persisted?.() ?? false;
     const sync = createPharmacyOfflineSync(ledger, (original, signal) => post(control, "import", { receipt: original.receipt, digest: original.digest, deviceSignature: original.deviceSignature }, signal),
-      { online: () => navigator.onLine, onState });
+      { online: () => navigator.onLine, onState, checkIssuance: async signal => {
+        const result = await get(control, `${control.authorityId}/sale-control-status`, signal);
+        if (result?.authorityId !== control.authorityId || result.manifestDigest !== prepared.manifestDigest) {
+          return { continueIssuance: false, checkedAt: "", controlsUpdatedAt: null };
+        }
+        return result;
+      } });
     return {
       ledger, prepared, sync, persistent,
       async save(cart: OfflineCartIntent): Promise<StoredOfflineReceipt> {

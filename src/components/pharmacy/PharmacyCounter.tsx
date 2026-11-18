@@ -17,6 +17,7 @@ import { prepareIssuedCheckoutPayment } from "@/lib/pharmacyPayment";
 import { PharmacyCollections } from "./PharmacyCollections";
 import type { CounterPaymentPreference } from "./PharmacyCollectionForm";
 import { PharmacyProductReview } from "./PharmacyProductReview";
+import { PharmacyCatalogueDiscovery } from "./PharmacyCatalogueDiscovery";
 import { PharmacyCounterSkeleton } from "./PharmacyCounterSkeleton";
 import { PharmacyCounterSaveStatus } from "./PharmacyCounterSaveStatus";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -41,14 +42,14 @@ function savedKey(storageKey: string) {
   if (key !== null && !/^[a-zA-Z0-9_-]{8,100}$/.test(key)) throw new Error("Sale reference requires review before another issue.");
   return key;
 }
-interface Props { locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void }
+interface Props { locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void }
 export function PharmacyCounter(props: Props) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user);
   return <PharmacyOfflineCounterGate key={`${scope}:${props.locationId}:${props.inventoryMode || "tracked"}`} organizationId={user?.organization_id} locationId={props.locationId} actorId={user?.id} canIssue={props.canCollect}>
     <CounterSession {...props} />
   </PharmacyOfflineCounterGate>;
 }
-function CounterSession({ locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canReviewProducts = false, onProductReviewed }: Props) {
+function CounterSession({ locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReviewProducts = false, onProductReviewed }: Props) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user), storageKey = `pharmacy-sale:${referenceOwnerKey(user)}:${locationId}`;
   const [initial] = useState(() => { try { return { key: savedKey(storageKey), error: "" }; } catch (failure) { return { key: null, error: message(failure) }; } });
   const [pending, setPending] = useState(initial.key), [error, setError] = useState(initial.error), [busy, setBusy] = useState(false), [submitted, setSubmitted] = useState(false), [correctable, setCorrectable] = useState(false);
@@ -62,6 +63,7 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
   const [historyCustomer, setHistoryCustomer] = useState<CounterCustomer | null>(null);
   const [customerError, setCustomerError] = useState(""), [customerLoading, setCustomerLoading] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [quoteError, setQuoteError] = useState(""), [quoteConflict, setQuoteConflict] = useState(false), [quoting, setQuoting] = useState(false), [addedMessage, setAddedMessage] = useState("");
   const [paymentReference, setPaymentReference] = useState(""), [drawerReady, setDrawerReady] = useState(false);
   const [drawerRevision, setDrawerRevision] = useState(0);
@@ -112,11 +114,12 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
   }, [catalogue, journal, initial.key, scope, locationId, inventoryMode, current]);
   const canReview = canReviewProducts && hasAnyPermission(user, "MANAGE_ORGANIZATION");
   const restoring = !draft.ready || !journalReady || !catalogueReady;
-  const editable = !restoring && !draft.error && !busy && !preparingBill && !submitted && !outcome && !(canReview && reviewing);
+  const editable = !restoring && !draft.error && !busy && !preparingBill && !submitted && !outcome && !catalogueOpen && !(canReview && reviewing);
   function invalidate() { revision.current++; beginQuote(); setQuote(null); setQuoteError(""); setQuoting(false); setError(""); }
   function reviewProduct(id: string) { if (editable && canReview) { invalidate(); setReviewing(id); } }
   function add(product: CounterProduct) {
     if (!editable) return;
+    if (product.saleBlocked) { setSearchError("This product is on a sale hold. Ask your organization administrator to review the recorded restriction."); return; }
     if (!product.eligible || !product.unitDefinition) { setSearchError("This product needs its reviewed prescription or inventory workflow."); return; }
     if (inventoryMode === "tracked" && product.stockQuantity === 0) { setSearchError("This product is out of stock in the current snapshot. Refresh products before adding it."); return; }
     if (!lines.some(line => line.product.id === product.id) && lines.length >= 100) { setSearchError("A counter invoice supports at most 100 distinct products."); return; }
@@ -380,13 +383,14 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
               {frequentOnly && !displayProducts.length && !searching && <p className={pos.hint}>Products you add often appear here. Choose All to browse.</p>}
               {displayProducts.length > 0 && !visibleProducts.length && <p className={pos.hint}>{productFilter === "frequent" ? "Products you add often appear here. Choose All to browse." : "No products with this unit in the current results. Choose All or search again."}</p>}
               {visibleProducts.map((product, index) => { const snapshot = catalogue.price(product.id), observedRate = snapshot && snapshot.quantity > 0 ? snapshot.grossPaise / snapshot.quantity : null, cachedRate = observedRate ?? (Number.isSafeInteger(product.retailPricePaise) && product.retailPricePaise! >= 0 ? product.retailPricePaise! : null); return <article key={product.id} className={pos.product} data-picked={index === picked}>
-                {product.eligible && product.unitDefinition ? <Button variant="ghost" disabled={!editable || inventoryMode === "tracked" && product.stockQuantity === 0} className={pos.productPick} aria-label={`Add ${productLabel(product)}`} onClick={() => add(product)}><span className={pos.productBody}>
+                {product.eligible && !product.saleBlocked && product.unitDefinition ? <Button variant="ghost" disabled={!editable || inventoryMode === "tracked" && product.stockQuantity === 0} className={pos.productPick} aria-label={`Add ${productLabel(product)}`} onClick={() => add(product)}><span className={pos.productBody}>
                   <span className={pos.productHeading}><strong>{product.name}{product.strength && !product.name.toLowerCase().includes(product.strength.toLowerCase()) && <span className={pos.strength}> {product.strength}</span>}</strong><strong className={pos.productRate} title={observedRate === null ? "Catalogue retail price; batch price is checked at billing" : "Last checked unit price; revalidated when saving"}>{cachedRate === null ? "—" : money(cachedRate / 100)}</strong></span>
                   <span className={pos.productMeta}><span title={[product.rackLocation ? `Rack ${product.rackLocation}` : "", product.manufacturer, snapshot?.batches[0] ? `Batch ${snapshot.batches[0].batchNumber} · Exp ${snapshot.batches[0].expiryValue}` : "Batch checked at billing", inventoryMode === "billing_only" ? "Stock not tracked" : `${product.stockQuantity} ${product.unitDefinition.baseUnit} in stock (snapshot)`].filter(Boolean).join(" · ")}>{product.rackLocation && <>Rack {product.rackLocation} · </>}{inventoryMode === "billing_only" ? "Stock not tracked" : product.stockQuantity === 0 ? "Out of stock" : `${product.stockQuantity} in stock`}{product.manufacturer && <> · {product.manufacturer}</>}{snapshot?.batches[0] && <> · {snapshot.batches[0].batchNumber} · {snapshot.batches[0].expiryValue}</>}</span><span>{cachedRate === null ? "Price at billing" : `/${product.unitDefinition.baseUnit}`} · {product.unitDefinition.packUnit} {product.unitDefinition.unitsPerPack}</span></span>
                 </span></Button>
-                : <div className={pos.blocked}><strong>{product.name}</strong><p>{!product.unitDefinition ? "Product units must be configured in Inventory." : "A sale classification review or authorized supply workflow is required."}{!canReview && " Ask your organization administrator to review this product."}</p>{canReview ? <Button size="sm" variant="outline" disabled={!editable} aria-label={`Review product ${product.name}`} onClick={() => reviewProduct(product.id)}>Review product</Button> : <Badge variant="warning">Product review required</Badge>}</div>}
+                : <div className={pos.blocked}><strong>{product.name}</strong>{product.saleBlocked ? <><p>{product.saleBlockReason || "This product is on a sale hold."} Ask your administrator to review Product / batch sale holds in Inventory.</p><Badge variant="warning">Sale hold</Badge></> : <><p>{!product.unitDefinition ? "Product units must be configured in Inventory." : "A sale classification review or authorized supply workflow is required."}{!canReview && " Ask your organization administrator to review this product."}</p>{canReview ? <Button size="sm" variant="outline" disabled={!editable} aria-label={`Review product ${product.name}`} onClick={() => reviewProduct(product.id)}>Review product</Button> : <Badge variant="warning">Product review required</Badge>}</>}</div>}
               </article>; })}
               {!search.trim() && !searching && <Button variant="ghost" size="sm" fullWidth aria-label="Browse branch products" disabled={!editable} onClick={() => { void lookup(false, undefined, false, true); }}>Refresh products</Button>}
+              {canManageCatalog && <Button variant="outline" size="sm" fullWidth disabled={!editable || network !== "online"} onClick={() => { invalidate(); setCatalogueOpen(true); }}>Find in shared catalogue</Button>}
               {nextProduct && (productFilter !== "frequent" || search.trim()) && <Button size="sm" variant="outline" fullWidth disabled={!editable || searching} onClick={() => { void lookup(false, nextProduct); }}>Next product page</Button>}
             </div>
             <div className={pos.catalogueStatus} aria-label="Offline product catalogue">
@@ -489,5 +493,10 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
     {priorPayment && <Modal open title="Resolve earlier payment" size="lg" onClose={() => setPriorPayment(null)}><PharmacyCollections locationId={locationId} canCollect={canCollect} canOpenTill={canOpenTill} initialInvoiceId={priorPayment} checkoutOnly embeddedCheckout autoAcknowledge onCollected={receipt => { if (receipt.invoiceId === priorPayment) { setPriorPayment(null); setError(""); } }} /></Modal>}
     {viewRecentInvoice && <PharmacyCollections locationId={locationId} canCollect={false} initialInvoiceId={viewRecentInvoice} focusOnly onInvoiceClose={() => setViewRecentInvoice(null)} />}
     {canReview && reviewing && <PharmacyProductReview medicineId={reviewing} locationId={locationId} onReviewed={invalidate} onClose={() => { setReviewing(null); onProductReviewed?.(); void lookup(exactLookup, undefined, false, true); }} />}
+    {canManageCatalog && catalogueOpen && <PharmacyCatalogueDiscovery locationId={locationId} inventoryMode={inventoryMode} initialSearch={search} onClose={() => setCatalogueOpen(false)} onAdded={product => {
+      setCatalogueOpen(false); setSearch(product.name); setProducts([]); setNextProduct(null); setProductLookupDone(false);
+      setSearchError(inventoryMode === "tracked" ? "Product linked. Complete sale/tax review and receive actual stock in Inventory before billing." : "Product linked. Complete sale/tax review before billing; stock is not tracked.");
+      if (canReview) setReviewing(product.id); onProductReviewed?.();
+    }} />}
   </section>;
 }

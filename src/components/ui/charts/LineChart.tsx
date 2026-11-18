@@ -293,7 +293,7 @@ export const LineChart = memo(function LineChart({
           {/* Glowing Dots */}
           {showDots && (
             <g className="dots pointer-events-none">
-              {seriesPaths.map(({ series: s, color, points }, sIdx) =>
+              {seriesPaths.map(({ color, points }, sIdx) =>
                 points.map((pt, pIdx) => {
                   const isHovered = hoverIndex === pIdx;
                   return (

@@ -12,6 +12,7 @@
   ["src/lib/pharmacyOfflineSession.ts", "pharmacyOfflineSession.js"],
   ["src/lib/pharmacyOfflineIdentity.ts", "pharmacyOfflineIdentity.js"],
   ["src/lib/pharmacyOfflinePrint.ts", "pharmacyOfflinePrint.js"],
+  ["src/lib/pharmacyPrintPreferences.ts", "pharmacyPrintPreferences.js"],
   ["src/lib/pharmacyOfflinePricing.ts", "pharmacyOfflinePricing.js"],
   ["src/lib/pharmacyInvoice.ts", "pharmacyInvoice.js"],
   ["src/lib/pharmacyInvoiceNumberFormat.ts", "pharmacyInvoiceNumberFormat.js"],

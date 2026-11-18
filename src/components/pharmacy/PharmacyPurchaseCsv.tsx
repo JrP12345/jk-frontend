@@ -9,6 +9,9 @@ import { authScopeKey } from "@/lib/authScope";
 import { purchasePage, type PurchaseProduct } from "@/services/pharmacyPurchase.service";
 import { money } from "./pharmacyWorkspace";
 import styles from "./PharmacyWorkspace.module.css";
+import { PharmacyCatalogueDiscovery } from "./PharmacyCatalogueDiscovery";
+import { hasAnyPermission } from "@/lib/permissions";
+import { readPharmacyImportFile } from "@/lib/pharmacyImportFile";
 
 interface Props { locationId: string; supplierId: string; remaining: number; onApply: (rows: PurchaseCsvRow[]) => void; onCancel: () => void }
 const message = (error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message || (error instanceof Error ? error.message : "CSV could not be checked. Retry the preview.");
@@ -22,6 +25,9 @@ export function PharmacyPurchaseCsv({ locationId, supplierId, remaining, onApply
   const [cursor, setCursor] = useState<string | undefined>(), [next, setNext] = useState<string | null>(null), [loadedSearch, setLoadedSearch] = useState(""), [searchError, setSearchError] = useState("");
   const [preview, setPreview] = useState<PurchaseCsvPreview | null>(null), [confirmed, setConfirmed] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [searchAttempt, setSearchAttempt] = useState(0);
+  const [discover, setDiscover] = useState(false);
+  const catalogueUser = useAuthStore(state => state.user);
+  const canAddCatalogue = hasAnyPermission(catalogueUser, "PHARMACY_MANAGE_CATALOG", "MANAGE_ORGANIZATION");
   const [profileRevision, setProfileRevision] = useState(0), [restored, setRestored] = useState(false), [savedIssues, setSavedIssues] = useState<Map<string, string>>(new Map());
   const [remembered, setRemembered] = useState(false), [remembering, setRemembering] = useState(false), [rememberError, setRememberError] = useState("");
   const alive = useRef(true), rememberLock = useRef(false), scope = authScopeKey(useAuthStore(state => state.user));
@@ -45,9 +51,7 @@ export function PharmacyPurchaseCsv({ locationId, supplierId, remaining, onApply
     const request = beginRead(); setBusy(true); setError(""); setPreview(null); setConfirmed(false); setInspection(null); setCsv(""); setFileName(""); setMapping({}); setMatches(new Map()); setActive("");
     setPriceBasis("base_unit"); setProfileRevision(0); setRestored(false); setSavedIssues(new Map()); setRemembered(false); setRememberError("");
     try {
-      if (file.size > 512000 || !/\.csv$/i.test(file.name)) throw new Error("Choose a UTF-8 .csv file, at most 512,000 bytes, from one supplier invoice.");
-      let text: string;
-      try { text = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer()); } catch { throw new Error("Save the file as UTF-8 CSV before importing."); }
+      const text = await readPharmacyImportFile(file);
       if (!request.isCurrent()) return;
       const result = await inspectPurchaseCsv(locationId, supplierId, text, request.signal);
       if (request.isCurrent()) {
@@ -89,7 +93,7 @@ export function PharmacyPurchaseCsv({ locationId, supplierId, remaining, onApply
   return <section className={styles.rx} aria-label="Import supplier invoice CSV">
     <div className={styles.rowHeading}><h3>Import purchase lines</h3><Button size="sm" variant="ghost" onClick={onCancel}>Close CSV import</Button></div>
     <p className={styles.summary}>One supplier invoice, up to {remaining} additional lines. Amounts are INR; quantities are the selected medicine’s packs or loose base units. Stock is received later with printed batch and expiry.</p>
-    <Input label="Supplier invoice CSV" type="file" accept=".csv,text/csv" disabled={busy} onChange={event => { void choose(event.target.files?.[0]); event.target.value = ""; }} />
+    <Input label="Supplier invoice CSV or values-only Excel" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={event => { void choose(event.target.files?.[0]); event.target.value = ""; }} />
     {error && <Alert variant="error" title="CSV needs attention">{error}</Alert>}
     {busy && <p role="status">{remembering ? "Saving supplier mappings…" : "Checking purchase CSV…"}</p>}
     {inspection && <>
@@ -110,6 +114,7 @@ export function PharmacyPurchaseCsv({ locationId, supplierId, remaining, onApply
         {active && <div className={styles.form}><strong>Match: {active}</strong><Input label="Search medicines for CSV match" value={search} maxLength={100} disabled={busy} onChange={event => { beginSearch(); setProducts([]); setProductId(""); setSearch(event.target.value); setCursor(undefined); }} />
           {searchBusy && <p role="status">Finding purchase medicines…</p>}{!searchBusy && searchError && <Alert variant="error" title="Medicine search unavailable" action={<Button size="sm" variant="outline" onClick={() => setSearchAttempt(value => value + 1)}>Retry medicine match search</Button>}>{searchError}</Alert>}
           <Select label="Existing medicine for source item" disabled={busy || searchBusy} value={productId} onChange={event => setProductId(event.target.value)} options={[{ value: "", label: "Choose medicine and check pack size" }, ...visibleProducts.map(product => ({ value: product.id, label: `${label(product)} · ${product.unitDefinition.unitsPerPack} ${product.unitDefinition.baseUnit}/${product.unitDefinition.packUnit}` }))]} />
+          {canAddCatalogue && <Button size="sm" variant="outline" disabled={busy} onClick={() => setDiscover(true)}>Missing product? Find in catalogue</Button>}
           <div className={styles.actions}><Button size="sm" disabled={busy || searchBusy || !productId} onClick={() => { const product = visibleProducts.find(row => row.id === productId); if (!product) return; invalidate(); setMatches(previous => new Map(previous).set(active, product)); setSavedIssues(previous => { const updated = new Map(previous); updated.delete(active); return updated; }); setActive(""); }}>Use selected medicine</Button>
             {cursor && <Button size="sm" variant="outline" disabled={busy || searchBusy} onClick={() => { setProductId(""); setCursor(undefined); }}>First medicine page</Button>}{!searchBusy && next && <Button size="sm" variant="outline" disabled={busy} onClick={() => { setProductId(""); setCursor(next); }}>More medicines</Button>}</div>
         </div>}
@@ -128,5 +133,8 @@ export function PharmacyPurchaseCsv({ locationId, supplierId, remaining, onApply
       {remembered ? <p role="status">Mappings saved for this supplier and branch. The purchase draft still needs Save.</p> : <Button size="sm" variant="outline" disabled={busy || !confirmed || invalidRows > 0 || preview.rows.some(row => !row.product?.identityHash)} onClick={() => { void remember(); }}>Remember mappings for this supplier</Button>}
       <Button size="sm" disabled={busy || !confirmed || invalidRows > 0 || preview.rows.length > remaining} onClick={() => onApply(preview.rows)}>Add {preview.rows.length} CSV lines to draft</Button>
     </section>}
+    {discover && active && canAddCatalogue && <PharmacyCatalogueDiscovery locationId={locationId} initialSearch={search || active} onClose={() => setDiscover(false)} onAdded={product => {
+      invalidate(); setMatches(previous => new Map(previous).set(active, product)); setDiscover(false); setActive(""); setSearchAttempt(value => value + 1);
+    }} />}
   </section>;
 }

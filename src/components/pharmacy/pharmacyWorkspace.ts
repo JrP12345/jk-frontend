@@ -6,6 +6,7 @@ export interface Medicine {
   manufacturer?: string; strength?: string; rackLocation?: string; category?: string; scheduleType?: string; hsnCode?: string; gstRate?: number; barcodes?: string[];
   unitDefinition?: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number };
   billingSupply?: { batchNumber: string; expiry: { precision: "day" | "month"; value: string }; mrpPaise: number };
+  saleControl?: { blocked: boolean; reason: string };
 }
 export interface PrescriptionItem {
   id: string; medicineId: string | null; name: string; dosage: string; frequency: string; duration: string; instructions?: string;
@@ -50,6 +51,7 @@ export function prepareDispense(prescriptions: PrescriptionItem[], selections: D
     if (!selected?.medicineId) continue;
     const medicine = medicines.find(item => item.id === selected.medicineId);
     if (!medicine || medicine.locationId !== locationId) return { error: "Choose stock from this location for every selected item." };
+    if (medicine.saleControl?.blocked) return { error: `${medicine.name} is on a sale hold. Ask an administrator to review the recorded restriction.` };
     if (!Number.isSafeInteger(selected.quantity) || selected.quantity <= 0) return { error: "Enter a positive whole quantity for every selected item." };
     const allowance = prescription.fulfillment;
     if (allowance?.mode === "quantity" && (!Number.isSafeInteger(allowance.revision) || allowance.revision < 0 || !Number.isSafeInteger(allowance.remainingQuantity) || allowance.remainingQuantity! < selected.quantity ||

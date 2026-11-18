@@ -1,5 +1,16 @@
 # Ekavyu Cloudflare migration validation
 
+## Current recheck: 17 November 2026
+
+The historical acceptance below is not a current release certification. The
+installed vinext/Cloudflare versions now produce build-output `v1`; the local
+artifact check was updated accordingly. Native Next and Cloudflare builds pass
+after loading the shared PostCSS declarations through ESM in the Vite adapter.
+Twenty-two synthetic transport/artifact checks pass. The full local harness
+still fails `dynamic SSR profile and upstream 404`: `/doctor/missing` returns
+HTTP 200 instead of 404. Keep this as a Cloudflare release blocker; the assertion
+has not been relaxed. See [the current architecture audit](architecture-audit-2026-11-17.md).
+
 Original review: 2026-10-18. As of 2026-10-22, the migration changes are on
 `main`; the temporary migration branch has been deleted.
 

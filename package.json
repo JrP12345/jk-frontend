@@ -29,6 +29,7 @@
     "@tanstack/react-query": "^5.101.4",
     "@vinext/cloudflare": "^1.1.1",
     "axios": "^1.15.2",
+    "fflate": "0.8.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.43.0",
     "next": "^16.3.4",
@@ -67,6 +68,8 @@
     "vitest": "^5.0.0"
   },
   "overrides": {
+    "undici": "7.30.2",
+    "zod": "4.6.6",
     "satori": {
       "fflate": "0.7.5"
     },

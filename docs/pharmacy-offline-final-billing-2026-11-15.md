@@ -31,7 +31,7 @@ After a full browser restart without internet, open the installed public pharmac
 | Restart | Durable financial database is separate from temporary drafts/session storage. Public static counter modules survive logout; authenticated/other cache resources are cleared. Storage denial clearly disables issuance. |
 | Backup recovery | Encrypted bounded export; passphrase plus authenticated original PC public key verifies the complete signed chain. Read-only recovery imports original receipts and can release only an original signed stopped checkpoint. It never restores a writable old lease. |
 | PC replacement | Revoke and reconcile the original PC first. Archive its immutable enrollment/public-key evidence, reserve fresh numbers and enroll the new browser atomically with audit. Original receipts remain verifiable after replacement. |
-| Printing | Existing saved-invoice component in the app; structured A4 committed-snapshot document in the public restart shell. Printer errors/reprints create no second sale or payment. |
+| Printing | Saved-snapshot A4/80/58 mm documents in the app and public restart shell, with a branch-scoped device paper preference and A4 fallback. Printer errors/reprints create no second sale or payment. No printer is required to save a bill. |
 
 Preparation and key derivation can take time on older hardware; they are outside the per-bill Save path. Search renders at most 25 products; local lookups use cached indexes and only the relevant protected balances. No memory-only success fallback is used for financial issuance.
 
@@ -60,7 +60,9 @@ Artifacts: `.next/pharmacy-offline-ledger-acceptance/results.json`, `synthetic-o
 
 The [16 November stress follow-up](pharmacy-offline-operating-acceptance-2026-11-16.md) passes a 10,000-product/126-bill probe with CPU/network throttling, lost usable acknowledgements, forced Chrome termination, ordered queue recovery and detached encrypted-file verification. It distinguishes the transport simulator from native financial API coverage and records a concrete actual-store checklist.
 
-The agreed first software scope is connected. Before calling it store-ready, complete these checks with actual operating equipment:
+The same follow-up records six additional saved-document layout checks: 48-item app and public restart bills at A4/80/58 mm, including long text, mixed GST, repeat handoff and the real dashboard print reset. Requested PDF widths and multi-page output pass. It also covers print-only recovery after an offline commit, honest backup-download status and removing auxiliary history reads from the Save completion path.
+
+The agreed first software scope is connected. The owner confirmed this is a development machine with no connected store equipment; equipment absence does not block development or saving bills. The following are future store-rollout checks:
 
 - Measure Save/search/print percentiles on the intended old PC, disk and realistic catalogue/cart sizes.
 - Exercise real weak connectivity, a large accumulated queue and interrupted shutdown; retain and verify an external encrypted backup.

@@ -10,6 +10,7 @@ import { printElement, PrintPreparationError } from "@/lib/printBrand";
 import { useAuthStore } from "@/store/authStore";
 import { referenceOwnerKey } from "@/lib/authScope";
 import type { CounterInvoice, CollectionReceipt } from "@/lib/pharmacyCollections";
+import { rememberPharmacyPaper } from "@/lib/pharmacyPrintPreferences";
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("@/lib/api", () => ({ default: api }));
 vi.mock("@/lib/printBrand", async () => ({ ...await vi.importActual("@/lib/printBrand"), printElement: vi.fn() }));
@@ -22,7 +23,7 @@ const invoice: CounterInvoice = { id: "invoice", locationId: "branch", paymentRe
   items: [{ description: "Captured product", quantity: 2, amount: 10, hsnSacCode: "300490", gstRate: 0, unitCode: "NOS", baseAmountPaise: 2000, cgstPaise: 0, sgstPaise: 0, grossAmountPaise: 2000, unitSnapshot: { baseUnit: "tablet", packUnit: "strip", unitsPerPack: 10 }, batches: [{ batchNumber: "CAPTURED-BATCH", quantity: 2, expiryValue: "2099-12", expiryPrecision: "month", sellingPricePaise: 1000, mrpPaise: 1200 }] }] };
 const receipt: CollectionReceipt = { receiptId: "receipt-original", invoiceId: "invoice", invoiceNumber: invoice.invoiceNumber, locationId: "branch", currency: "INR", actorId: "actual-cashier", paidAt: "2026-10-20T08:00:00Z", creditedPaise: 0, collectedPaise: 700, paidPaise: 700, balancePaise: 1300, revision: 1, cashTenderedPaise: 1000, cashChangePaise: 300, status: "partially_paid", evidenceMode: "staff_confirmed_manual", shiftId: drawerFixture.id, drawerCode: drawerFixture.drawerCode, entries: [{ componentId: "component-one", amountPaise: 700, paymentMethod: "cash" }] };
 beforeEach(() => {
-  sessionStorage.clear(); useAuthStore.setState({ user: { id: "cashier", name: "Cashier", email: "cashier@example.test", role: "cashier", organization_id: "org", permissions: ["PHARMACY_SELL"] } });
+  sessionStorage.clear(); localStorage.clear(); useAuthStore.setState({ user: { id: "cashier", name: "Cashier", email: "cashier@example.test", role: "cashier", organization_id: "org", permissions: ["PHARMACY_SELL"] } });
   api.get.mockReset().mockImplementation(async (url: string) => url === "/pharmacy/till" ? response({ active: drawerFixture }) : url.includes("/sale-operations/") ? response({ invoiceId: "invoice", dispenseId: "dispense", invoiceNumber: invoice.invoiceNumber, totalPaise: 2000, status: "unpaid", requestKey: "original-reference" }) : url.includes("/collections?") ? response({ items: [receipt], nextCursor: null }) : url.includes("/invoices/invoice?") ? response(invoice) : response({ items: [{ id: invoice.id, invoiceNumber: invoice.invoiceNumber, status: "paid", totalAmount: 20, currency: "INR" }], nextCursor: null }));
   api.post.mockReset(); vi.mocked(printElement).mockReset().mockResolvedValue(); Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
@@ -55,6 +56,13 @@ it("does not print response evidence belonging to another invoice or branch", as
   render(<PharmacySavedBillPrint invoiceId="invoice" locationId="branch" savedDocument={{ ...invoice, id: "foreign" }} onClose={vi.fn()} />);
   await screen.findByText("Bill saved; printing needs attention");
   expect(printElement).not.toHaveBeenCalled(); expect(api.post).not.toHaveBeenCalled();
+});
+it("uses the branch's remembered thermal layout for automatic Save & print without another financial read or write", async () => {
+  rememberPharmacyPaper("branch", "58mm");
+  const close = vi.fn(); render(<PharmacySavedBillPrint invoiceId="invoice" locationId="branch" savedDocument={invoice} onClose={close} />);
+  await waitFor(() => expect(close).toHaveBeenCalledOnce());
+  expect(printElement).toHaveBeenCalledOnce(); expect(vi.mocked(printElement).mock.lastCall![1]).toMatchObject({ paper: "58mm", css: "html,body{width:calc(58mm - 4mm)!important}" });
+  expect(vi.mocked(printElement).mock.lastCall![0]!.className).toContain("thermal"); expect(api.get).not.toHaveBeenCalled(); expect(api.post).not.toHaveBeenCalled();
 });
 it("never prints a different branch or incomplete saved document", async () => {
   api.get.mockResolvedValue(response({ ...invoice, locationId: "different-branch" }));

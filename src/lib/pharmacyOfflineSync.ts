@@ -1,9 +1,12 @@
 import type { OfflineLedgerAcknowledgement, StoredOfflineReceipt } from "./pharmacyOfflineLedger";
 
-export type OfflineSyncState =
+export type OfflineSyncState = (
   | { status: "idle" | "syncing" | "offline" | "paused"; imported: number }
   | { status: "retry"; imported: number; retryAt: number }
-  | { status: "review"; imported: number; commandId?: string; message: string };
+  | { status: "review"; imported: number; commandId?: string; message: string }) & {
+    issuanceStopped?: boolean; controlsCheckedAt?: string; controlsUpdatedAt?: string | null;
+  };
+export interface OfflineIssuanceCheck { continueIssuance: boolean; checkedAt: string; controlsUpdatedAt: string | null }
 interface LedgerQueue {
   pending(limit: number): Promise<StoredOfflineReceipt[]>;
   acknowledge(value: OfflineLedgerAcknowledgement): Promise<void>;
@@ -16,11 +19,42 @@ type Ack = OfflineLedgerAcknowledgement & { authorityId: string; sequence: numbe
  */
 export function createPharmacyOfflineSync(queue: LedgerQueue, send: (value: StoredOfflineReceipt, signal: AbortSignal) => Promise<unknown>, options: {
   online: () => boolean; now?: () => number; random?: () => number; onState?: (state: OfflineSyncState) => void;
+  checkIssuance?: (signal: AbortSignal) => Promise<OfflineIssuanceCheck>;
 }) {
   const now = options.now ?? Date.now, random = options.random ?? Math.random;
   let running: Promise<OfflineSyncState> | null = null, state: OfflineSyncState = { status: "idle", imported: 0 }, failures = 0, paused = false;
   let controller: AbortController | null = null;
-  const update = (value: OfflineSyncState) => { state = value; options.onState?.(structuredClone(value)); return structuredClone(value); };
+  let lastSafetyAttempt = -Infinity;
+  const update = (value: OfflineSyncState) => {
+    state = { ...(state.issuanceStopped ? { issuanceStopped: true } : {}),
+      ...(state.controlsCheckedAt ? { controlsCheckedAt: state.controlsCheckedAt, controlsUpdatedAt: state.controlsUpdatedAt } : {}), ...value };
+    options.onState?.(structuredClone(state)); return structuredClone(state);
+  };
+  async function checkSafety() {
+    const elapsed = now() - lastSafetyAttempt;
+    if (!options.checkIssuance || state.issuanceStopped || elapsed >= 0 && elapsed < 30000) return;
+    lastSafetyAttempt = now();
+    const attempt = new AbortController(); controller = attempt;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const result = await Promise.race([options.checkIssuance(attempt.signal), new Promise<never>((_, reject) => {
+        timer = setTimeout(() => { attempt.abort(); reject(new Error("Safety check timed out")); }, 8000);
+      })]);
+      if (paused) return;
+      const valid = result && typeof result.continueIssuance === "boolean" && Number.isFinite(Date.parse(result.checkedAt)) &&
+        (result.controlsUpdatedAt === null || Number.isFinite(Date.parse(result.controlsUpdatedAt)));
+      if (valid) update({ ...state, controlsCheckedAt: result.checkedAt, controlsUpdatedAt: result.controlsUpdatedAt });
+      if (!valid || !result.continueIssuance) {
+        update({ ...state, issuanceStopped: true });
+        // Stop only NEW issuance. Original receipts must still reconcile, including
+        // legitimate bills issued before a later hold; never discard that evidence.
+        await queue.suspendIssuance?.();
+      }
+    } catch {
+      // No connection/authentication is not a fresh safety confirmation. Retain
+      // the last successful check and the bounded original offline authority.
+    } finally { clearTimeout(timer); if (controller === attempt) controller = null; }
+  }
   const review = async (message: string, commandId?: string) => {
     try { await queue.suspendIssuance?.(); }
     catch { message += " The counter was locked because the review hold could not be stored. Recover this PC before billing."; }
@@ -30,6 +64,8 @@ export function createPharmacyOfflineSync(queue: LedgerQueue, send: (value: Stor
     if (paused) return update({ status: "paused", imported: state.imported });
     if (state.status === "review") return structuredClone(state);
     if (!options.online()) return update({ status: "offline", imported: state.imported });
+    await checkSafety();
+    if (paused) return update({ status: "paused", imported: state.imported });
     if (state.status === "retry" && state.retryAt > now()) return structuredClone(state);
     let imported = state.imported;
     // Yield to UI/network scheduling after ten bills, even with a large backlog.
@@ -75,6 +111,6 @@ export function createPharmacyOfflineSync(queue: LedgerQueue, send: (value: Stor
     /** An explicit operator action can retry a reviewed command; nothing is
      * discarded, renumbered or marked paid merely because this is called.
      */
-    retryOriginal() { failures = 0; state = { status: "idle", imported: state.imported }; paused = false; },
+    retryOriginal() { failures = 0; update({ status: "idle", imported: state.imported }); paused = false; },
   };
 }

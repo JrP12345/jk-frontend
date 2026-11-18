@@ -11,6 +11,8 @@ import { readPurchase, type PharmacyParty, type PurchaseDraft } from "@/services
 import { purchaseDeliveryPayload, purchaseReceivingPlan, remainingDeliveryLines, type PurchaseDeliveryLine as DeliveryLine } from "@/lib/pharmacyReceiving";
 import { money } from "./pharmacyWorkspace";
 import styles from "./PharmacyWorkspace.module.css";
+import { orderSeedFromPurchase } from "@/lib/pharmacyPurchaseOrders";
+import type { ShortbookDraftSeed } from "@/lib/pharmacyShortbook";
 
 type Pending = { key: string; kind: "post" | "receipt" };
 type Receipt = { id: string; deliveryReference: string; receivedAt: string; lines: Array<{ lineId: string; batchNumber: string; billedBaseUnits: number; freeBaseUnits: number; costPaise: number; expiry: { value: string } }> };
@@ -21,7 +23,7 @@ function stored(key: string): Pending | null {
   if (!["post", "receipt"].includes(value.kind) || !/^[a-zA-Z0-9_-]{8,100}$/.test(value.key)) throw new Error("Purchase reference needs review before another operation.");
   return value;
 }
-export function PharmacyPurchaseOperations({ purchase: initialPurchase, canManage, canReceive, onClose, onChanged }: { purchase: PurchaseDraft; canManage: boolean; canReceive: boolean; onClose: () => void; onChanged: () => void }) {
+export function PharmacyPurchaseOperations({ purchase: initialPurchase, canManage, canReceive, onClose, onChanged, onReorder }: { purchase: PurchaseDraft; canManage: boolean; canReceive: boolean; onClose: () => void; onChanged: () => void; onReorder?: (seed: ShortbookDraftSeed) => void }) {
   const [purchase, setPurchase] = useState(initialPurchase);
   const scope = authScopeKey(useAuthStore(state => state.user)), storageKey = `pharmacy-purchase-operation:${scope}:${purchase.locationId}:${purchase.id}`;
   const [initial] = useState(() => { try { return { pending: stored(storageKey), error: "" }; } catch (error) { return { pending: null, error: message(error) }; } });
@@ -126,6 +128,7 @@ export function PharmacyPurchaseOperations({ purchase: initialPurchase, canManag
   return <Modal open title={postingMode ? "Post saved supplier invoice" : "Receive purchase delivery"} onClose={onClose} busy={busy} size="lg" bodyClassName={styles.dialog} footer={<Button size="sm" variant="outline" disabled={busy} onClick={onClose}>Close purchase</Button>}>
     <p>{purchase.supplierInvoiceNumber} · {purchase.supplierSnapshot.name}. Supplier stated total: {money(purchase.statedTotalPaise / 100)}.</p>
     {purchase.posting && <p>Posted payable: {money(purchase.posting.payablePaise / 100)}. Delivery receipts do not create another payable.</p>}
+    {!postingMode && canManage && onReorder && <Button size="sm" variant="outline" disabled={busy || Boolean(pending)} onClick={() => { try { onReorder(orderSeedFromPurchase(purchase)); } catch (failure) { setError(message(failure)); } }}>Reorder from this invoice</Button>}
     {postingMode && <p>Only the saved draft is posted. This freezes the supplier bill and establishes its payable; stock is received separately. Review source tax and supplier eligibility before posting.</p>}
     {(error || lookupError) && <Alert variant="error" title="Purchase needs attention">{error || lookupError}</Alert>}
     {plan.error && <Alert variant="error" title="Purchase quantities unavailable">{plan.error}</Alert>}

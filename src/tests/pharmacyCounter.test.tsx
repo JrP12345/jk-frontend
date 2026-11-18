@@ -20,6 +20,29 @@ const bill = { invoiceId: "invoice", dispenseId: "dispense", invoiceNumber: "I00
 const invoice = { id: "invoice", kind: "pharmacy", locationId: "branch", invoiceNumber: bill.invoiceNumber, totalAmount: 20, balanceDue: 20, amountPaid: 0, paymentRevision: 0, currency: "INR", status: "unpaid", customerSnapshot: { anonymous: true }, items: [] };
 function receipt(body: any, key: string) { return { receiptId: "receipt", invoiceId: "invoice", invoiceNumber: bill.invoiceNumber, locationId: "branch", currency: "INR", actorId: "cashier", paidAt: "2026-10-20T08:00:00Z", creditedPaise: 0, collectedPaise: body.entries.reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), paidPaise: body.entries.reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), balancePaise: 0, revision: 1, cashTenderedPaise: body.cashTenderedPaise, cashChangePaise: body.cashTenderedPaise - body.entries.filter((entry: any) => entry.paymentMethod === "cash").reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), status: "paid", evidenceMode: "staff_confirmed_manual", shiftId: drawerFixture.id, drawerCode: drawerFixture.drawerCode, entries: body.entries, requestKey: key }; }
 const mount = (canCollect = true, locationId = "branch", canReviewProducts = false) => render(<ToastProvider><PharmacyCounter locationId={locationId} canCollect={canCollect} canReviewProducts={canReviewProducts} /></ToastProvider>);
+it("links shared discovery to the counter without issuing a bill or changing stock", async () => {
+  const get = api.get.getMockImplementation()!, post = api.post.getMockImplementation()!;
+  const sourceId = "a".repeat(24), branchId = "b".repeat(24);
+  api.get.mockImplementation(async (url, config) => url.includes("/catalogue/global?") ? response({ items: [{ id: sourceId, name: "Ordinary product", provider: "reviewed", sourceId: "SYNTHETIC", release: "TEST", revision: 1, alreadyAdded: true }], nextCursor: null }) : get(url, config));
+  api.post.mockImplementation(async (url, body, config) => url.endsWith("/adopt") ? response({ medicine: { ...product, id: branchId, price: 10 }, reused: true }) : post(url, body, config));
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["MANAGE_ORGANIZATION", "PHARMACY_MANAGE_CATALOG", "PHARMACY_SELL"] } });
+  render(<ToastProvider><PharmacyCounter locationId="branch" canCollect={false} canManageCatalog /></ToastProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "Find in shared catalogue" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Use branch product" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: /confirmed the exact medicine/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Use existing branch product" }));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Find in product catalogue" })).not.toBeInTheDocument());
+  expect(screen.getByLabelText("Scan barcode or search products")).toHaveValue("Ordinary product");
+  expect(api.post.mock.calls.map(([url]) => url)).toEqual([`/pharmacy/catalogue/global/${sourceId}/adopt`]);
+});
+it("shows a sale hold instead of offering classification review or adding the product", async () => {
+  const get = api.get.getMockImplementation()!;
+  api.get.mockImplementation(async (url, config) => url.includes("/sales/products?") ? response({ items: [{ ...product, eligible: true, saleBlocked: true, saleBlockReason: "Reviewed exact-product hold" }], nextCursor: null }) : get(url, config));
+  mount(false); await screen.findByText(/Reviewed exact-product hold/);
+  expect(screen.queryByRole("button", { name: "Add Ordinary product" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Review product Ordinary product" })).not.toBeInTheDocument();
+  expect(screen.getByText("Sale hold")).toBeVisible();
+});
 it("adds a zero-stock catalogue item in billing-only mode and sends its mode with a locally priced Save", async () => {
   const get = api.get.getMockImplementation()!;
   api.get.mockImplementation(async (url, config) => url.includes("/sales/products?") ? response({ items: [{ ...product, stockQuantity: 0, retailPricePaise: 1000 }], nextCursor: null }) : get(url, config));

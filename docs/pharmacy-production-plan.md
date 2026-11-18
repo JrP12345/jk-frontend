@@ -1,6 +1,8 @@
 # Pharmacy implementation and release scope
 
-Current scope, consolidated 24 October 2026. The project is in development with no production customers or legacy production data. No historical backfill, entitlement grandfathering or old-deployment compatibility programme is required. Current clinical, financial, security and inventory behavior remains authoritative.
+Guide index refreshed 18 November 2026. The project is in development with no production customers or legacy production data. No historical backfill, entitlement grandfathering or old-deployment compatibility programme is required. Current clinical, financial, security and inventory behavior remains authoritative. The T01–T31 checkpoint below is dated October; newer contracts are linked first.
+
+Current increments: [designated-PC final offline billing](pharmacy-offline-final-billing-2026-11-15.md), [whole-branch billing-only mode](pharmacy-billing-only-2026-11-15.md), [product catalogue](pharmacy-product-catalogue-2026-11-16.md) and [supplier ordering](pharmacy-supplier-ordering-2026-11-17.md). Offline issuance has a narrower supported scope than online billing; device, provider, catalogue-licensing and release acceptance remain explicit gates.
 
 ## Implementation status
 
@@ -21,7 +23,7 @@ Pharmacy capability, physical Location, membership grants and purchased product 
 
 Stock and money commands use actual source revisions, stable keys, bounded inputs and atomic replica-set transactions. Recover an uncertain committed command before creating a replacement. Print or QR display is not evidence of payment. Never fabricate units, consent, prescriber authority, opening stock, tax approval or professional evidence. Keep immutable documents and financial history; current aggregate-only and batch workflows remain supported application paths.
 
-Online finalization is authoritative. Unconfigured restricted categories, cross-issuer/interstate transfer requirements and unsupported electronic reporting stay blocked. Actual price/tax/trial terms require business review; dated example prices are not a published offer.
+Online finalization remains the default. Separately activated designated-PC cash billing commits locally under signed, time-limited authority and synchronizes original receipts; see the final offline contract above. Unconfigured restricted categories, cross-issuer/interstate transfer requirements and unsupported electronic reporting stay blocked. Actual price/tax/trial terms require business review; dated example prices are not a published offer.
 
 ## External questions and owners
 
@@ -39,7 +41,7 @@ These are material uncertainties with default recommendations. They do not block
 | ₹499/₹799/₹299 inclusive of GST, annual discounts/proration, refunds/grace — finance/product | Monthly list prices as given; no invented annual discount; quote snapshots and current-period continuity. Validate tax display/terms | Paid commercial activation |
 | Real supported scanners, 58/80mm printer/browser combos — pilot pharmacy | USB keyboard scanner and browser print first; actual device verification. No silent promise of native ESC/POS/direct printer integration | Counter readiness |
 | Production Mongo topology/backup durability and RPO/RTO — operations | Verify current deployed setup; proposed starting objectives RPO ≤24h/RTO ≤4h only if business accepts and measured tooling meets them; captured provider evidence supports reconciliation after restore | Release |
-| Offline operational tolerance — pharmacist/operator | Online authoritative finalize; manual downtime documents and reviewed recovery, no complex synchronization | Operational SOP |
+| Offline operational tolerance — pharmacist/operator | One designated browser and operator per prepared branch; signed cash-only authority, durable local receipts, original-receipt synchronization and encrypted recovery. Validate actual hardware and recovery using the linked offline operating guides | Operational SOP |
 | Competitor offline/idempotency, digital-register legality, external product catalogue licence — research/product/legal | Unverified; do not use as implementation guarantee. No proprietary medicine catalogue import without rights | Any dependent claim/integration |
 
 ## Dated research register

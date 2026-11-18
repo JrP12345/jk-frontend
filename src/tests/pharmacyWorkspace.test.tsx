@@ -538,6 +538,7 @@ it("aggregates repeated medicine selections, validates whole quantities and pres
   for (const value of [0, -1, 1.5, NaN, Infinity, 31]) expect(prepareDispense([rx], [{ medicineId: "medicine", quantity: value }], [medicine], "clinic").error).toBeTruthy();
   expect(prepareDispense([rx, { ...rx, id: "second" }], [{ medicineId: "medicine", quantity: 20 }, { medicineId: "medicine", quantity: 20 }], [medicine], "clinic").error).toContain("Not enough stock");
   expect(prepareDispense([rx], [{ medicineId: "medicine", quantity: 1 }], [medicine], "other").error).toContain("this location");
+  expect(prepareDispense([rx], [{ medicineId: "medicine", quantity: 1 }], [{ ...medicine, saleControl: { blocked: true, reason: "Synthetic hold" } }], "clinic").error).toContain("sale hold");
 });
 
 it("bounds the pinned dispense payload to the backend item and prescription limits", () => {

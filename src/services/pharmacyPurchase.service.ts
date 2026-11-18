@@ -38,11 +38,14 @@ function validateCalculation(draft: PurchaseDraft) {
 export type PurchaseDraftInput = { locationId: string; supplierId: string; expectedSupplierRevision: number; supplierInvoiceNumber: string; invoiceDate: string; statedTotalPaise: number; notes: string; lines: PurchaseLine[] };
 export type PartyInput = Omit<PharmacyParty, "id" | "revision"> & { locationId: string };
 export interface PurchasePage<T> { items: T[]; nextCursor: string | null }
-export async function purchasePage<T>(kind: "parties" | "purchases" | "purchase-products", locationId: string, options: { search?: string; cursor?: string; archived?: boolean } = {}, signal?: AbortSignal): Promise<PurchasePage<T>> {
+export async function purchasePage<T>(kind: "parties" | "purchases" | "purchase-products", locationId: string, options: { search?: string; cursor?: string; archived?: boolean; supplierId?: string; status?: "draft" | "posted"; unlinked?: boolean } = {}, signal?: AbortSignal): Promise<PurchasePage<T>> {
   const query = new URLSearchParams({ locationId, limit: "25" });
   if (options.search?.trim()) query.set("search", options.search.trim().slice(0, 100));
   if (options.cursor) query.set("cursor", options.cursor);
   if (options.archived) query.set("archived", "true");
+  if (options.supplierId) query.set("supplierId", options.supplierId);
+  if (options.status) query.set("status", options.status);
+  if (options.unlinked) query.set("unlinked", "true");
   const response = await api.get(`/pharmacy/${kind}?${query}`, { signal }), result = response.data?.data;
   if (!result || !Array.isArray(result.items) || result.items.length > 25 || result.nextCursor !== null && typeof result.nextCursor !== "string") throw new Error("Purchase records could not be loaded completely");
   return result;

@@ -15,6 +15,7 @@ export function PharmacyOfflineCheckoutSettings({ organizationId, locationId, di
   const [passphrase, setPassphrase] = useState(""), [reference, setReference] = useState(""), [count, setCount] = useState("100"), [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(""), [error, setError] = useState("");
   const [backup, setBackup] = useState<File | null>(null), [recoveryStatus, setRecoveryStatus] = useState("");
+  const [backupStatus, setBackupStatus] = useState("");
   const current = () => alive.current && authScopeKey(useAuthStore.getState().user) === owner;
   useEffect(() => {
     alive.current = true;
@@ -25,7 +26,7 @@ export function PharmacyOfflineCheckoutSettings({ organizationId, locationId, di
   }, [organizationId, locationId]);
   async function act(action: "prepare" | "backup" | "close" | "cancel" | "restore") {
     if (!current() || !user || lock.current || disabled) return;
-    lock.current = true; setBusy(action); onBusyChange(true); setError("");
+    lock.current = true; setBusy(action); onBusyChange(true); setError(""); setBackupStatus("");
     let runtime: Awaited<ReturnType<typeof openOfflineCheckout>> | undefined;
     try {
       const saved = await readOfflineSession({ organizationId, locationId });
@@ -48,7 +49,9 @@ export function PharmacyOfflineCheckoutSettings({ organizationId, locationId, di
         if (action === "close") { await runtime.stop(reference); await runtime.reconcile(reference); }
         else {
           const content = await runtime.ledger.exportRecoveryBackup(), link = document.createElement("a"), url = URL.createObjectURL(new Blob([content], { type: "application/json" }));
-          link.href = url; link.download = `ekavyu-offline-${locationId.slice(-6)}-${saved.authorityId}.json`; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+          link.href = url; link.download = `ekavyu-offline-${locationId.slice(-6)}-${saved.authorityId}.json`; document.body.append(link);
+          try { link.click(); if (current()) setBackupStatus("Backup download requested. Check your browser downloads, keep a separate USB or cloud copy, and verify that file through backup recovery. A download request does not confirm a stored backup."); }
+          finally { link.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000); }
         }
       }
     } catch (failure) { if (current()) setError((failure as { response?: { data?: { message?: string } } }).response?.data?.message || (failure as Error).message); }
@@ -80,6 +83,7 @@ export function PharmacyOfflineCheckoutSettings({ organizationId, locationId, di
       {issued && <Button type="button" size="sm" variant="outline" disabled={disabled || Boolean(busy) || passphrase.length < 12} onClick={() => { void act("backup"); }}>Download encrypted recovery backup</Button>}
       {control && ["active", "stopped"].includes(control.phase) && <Button type="button" size="sm" variant="outline" disabled={disabled || Boolean(busy) || passphrase.length < 12 || reference.trim().length < 3} loading={busy === "close"} onClick={() => { void act("close"); }}>Stop, synchronize &amp; release branch</Button>}
     </div>
+    {backupStatus && <p role="status" className="text-xs text-text-secondary">{backupStatus}</p>}
     <details><summary className="cursor-pointer text-sm">Recover original bills from an encrypted backup</summary><div className="mt-3 space-y-3">
       <p className="text-xs text-text-secondary">Recovery verifies the original PC signatures and preserves invoice numbers. It never restores a writable number lease or enrolls a replacement PC.</p>
       <Input label="Encrypted recovery backup" type="file" accept=".json,application/json" disabled={Boolean(busy) || disabled} onChange={event => setBackup(event.target.files?.[0] || null)} />

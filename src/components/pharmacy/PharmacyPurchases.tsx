@@ -15,6 +15,8 @@ import { PharmacyPurchaseOperations } from "./PharmacyPurchaseOperations";
 import { PharmacyPurchaseCsv } from "./PharmacyPurchaseCsv";
 import { purchaseReceivingPlan } from "@/lib/pharmacyReceiving";
 import { PharmacyShortbook } from "./PharmacyShortbook";
+import { PharmacyPurchaseOrders } from "./PharmacyPurchaseOrders";
+import { PharmacySupplierWorkspace } from "./PharmacySupplierWorkspace";
 import type { ShortbookDraftSeed } from "@/lib/pharmacyShortbook";
 
 const errorMessage = (error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message || (error instanceof Error ? error.message : "Reload the record before retrying.");
@@ -40,6 +42,8 @@ export function PharmacyPurchases(props: PurchaseProps) {
 function PurchaseSession({ locationId, canManage, canReceive = false, initialShortbookProduct }: PurchaseProps) {
   const [tab, setTab] = useState(initialShortbookProduct ? "shortbook" : "purchases"), [search, setSearch] = useState(""), [query, setQuery] = useState(""), [archived, setArchived] = useState(false);
   const [draftSeed, setDraftSeed] = useState<ShortbookDraftSeed>();
+  const [orderSeed, setOrderSeed] = useState<ShortbookDraftSeed>();
+  const [supplierWorkspace, setSupplierWorkspace] = useState<PharmacyParty | null>(null), [initialOrderId, setInitialOrderId] = useState<string>();
   const [cursor, setCursor] = useState<string | undefined>(), [previous, setPrevious] = useState<Array<string | undefined>>([]), [next, setNext] = useState<string | null>(null);
   const [items, setItems] = useState<Array<PharmacyParty | PurchaseDraft>>([]), [loaded, setLoaded] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [party, setParty] = useState<PharmacyParty | "new" | null>(null), [draft, setDraft] = useState<PurchaseDraft | "new" | null>(null), [retry, setRetry] = useState(0);
@@ -49,7 +53,7 @@ function PurchaseSession({ locationId, canManage, canReceive = false, initialSho
   useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setCursor(undefined); setPrevious([]); }, 250); return () => clearTimeout(timer); }, [search]);
   const load = useCallback(async () => {
     const request = beginRead(); setBusy(true); setError("");
-    if (tab === "shortbook") { setItems([]); setNext(null); setBusy(false); return; }
+    if (tab === "shortbook" || tab === "orders") { setItems([]); setNext(null); setBusy(false); return; }
     try {
       const page = await purchasePage<PharmacyParty | PurchaseDraft>(tab as "parties" | "purchases", locationId, { cursor, search: query, archived: tab === "parties" && archived }, request.signal);
       if (request.isCurrent()) { setItems(page.items); setNext(page.nextCursor); setLoaded(readKey); }
@@ -67,20 +71,21 @@ function PurchaseSession({ locationId, canManage, canReceive = false, initialSho
   return <section className={styles.list} aria-label="Purchases and business parties">
     <header className={styles.alertHeader}><h2>Purchases & parties</h2>{canManage && <div className={styles.actions}><Button size="sm" variant="outline" onClick={() => setParty("new")}>Add supplier / customer</Button><Button size="sm" onClick={() => { setDraftSeed(undefined); setDraft("new"); }}>New purchase draft</Button></div>}</header>
     <p className={styles.summary}>Drafts record supplier invoices. Saving a draft does not receive stock or create a supplier balance.</p>
-    <Tabs variant="pills" activeTab={tab} onChange={value => { setTab(value); setCursor(undefined); setPrevious([]); setSearch(""); setQuery(""); }} tabs={[{ id: "purchases", label: "Supplier invoices" }, { id: "parties", label: "Suppliers & customers" }, { id: "shortbook", label: "Shortbook" }]} />
-    {tab === "shortbook" ? <PharmacyShortbook locationId={locationId} canManage={canManage} initialProduct={initialShortbookProduct} onDraft={seed => { setDraftSeed(seed); setDraft("new"); }} /> : <>
+    <Tabs variant="pills" activeTab={tab} onChange={value => { setTab(value); setCursor(undefined); setPrevious([]); setSearch(""); setQuery(""); }} tabs={[{ id: "purchases", label: "Supplier invoices" }, { id: "orders", label: "Purchase orders" }, { id: "parties", label: "Suppliers & customers" }, { id: "shortbook", label: "Shortbook" }]} />
+    {tab === "orders" ? <PharmacyPurchaseOrders locationId={locationId} canManage={canManage} seed={orderSeed} initialOrderId={initialOrderId} onSeedClosed={() => setOrderSeed(undefined)} onOpenInvoice={id => { void openDraft(id); }} /> : tab === "shortbook" ? <PharmacyShortbook locationId={locationId} canManage={canManage} initialProduct={initialShortbookProduct} onDraft={seed => { setDraftSeed(seed); setDraft("new"); }} onOrder={seed => { setInitialOrderId(undefined); setOrderSeed(seed); setTab("orders"); }} /> : <>
     <Input type="search" label={tab === "parties" ? "Search business parties" : "Search supplier invoices"} maxLength={100} value={search} onChange={event => setSearch(event.target.value)} />
     {tab === "parties" && <Select label="Party status" value={archived ? "archived" : "active"} onChange={event => { setArchived(event.target.value === "archived"); setCursor(undefined); setPrevious([]); }} options={[{ value: "active", label: "Active" }, { value: "archived", label: "Archived" }]} />}
     {error && <Alert variant="error" title="Purchase records unavailable" action={<Button size="sm" onClick={() => setRetry(value => value + 1)}>Retry purchase records</Button>}>{error}</Alert>}
     {busy && <p role="status">Loading purchase records...</p>}
     {!busy && !error && visible.length === 0 && <p className={styles.empty}>{tab === "parties" ? "No business parties match this search." : "No purchase drafts match this search."}</p>}
-    {visible.map(row => tab === "parties" ? <article className={styles.card} key={row.id}><div className={styles.identity}><strong>{(row as PharmacyParty).name}</strong><small>{(row as PharmacyParty).kinds.join(" / ")} · {(row as PharmacyParty).gstin || "Unregistered for GST"}</small><small>{(row as PharmacyParty).address}</small></div>{canManage && <Button size="sm" variant="outline" onClick={() => setParty(row as PharmacyParty)}>Edit {(row as PharmacyParty).name}</Button>}</article>
+    {visible.map(row => tab === "parties" ? <article className={styles.card} key={row.id}><div className={styles.identity}><strong>{(row as PharmacyParty).name}</strong><small>{(row as PharmacyParty).kinds.join(" / ")} · {(row as PharmacyParty).gstin || "Unregistered for GST"}</small><small>{(row as PharmacyParty).address}</small></div><div className={styles.actions}>{(row as PharmacyParty).kinds.includes("supplier") && <Button size="sm" variant="outline" onClick={() => setSupplierWorkspace(row as PharmacyParty)}>Supplier workspace {(row as PharmacyParty).name}</Button>}{canManage && <Button size="sm" variant="outline" onClick={() => setParty(row as PharmacyParty)}>Edit {(row as PharmacyParty).name}</Button>}</div></article>
       : <article className={styles.card} key={row.id}><div className={styles.identity}><strong>{(row as PurchaseDraft).supplierInvoiceNumber}</strong><small>{(row as PurchaseDraft).supplierSnapshot.name} · {(row as PurchaseDraft).invoiceDate} · {(row as PurchaseDraft).status === "posted" ? "Posted" : "Draft"}</small><span>Supplier stated total: {money((row as PurchaseDraft).statedTotalPaise / 100)}</span></div><Button size="sm" variant="outline" onClick={() => { void openDraft(row.id); }}>Open {(row as PurchaseDraft).status === "posted" ? "purchase" : "draft"} {(row as PurchaseDraft).supplierInvoiceNumber}</Button></article>)}
     <div className={styles.actions}>{previous.length > 0 && <Button size="sm" variant="outline" disabled={busy} onClick={() => { setCursor(previous.at(-1)); setPrevious(value => value.slice(0, -1)); }}>Previous purchase page</Button>}{next && <Button size="sm" variant="outline" disabled={busy} onClick={() => { setPrevious(value => [...value, cursor]); setCursor(next); }}>Next purchase page</Button>}</div>
     </>}
+    {supplierWorkspace && <PharmacySupplierWorkspace supplier={supplierWorkspace} locationId={locationId} onClose={() => setSupplierWorkspace(null)} onOrder={id => { setSupplierWorkspace(null); setInitialOrderId(id); setOrderSeed(undefined); setTab("orders"); }} onInvoice={id => { setSupplierWorkspace(null); void openDraft(id); }} />}
     {party && canManage && <PartyForm key={party === "new" ? "new-party" : party.id} current={party === "new" ? undefined : party} locationId={locationId} onClose={() => setParty(null)} onSaved={saved} />}
     {draft && <DraftForm seed={draft === "new" ? draftSeed : undefined} key={draft === "new" ? "new-draft" : draft.id} current={draft === "new" ? undefined : draft} locationId={locationId} canManage={canManage} onClose={() => { setDraft(null); setDraftSeed(undefined); }} onSaved={saved} onContinue={result => { setOperation(result); setDraft(null); }} />}
-    {operation && <PharmacyPurchaseOperations key={operation.id} purchase={operation} canManage={canManage} canReceive={canReceive} onClose={saved} onChanged={saved} />}
+    {operation && <PharmacyPurchaseOperations key={operation.id} purchase={operation} canManage={canManage} canReceive={canReceive} onClose={saved} onChanged={saved} onReorder={seed => { setOperation(null); setOrderSeed(seed); setTab("orders"); }} />}
   </section>;
 }
 function PartyForm({ current, locationId, onClose, onSaved }: { current?: PharmacyParty; locationId: string; onClose: () => void; onSaved: () => void }) {

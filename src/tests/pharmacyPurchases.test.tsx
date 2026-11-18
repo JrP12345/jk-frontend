@@ -50,6 +50,17 @@ it("prefills shortbook packs and loose units in a supplier draft while requiring
   expect(fixture.post).not.toHaveBeenCalled(); expect(fixture.put).not.toHaveBeenCalled();
 });
 
+it("copies selected shortbook shortages into an order without creating an invoice or changing stock", async () => {
+  const original = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation(async (url: string) => url.startsWith("/pharmacy/shortbook?") ? response({ items: [{ id: "shortage", medicineId: product.id, quantity: 21, unitVersion: 2, note: "", status: "open", revision: 1, updatedAt: "2026-11-15T10:00:00Z", product: { ...product, stockQuantity: 0 } }], nextCursor: null }) : url.startsWith("/pharmacy/purchase-orders?") ? page([]) : original(url));
+  mount(); fireEvent.click(screen.getByRole("tab", { name: "Shortbook" }));
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Include Purchase product in purchase draft" }));
+  fireEvent.click(screen.getByRole("button", { name: "Copy selected to purchase order" }));
+  const dialog = await screen.findByRole("dialog", { name: "New purchase order" });
+  expect(within(dialog).getByLabelText("Order packs Purchase product")).toHaveValue(2); expect(within(dialog).getByLabelText("Order loose units Purchase product")).toHaveValue(1);
+  expect(fixture.post).not.toHaveBeenCalled(); expect(fixture.put).not.toHaveBeenCalled();
+});
+
 it("shows saved drafts with their captured supplier and stated amount, without posting actions", async () => {
   mount(); await screen.findByText("INV-001"); expect(screen.getByText(/Original supplier name/)).toBeInTheDocument(); expect(screen.getByText(/123\.45/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Post|Pay|Receive stock/ })).not.toBeInTheDocument(); expect(fixture.post).not.toHaveBeenCalled();
@@ -107,7 +118,7 @@ it("appends reviewed CSV lines to the existing draft and saves through the origi
   expect(screen.getByRole("button", { name: "Save & continue" })).toBeDisabled();
   const file = new File(["source"], "supplier.csv", { type: "text/csv" });
   Object.defineProperty(file, "arrayBuffer", { value: async () => new TextEncoder().encode("source\n001").buffer });
-  fireEvent.change(screen.getByLabelText("Supplier invoice CSV"), { target: { files: [file] } }); await screen.findByText("supplier.csv · 1 lines");
+  fireEvent.change(screen.getByLabelText("Supplier invoice CSV or values-only Excel"), { target: { files: [file] } }); await screen.findByText("supplier.csv · 1 lines");
   fireEvent.click(screen.getByRole("button", { name: "Match source item 1: 001" }));
   await waitFor(() => expect(screen.getAllByText(/Purchase product · 10 tablet\/strip/, { selector: "option" })).toHaveLength(1));
   change("Existing medicine for source item", product.id); fireEvent.click(screen.getByRole("button", { name: "Use selected medicine" }));
