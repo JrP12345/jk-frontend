@@ -1,6 +1,10 @@
-/** Use the configured frontend origin, never a request Host or the API origin. */
+/** Use a configured or Vercel-provided frontend origin, never request headers or the API origin. */
 export function getSiteUrl(): URL | undefined {
-  const value = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+  const vercelHost = process.env.VERCEL === "1"
+    ? process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
+    : undefined;
+  const value = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL ||
+    (vercelHost ? `https://${vercelHost}` : undefined);
   if (!value) return undefined;
   try {
     const url = new URL(value);

@@ -14,6 +14,69 @@ import { ToastProvider } from "@/components/ui";
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
+function clearSiteEnvironment() {
+  for (const name of ["APP_URL", "NEXT_PUBLIC_APP_URL", "VERCEL", "VERCEL_ENV", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_URL"]) vi.stubEnv(name, "");
+}
+
+it("serves an empty non-indexable sitemap without a configured frontend origin", async () => {
+  clearSiteEnvironment();
+  const request = vi.fn();
+  vi.stubGlobal("fetch", request);
+  expect(getSiteUrl()).toBeUndefined();
+  expect(canIndexPublicSite()).toBe(false);
+  expect(robots().sitemap).toBeUndefined();
+  expect(await sitemap()).toEqual([]);
+  expect(request).not.toHaveBeenCalled();
+});
+
+it("uses the stable Vercel production domain when APP_URL is absent", () => {
+  clearSiteEnvironment();
+  vi.stubEnv("VERCEL", "1");
+  vi.stubEnv("VERCEL_ENV", "production");
+  vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "care.example");
+  vi.stubEnv("VERCEL_URL", "branch-hash.vercel.app");
+  expect(getSiteUrl()?.origin).toBe("https://care.example");
+  expect(canIndexPublicSite()).toBe(true);
+  expect(robots().sitemap).toBe("https://care.example/sitemap.xml");
+  vi.stubEnv("APP_URL", "https://preferred.example");
+  expect(getSiteUrl()?.origin).toBe("https://preferred.example");
+});
+
+it("keeps Vercel previews and projects without a custom domain out of search", async () => {
+  clearSiteEnvironment();
+  vi.stubEnv("VERCEL", "1");
+  vi.stubEnv("VERCEL_ENV", "preview");
+  vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "care.example");
+  vi.stubGlobal("fetch", vi.fn());
+  expect(getSiteUrl()?.origin).toBe("https://care.example");
+  expect(canIndexPublicSite()).toBe(false);
+  expect(await sitemap()).toEqual([]);
+  vi.stubEnv("VERCEL_ENV", "production");
+  vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
+  vi.stubEnv("VERCEL_URL", "project.vercel.app");
+  expect(getSiteUrl()?.origin).toBe("https://project.vercel.app");
+  expect(canIndexPublicSite()).toBe(false);
+  expect(await sitemap()).toEqual([]);
+});
+
+it.each(["care.example/path", "user:pass@care.example", "care.example?token=secret", "localhost"])("rejects an invalid Vercel origin: %s", host => {
+  clearSiteEnvironment();
+  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("VERCEL", "1");
+  vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", host);
+  expect(getSiteUrl()).toBeUndefined();
+  expect(canIndexPublicSite()).toBe(false);
+});
+
+it("does not use platform variables outside Vercel or bypass an invalid explicit origin", () => {
+  clearSiteEnvironment();
+  vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "care.example");
+  expect(getSiteUrl()).toBeUndefined();
+  vi.stubEnv("VERCEL", "1");
+  vi.stubEnv("APP_URL", "https://care.example/private");
+  expect(getSiteUrl()).toBeUndefined();
+});
+
 it("uses only a configured frontend origin for canonicals and safe preview URLs", () => {
   vi.stubEnv("APP_URL", "https://care.example");
   const metadata = profileMetadata("Care", "Practice details", "/doctor/asha?location=surat");

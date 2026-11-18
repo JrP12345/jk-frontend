@@ -26,6 +26,23 @@ and must identify the reachable backend, not the frontend's own rewrite endpoint
 
 ### Vercel configuration failure
 
+The tracked `vercel.json` uses `npm ci` for a clean, lockfile-based install.
+This avoids updating a restored dependency tree with `npm install`; keep the
+local `packages/fast-glob` adapter in the deployment source. If an older build
+reports npm `ERR_INVALID_ARG_TYPE` for the `from` argument, deploy this revision
+and retry once with the previous build cache disabled. The short error alone
+does not identify the original npm failure; retain the npm debug log if it recurs.
+
+For canonical URLs and the sitemap, set `APP_URL` to the preferred frontend
+origin, without `/api` or a path. When omitted on Vercel, the app uses
+`VERCEL_PROJECT_PRODUCTION_URL`, then `VERCEL_URL`; enable **Automatically expose
+System Environment Variables** in the project settings. Explicit
+`APP_URL`/`NEXT_PUBLIC_APP_URL` still take priority. Preview deployments and
+development/provider hosts remain `noindex`. A missing or invalid origin yields
+an empty sitemap without calling the backend, rather than an HTTP 500. Outside
+Vercel, configure `APP_URL` for public indexing. See
+[Vercel's system environment variables](https://vercel.com/docs/environment-variables/system-environment-variables).
+
 If `next build` reports `NEXT_PUBLIC_API_URL must be an absolute HTTPS URL`
 while loading `next.config.ts`, open the project's **Settings > Environment
 Variables** and set `NEXT_PUBLIC_API_URL` for **Production** to the actual backend
