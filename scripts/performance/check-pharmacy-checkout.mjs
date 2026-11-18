@@ -11,7 +11,8 @@ import { pharmacyActions } from '../../src/lib/pharmacyCapabilities.ts';
 
 const requireBrowser = createRequire(path.resolve(process.env.PLAYWRIGHT_TOOLS_DIR || '.next/landing-tools', 'tool.cjs'));
 const { chromium } = requireBrowser('playwright-core');
-const origin = 'http://localhost:3127', output = path.resolve('.next/pharmacy-checkout-acceptance');
+const theme = process.env.PHARMACY_CHECKOUT_THEME === 'dark' ? 'dark' : 'light';
+const origin = 'http://localhost:3127', output = path.resolve(`.next/pharmacy-checkout-acceptance${theme === 'dark' ? '-dark' : ''}`);
 await fs.mkdir(output, { recursive: true });
 const buildDirectory = path.resolve(process.env.PHARMACY_CHECKOUT_DIST || '.next/pharmacy-acceptance-build');
 if (path.relative(process.cwd(), buildDirectory).startsWith('..') || path.isAbsolute(path.relative(process.cwd(), buildDirectory))) throw Error('Preview build must be inside this workspace.');
@@ -55,10 +56,10 @@ function savedResult(input, key, sequence, rate) {
   return { invoiceId, dispenseId: 'd'.repeat(24), invoiceNumber, totalPaise: total, status: paid ? 'paid' : 'unpaid', requestKey: key, ...(collection ? { collection } : {}), ...(input.includeDocument ? { document } : {}), documentForRead: document };
 }
 async function session(width, mode = 'normal') {
-  const context = await browser.newContext({ viewport: { width, height: width < 700 ? 844 : 900 }, reducedMotion: 'reduce', colorScheme: 'light' });
+  const context = await browser.newContext({ viewport: { width, height: width < 700 ? 844 : 900 }, reducedMotion: 'reduce', colorScheme: theme });
   await context.addCookies([{ name: 'ekavyu_session', value: 'synthetic-session', domain: 'localhost', path: '/' }]);
-  await context.addInitScript(id => {
-    localStorage.setItem('ekavyu_active_location_id', id); localStorage.setItem('ekavyu-mode', 'light');
+  await context.addInitScript(({ id, theme }) => {
+    localStorage.setItem('ekavyu_active_location_id', id); localStorage.setItem('ekavyu-mode', theme);
     window.printAttempts = 0; window.failNextPrint = false;
     new MutationObserver(() => {
       const frame = document.querySelector('iframe[data-print-frame]');
@@ -67,7 +68,7 @@ async function session(width, mode = 'normal') {
         frame.contentWindow.print = () => { window.printAttempts++; if (window.failNextPrint) { window.failNextPrint = false; throw Error('Synthetic printer failure'); } frame.contentWindow.dispatchEvent(new Event('afterprint')); };
       }
     }).observe(document, { childList: true, subtree: true });
-  }, ids.location);
+  }, { id: ids.location, theme });
   const page = await context.newPage(), errors = [], reads = [], writes = [], committed = new Map(), unexpected = [];
   page.setDefaultTimeout(15000); page.on('pageerror', error => errors.push(error.message));
   const state = { rate: 1500, allowRecovery: mode !== 'lost-response', delay: 0, reject: mode, sequence: 0, branchEnabled: true, inventoryMode: mode.startsWith('reconciliation') ? 'billing_only' : 'tracked', countRevision: 1, countKey: null };
@@ -128,7 +129,14 @@ async function session(width, mode = 'normal') {
       return reply(publicResult(saved));
     }
     if (/^\/pharmacy\/invoices\/[a-f\d]{24}$/.test(p)) return reply([...committed.values()].find(row => row.invoiceId === p.split('/').at(-1))?.documentForRead);
-    if (p === '/pharmacy/invoices') return reply({ items: [...committed.values()].map(row => row.documentForRead), nextCursor: null });
+    if (p === '/pharmacy/invoices') {
+      const search = (url.searchParams.get('search') || '').toLowerCase(), status = url.searchParams.get('status') || 'all';
+      const items = [...committed.values()].reverse().map(row => row.documentForRead).filter(row => {
+        const matchesStatus = status === 'all' || (status === 'paid' ? row.status === 'paid' : ['unpaid', 'partially_paid'].includes(row.status));
+        return matchesStatus && (!search || `${row.invoiceNumber} ${row.customerSnapshot.name || ''}`.toLowerCase().includes(search));
+      });
+      return reply({ items, nextCursor: null });
+    }
     if (p.endsWith('/collections')) return reply({ items: [], nextCursor: null });
     if (p.startsWith('/pharmacy/')) { unexpected.push('GET ' + p); return route.fulfill({ status: 501, headers, json: { success: false, message: 'Missing synthetic contract' } }); }
     const fallback = fixture(url, 'admin', 'GET', 'pharmacy');
@@ -146,7 +154,11 @@ async function session(width, mode = 'normal') {
 }
 async function run(name, width, mode, work) {
   const s = await session(width, mode), started = performance.now();
-  try { await work(s); assert.deepEqual(s.unexpected, [], 'No unhandled pharmacy contracts'); assert.deepEqual(s.errors, [], 'No uncaught browser errors'); await s.page.screenshot({ path: path.join(output, name + '.png'), fullPage: true }); const phases = await s.page.evaluate(() => performance.getEntriesByType('measure').filter(row => row.name.startsWith('pharmacy.')).map(row => ({ phase: row.name, durationMs: Math.round(row.duration * 10) / 10 }))); results.push({ name, passed: true, elapsedMs: Math.round(performance.now() - started), phases, commands: s.writes.map(row => ({ path: row.path, key: row.key })), committed: s.committed.size }); }
+  const initialAssets = await s.page.evaluate(() => {
+    const scripts = performance.getEntriesByType('resource').filter(row => new URL(row.name).pathname.endsWith('.js'));
+    return { scriptResources: scripts.length, transferredBytes: scripts.reduce((sum, row) => sum + row.transferSize, 0), decodedBytes: scripts.reduce((sum, row) => sum + row.decodedBodySize, 0) };
+  });
+  try { await work(s); assert.deepEqual(s.unexpected, [], 'No unhandled pharmacy contracts'); assert.deepEqual(s.errors, [], 'No uncaught browser errors'); await s.page.screenshot({ path: path.join(output, name + '.png'), fullPage: true }); const phases = await s.page.evaluate(() => performance.getEntriesByType('measure').filter(row => row.name.startsWith('pharmacy.')).map(row => ({ phase: row.name, durationMs: Math.round(row.duration * 10) / 10 }))); results.push({ name, passed: true, elapsedMs: Math.round(performance.now() - started), initialAssets, phases, commands: s.writes.map(row => ({ path: row.path, key: row.key })), committed: s.committed.size }); }
   catch (error) { await s.page.screenshot({ path: path.join(output, name + '-failed.png'), fullPage: true }); results.push({ name, passed: false, error: error.message, unexpected: s.unexpected, browserErrors: s.errors }); throw error; }
   finally { await s.context.close(); console.log(JSON.stringify(results.at(-1))); }
 }
@@ -158,6 +170,35 @@ try {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
   browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--disable-background-networking', '--no-proxy-server'] });
+  for (const width of [1660, 390]) await run(`search-and-navigation-${width}`, width, 'normal', async s => {
+    if (width < 700) {
+      const filter = await s.page.getByRole('group', { name: 'Filter product results by unit', exact: true }).getByRole('button').first().boundingBox();
+      assert.ok(filter.height >= 44, 'Mobile product filters have usable touch targets');
+      await s.page.screenshot({ path: path.join(output, 'mobile-products-refined.png'), fullPage: true });
+    }
+    await s.add(); await s.pay(); await s.save.click(); await waitNext(s);
+    await s.page.getByRole('tab', { name: 'Sales & collections', exact: true }).click();
+    const search = s.page.getByRole('searchbox', { name: 'Search sales', exact: true });
+    await s.page.getByRole('button', { name: /^Open sale / }).waitFor();
+    await search.fill('missing synthetic reference');
+    await s.page.getByText('No matching sales', { exact: true }).waitFor();
+    assert.equal(await search.isVisible(), true, 'Empty sales results retain search');
+    await search.fill(''); await s.page.getByRole('button', { name: /^Open sale / }).waitFor();
+    const tools = s.page.getByRole('group', { name: width < 700 ? 'Mobile pharmacy tools' : 'Pharmacy tools', exact: true });
+    await tools.getByRole('button', { name: 'More', exact: true }).click();
+    assert.equal(await s.page.getByRole('menuitem', { name: 'Counter sale', exact: true }).count(), 0);
+    await s.page.getByRole('menuitem', { name: 'Inventory', exact: true }).click();
+    await tools.getByRole('button', { name: 'More tools, current: Inventory', exact: true }).waitFor();
+    const inventory = s.page.getByRole('region', { name: 'Medicine inventory', exact: true });
+    await inventory.getByText(product.name, { exact: true }).waitFor();
+    const capabilityReads = s.reads.filter(p => p.endsWith('/capabilities')).length;
+    await s.page.getByRole('searchbox', { name: 'Search medicines', exact: true }).fill('normalized cross field');
+    await s.page.waitForFunction(() => document.querySelector('[aria-label="Medicine inventory"]')?.getAttribute('aria-busy') === 'false');
+    await inventory.getByText(product.name, { exact: true }).waitFor();
+    assert.equal(s.reads.filter(p => p.endsWith('/capabilities')).length, capabilityReads, 'Inventory search does not repeat capability reads');
+    assert.equal(s.writes.length, 1, 'Searching and navigation do not create more financial commands');
+    assert.equal(await s.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  });
   for (const [name, width, mode] of [['desktop-stock-reconciliation', 1660, 'reconciliation'], ['mobile-count-recovery', 390, 'reconciliation-lost-response']]) await run(name, width, mode, async s => {
     const openSettings = async () => {
       await s.page.goto(origin + '/dashboard/locations', { waitUntil: 'domcontentloaded' });
@@ -279,4 +320,4 @@ try {
     assert.equal(await s.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   });
 } catch (error) { console.error(error.message); process.exitCode = 1; }
-finally { await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ syntheticApi: true, realApiWrites: 0, results, logs, limitations: ['Synthetic API response timing is not configured-store Save latency.', 'Print invocation is intercepted; physical printers and native print dialog remain unverified.'] }, null, 2)); await browser?.close(); preview.kill(); }
+finally { await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({ theme, syntheticApi: true, realApiWrites: 0, results, logs, limitations: ['Synthetic API response timing is not configured-store Save latency.', 'Print invocation is intercepted; physical printers and native print dialog remain unverified.'] }, null, 2)); await browser?.close(); preview.kill(); }

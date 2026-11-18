@@ -128,17 +128,43 @@ it("previews exact change with cash shortcuts while still requiring receipt conf
   expect(screen.getByText("Change to return").parentElement).toHaveTextContent("\u20b90.00");
   expect(api.post).not.toHaveBeenCalled();
 });
-it("filters the loaded sales page without writing or pretending to search other pages", async () => {
+it("searches branch sales and payment status on the server without writing", async () => {
   const get = api.get.getMockImplementation()!;
-  api.get.mockImplementation(async (url: string, config: unknown) => url.startsWith("/pharmacy/invoices?") ? response({ items: [summary, { ...summary, id: "paid", invoiceNumber: "PAID-002", status: "paid" }], nextCursor: null }) : get(url, config));
+  api.get.mockImplementation(async (url: string, config: unknown) => {
+    if (!url.startsWith("/pharmacy/invoices?")) return get(url, config);
+    const query = new URL(url, "https://test.invalid").searchParams;
+    const rows = [summary, { ...summary, id: "paid", invoiceNumber: "PAID-002", status: "paid" }].filter(row => (!query.get("search") || row.invoiceNumber.includes(query.get("search")!)) && (query.get("status") !== "unpaid" || row.status !== "paid"));
+    return response({ items: rows, nextCursor: null });
+  });
   mount(); await screen.findByRole("button", { name: "Open sale PAID-002" });
   fireEvent.click(screen.getByRole("button", { name: "Unpaid", exact: true }));
   expect(screen.queryByRole("button", { name: "Open sale PAID-002" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "All", exact: true }));
-  change("Search sales on this page", "PAID-002");
-  expect(screen.getByRole("button", { name: "Open sale PAID-002" })).toBeInTheDocument();
+  change("Search sales", "PAID-002");
+  expect(await screen.findByRole("button", { name: "Open sale PAID-002" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Open sale " + summary.invoiceNumber })).not.toBeInTheDocument();
-  expect(screen.getByText("Filters apply to this page")).toBeInTheDocument();
+  expect(api.get.mock.calls.some(([url]) => String(url).includes("search=PAID-002"))).toBe(true);
+  expect(api.get.mock.calls.some(([url]) => String(url).includes("status=unpaid"))).toBe(true);
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+it("keeps search and payment controls available after an empty result or failed read", async () => {
+  const get = api.get.getMockImplementation()!;
+  api.get.mockImplementation(async (url: string, config: unknown) => {
+    if (!url.startsWith("/pharmacy/invoices?")) return get(url, config);
+    if (url.includes("search=failed")) throw new Error("Connection lost");
+    return response({ items: url.includes("search=missing") ? [] : [summary], nextCursor: null });
+  });
+  mount(); await screen.findByRole("button", { name: "Open sale " + summary.invoiceNumber });
+  change("Search sales", "missing");
+  await screen.findByText("No matching sales");
+  expect(screen.getByRole("searchbox", { name: "Search sales" })).toHaveValue("missing");
+  expect(screen.getByRole("button", { name: "Unpaid", exact: true })).toBeEnabled();
+  change("Search sales", "failed");
+  await screen.findByText("Sales unavailable");
+  expect(screen.getByRole("searchbox", { name: "Search sales" })).toHaveValue("failed");
+  change("Search sales", "");
+  expect(await screen.findByRole("button", { name: "Open sale " + summary.invoiceNumber })).toBeInTheDocument();
   expect(api.post).not.toHaveBeenCalled();
 });
 it("opens drawer setup inside collection and keeps collection blocked until the drawer exists", async () => {

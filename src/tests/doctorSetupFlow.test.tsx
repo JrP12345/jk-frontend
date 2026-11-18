@@ -46,7 +46,7 @@ describe("Guided doctor setup", () => {
       fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [image] } });
       expect(await within(dialog).findByRole("img", { name: "Preview" })).toHaveAttribute("src", "blob:profile");
       fireEvent.click(within(dialog).getByRole("button", { name: "Update Profile" }));
-      await waitFor(() => expect(fixture.uploadFile).toHaveBeenCalledWith(image));
+      await waitFor(() => expect(fixture.uploadFile).toHaveBeenCalledWith(image, { organizationId: "org", contentClass: "avatar" }));
       await waitFor(() => expect(api.put).toHaveBeenCalledWith("/onboarding/doctor/admin-user?organizationId=org", expect.objectContaining({ name: doctor.name, image_url: "doctors/profile.png" })));
     } finally { cleanup(); vi.unstubAllGlobals(); }
   });

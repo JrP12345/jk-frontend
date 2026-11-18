@@ -11,7 +11,7 @@ import { reportFixture, expiryReportRow } from "./fixtures/pharmacyReport";
 const fixture = vi.hoisted(() => ({ capabilities: vi.fn(), get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), fetch: vi.fn(), locations: [{ id: "clinic", name: "Sample clinic", city: "Surat" }], activeLocationId: "clinic" as string | null, locationsLoading: false, locationsLoaded: true, locationError: null as string | null }));
 vi.mock("@/lib/api", () => ({ default: { get: (url: string, ...args: unknown[]) => url.endsWith("/capabilities") ? fixture.capabilities(url, ...args) : fixture.get(url, ...args), post: fixture.post, put: fixture.put, delete: fixture.delete } }));
 vi.mock("@/store/locationStore", () => ({ useLocationStore: Object.assign((selector?: (state: unknown) => unknown) => {
-  const state = { locations: fixture.locations, fetchLocations: fixture.fetch, activeLocationId: fixture.activeLocationId, isLoading: fixture.locationsLoading, isLoaded: fixture.locationsLoaded, error: fixture.locationError };
+  const state = { locations: fixture.locations, fetchLocations: fixture.fetch, activeLocationId: fixture.activeLocationId, setActiveLocation: (id: string | null) => { fixture.activeLocationId = id; }, isLoading: fixture.locationsLoading, isLoaded: fixture.locationsLoaded, error: fixture.locationError };
   return selector ? selector(state) : state;
 }, { getState: () => ({ reset: () => {} }) }) }));
 vi.mock("@/utils/audioChimes", () => ({ playChimeSound: vi.fn() }));
@@ -123,8 +123,70 @@ it("shows supplied and remaining quantities and sends the current revision from 
 it("keeps tab counts and filters inventory without a selector for the sole location", async () => {
   mount(); await screen.findAllByText(medicine.name); expect(screen.queryByRole("combobox", { name: "Pharmacy location" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Dispense\s*1/ })); expect(screen.getAllByText("Sample patient").length).toBeGreaterThan(0);
+  const get = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation((url: string) => url.includes("search=missing") ? Promise.resolve(response([])) : get(url));
   fireEvent.click(screen.getByRole("tab", { name: /Inventory\s*1/ })); fireEvent.change(screen.getByRole("searchbox", { name: "Search medicines" }), { target: { value: "missing" } });
-  expect(screen.getAllByText("No medicines match these filters.").length).toBeGreaterThan(0); expect(screen.getByRole("tab", { name: /Inventory\s*1/ })).toBeInTheDocument();
+  expect(await screen.findAllByText("No medicines match these filters.")).not.toHaveLength(0);
+});
+
+it("uses the shared branch selection and does not offer an aggregate inventory scope", async () => {
+  fixture.locations.push({ id: "other", name: "Other branch", city: "Surat" });
+  const view = mount(); await screen.findAllByText(medicine.name);
+  const selector = screen.getByRole("combobox", { name: "Pharmacy location" });
+  fireEvent.click(selector);
+  expect(screen.queryByRole("option", { name: "All locations" })).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("option", { name: "Other branch" }));
+  expect(fixture.activeLocationId).toBe("other");
+  view.rerender(tree());
+  await waitFor(() => expect(fixture.capabilities).toHaveBeenCalledWith("/pharmacy/locations/other/capabilities", expect.anything()));
+  expect(screen.getByRole("combobox", { name: "Pharmacy location" })).toHaveTextContent("Other branch");
+  fireEvent.click(screen.getByRole("combobox", { name: "Pharmacy location" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Choose location" }));
+  expect(fixture.activeLocationId).toBeNull();
+  view.rerender(tree());
+  expect(screen.getByText("Choose a location to view pharmacy records.")).toBeInTheDocument();
+});
+
+it("rechecks expired search authority and removes revoked inventory actions", async () => {
+  const started = Date.now(), clock = vi.spyOn(Date, "now").mockReturnValue(started);
+  try {
+    mount(); await screen.findAllByText(medicine.name);
+    expect(screen.getByRole("button", { name: "Add medicine" })).toBeInTheDocument();
+    const checks = fixture.capabilities.mock.calls.length;
+    fixture.capabilities.mockResolvedValue(response(capabilities(["viewStock"])));
+    clock.mockReturnValue(started + 30_001);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search medicines" }), { target: { value: "changed authority" } });
+    await waitFor(() => expect(fixture.capabilities).toHaveBeenCalledTimes(checks + 1));
+    await waitFor(() => expect(screen.getByRole("region", { name: "Medicine inventory" })).toHaveAttribute("aria-busy", "false"));
+    expect(screen.queryByRole("button", { name: "Add medicine" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Actions for/ })).not.toBeInTheDocument();
+  } finally { clock.mockRestore(); }
+});
+
+it("keeps normalized multi-field server matches and searches without refetching clinical data", async () => {
+  mount(); await screen.findAllByText(medicine.name);
+  const checks = fixture.capabilities.mock.calls.length;
+  const prescriptionReads = () => fixture.get.mock.calls.filter(([url]) => url.includes("pending-prescriptions")).length;
+  const before = prescriptionReads();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search medicines" }), { target: { value: "composition Sample" } });
+  await waitFor(() => expect(fixture.get.mock.calls.some(([url]) => url.includes("search=composition+Sample"))).toBe(true));
+  await waitFor(() => expect(screen.getByRole("region", { name: "Medicine inventory" })).toHaveAttribute("aria-busy", "false"));
+  expect(screen.getAllByText(medicine.name).length).toBeGreaterThan(0);
+  expect(fixture.capabilities).toHaveBeenCalledTimes(checks);
+  expect(prescriptionReads()).toBe(before);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh pharmacy" }));
+  await waitFor(() => expect(fixture.capabilities).toHaveBeenCalledTimes(checks + 1));
+  await waitFor(() => expect(prescriptionReads()).toBe(before + 1));
+});
+
+it("clears private stock and dialogs when a search request reports revoked access", async () => {
+  mount(); await screen.findAllByText(medicine.name);
+  const get = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation((url: string) => url.includes("search=revoked") ? Promise.reject({ response: { status: 403 } }) : get(url));
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search medicines" }), { target: { value: "revoked" } });
+  await screen.findByText("Pharmacy access changed. Refresh before viewing records or making changes.");
+  expect(screen.queryByText(medicine.name)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Add medicine" })).not.toBeInTheDocument();
 });
 
 it("opens the counter for sales-only staff without inventory, prescription or purchase access", async () => {

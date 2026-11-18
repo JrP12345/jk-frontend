@@ -22,15 +22,18 @@ export function PharmacyNavigation({ compact, toolbarContext, toolbarActions, ta
   const toolbarTabs = counterToolbar ? billingTabs.length ? billingTabs : primary.length ? primary : tabs.filter(tab => tab.id !== "till") : visible;
   // Desktop already has a drawer button; mobile exposes it in its own More menu.
   const moreTabs = (counterToolbar ? tabs.filter(tab => !toolbarTabs.some(visibleTab => visibleTab.id === tab.id)) : extra).filter(tab => tab.id !== "till");
+  const toolLabel = selected && !toolbarTabs.some(tab => tab.id === selected.id) ? selected.label : "More";
+  const toolName = toolLabel === "More" ? undefined : `More tools, current: ${toolLabel}`;
+  const mobileTabs = [...moreTabs, ...(drawer && selected?.id !== "till" ? [drawer] : [])];
   return <div className={counterToolbar ? styles.counterNavigation : "min-w-0 space-y-5"}>
     <div className={counterToolbar ? styles.counterToolbar : "flex min-w-0 items-center gap-1 rounded-2xl border border-border bg-surface p-1 sm:gap-2"}>
       {counterToolbar && <div className={styles.toolbarContext}>{toolbarContext}</div>}
       <Tabs {...props} className={`${styles.primaryNav} ${counterToolbar ? styles.toolbarTabs : "min-w-0 flex-1"}`} tabs={toolbarTabs.map(tab => ({ ...tab, content: undefined }))} activeTab={activeTab} onChange={onChange} />
       <div className="hidden md:flex items-center gap-1" role="group" aria-label="Pharmacy tools">
         {drawer && selected?.id !== "till" && <Button size="sm" variant="ghost" aria-label="Open cash drawer" onClick={() => setDrawerOpen(true)}><Wallet size={16} aria-hidden="true" /><span className="hidden lg:inline">Cash drawer</span></Button>}
-        {moreTabs.length > 0 && <Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost">More<ChevronDown size={15} aria-hidden="true" /></Button>} items={moreTabs.map(tab => ({ label: tab.label, active: activeTab === tab.id, onClick: () => onChange?.(tab.id) }))} />}
+        {moreTabs.length > 0 && <Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost" className={styles.toolTrigger} data-active={toolLabel !== "More" || undefined} aria-label={toolName}><span className={styles.toolLabel}>{toolLabel}</span><ChevronDown size={15} aria-hidden="true" /></Button>} items={moreTabs.map(tab => ({ label: tab.label, active: activeTab === tab.id, onClick: () => onChange?.(tab.id) }))} />}
       </div>
-      <div className={`${styles.mobileMore} md:hidden`} role="group" aria-label="Mobile pharmacy tools"><Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost">More<ChevronDown size={15} aria-hidden="true" /></Button>} items={[...primary, ...extra].map(tab => ({ label: tab.label, active: activeTab === tab.id, onClick: () => tab.id === "till" ? setDrawerOpen(true) : onChange?.(tab.id) }))} /></div>
+      {mobileTabs.length > 0 && <div className={`${styles.mobileMore} md:hidden`} role="group" aria-label="Mobile pharmacy tools"><Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost" className={styles.toolTrigger} data-active={toolLabel !== "More" || undefined} aria-label={toolName}><span className={styles.toolLabel}>{toolLabel}</span><ChevronDown size={15} aria-hidden="true" /></Button>} items={mobileTabs.map(tab => ({ label: tab.label, active: activeTab === tab.id, onClick: () => tab.id === "till" ? setDrawerOpen(true) : onChange?.(tab.id) }))} /></div>}
       {counterToolbar && <div className={styles.toolbarRefresh}>{toolbarActions}</div>}
     </div>
     <section aria-label={selected?.label} className="min-w-0">{selected?.content}</section>

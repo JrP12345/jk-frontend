@@ -19,7 +19,8 @@ export interface PendingPrescription {
 }
 export interface DispenseItem { medicineId: string; quantity: number }
 
-export const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(amount || 0);
+const inrFormatter = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
+export const money = (amount: number) => inrFormatter.format(amount || 0);
 export const dateLabel = (value?: string | null) => value && Number.isFinite(new Date(value).getTime()) ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Not recorded";
 export const expired = (value?: string | null) => Boolean(value && new Date(value).getTime() < Date.now());
 export const lowStock = (medicine: Medicine) => medicine.stockQuantity <= (medicine.reorderLevel ?? 20);

@@ -39,7 +39,12 @@ form.actions { display: grid; grid-template-columns: minmax(0,1fr) auto; align-i
 .toolbarTabs [role=tablist] > div { display: none; }
 .toolbarTabs [role=tab] { font-size: .75rem; font-weight: 600; min-height: 36px; padding-inline: 12px; }
 .toolbarRefresh .icon { min-height: 36px; height: 36px; width: 36px; min-width: 36px; }
+.toolTrigger { max-width: 14rem; min-width: 0; }
+.toolTrigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toolLabel { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toolTrigger[data-active] { background: var(--selected); color: var(--accent); }
 @media (max-width:767px) {
+  .toolTrigger { max-width: 8.5rem; }
   .toolbarContext { flex: 1 0 calc(100% - 48px); max-width: calc(100% - 48px); }
   .toolbarTabs { order: 2; }
   .counterToolbar > .mobileMore { order: 3; }

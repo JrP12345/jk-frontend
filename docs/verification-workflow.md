@@ -1,6 +1,6 @@
 # Risk-based verification workflow
 
-This workflow covers the standalone frontend and sibling backend checkouts, reviewed on 2026-10-24. It defines **when** checks run during development; CI/release owns the complete gates.
+This workflow covers the standalone frontend and sibling backend checkouts, reviewed on 2026-11-18. It defines **when** checks run during development; CI/release owns the complete gates.
 
 ## A. Current bottlenecks
 
@@ -9,9 +9,9 @@ This workflow covers the standalone frontend and sibling backend checkouts, revi
 | Frontend changed-file `npx eslint src/path/file.tsx` | Available, but broad `npm run lint` is often used instead | Usually seconds; parses only requested files | Yes for changed code when lint can catch an error |
 | Frontend `npm run lint` | CI and frequently local | Whole repository, including unrelated pages; historical warnings add output | No; CI/release |
 | Frontend `npm run check:types` | CI and local | Explicit TypeScript 7 compiler and ignored incremental cache; whole app graph; `src/tests` is excluded by `tsconfig.json` | No for styling; yes for changed types/shared contracts |
-| Frontend `npm test` | CI and often local | 163 files / 1,202 cases at the latest cleanup baseline; transforms and jsdom setup recur | No; target affected files locally |
+| Frontend `npm test` | CI and often local | Whole current suite; transforms and jsdom setup recur. Counts grow with workflows; use the dated audit for the measured checkpoint | No; target affected files locally |
 | Frontend `npm run build` | CI and often local | Next production compile, TypeScript, page-data collection and route output; duration depends on compiler caches and machine load | No; config, routing, environment, dependency or release changes warrant it |
-| Backend `npm test` | Called by release auditor in CI; sometimes local | 221 files / 1,949 cases at the latest cleanup baseline, serial by `vitest.config.ts`; `tests/setup.ts` starts/stops a MongoDB memory server per file; first run may fetch its test binary | No; select affected integration files |
+| Backend `npm test` | Called by release auditor in CI; sometimes local | Serial by `vitest.config.ts`; integration files start/stop an isolated MongoDB memory server per file, while the reviewed pure unit project omits database setup; first integration run may fetch its test binary | No; select affected integration files |
 | Backend `npm run check:fast` | Available locally; release auditor separately invokes TypeScript | Full backend TypeScript graph, including tests and scripts; cost depends on incremental cache | No for docs; yes for changed contracts or backend logic where compiler errors matter |
 | Backend `npm run build` | CI/release, sometimes local | esbuild API plus four workers; recorded isolated build 0.57 seconds (not install/startup time) | Useful for entry/bundling changes; no need after each test-only edit |
 | Backend `npm run audit:release` | CI/release | Runs full TypeScript and serial full Vitest again, scans fitness rules, writes manifest/history | Never routine local development |
@@ -27,7 +27,7 @@ shutdown. Run both for startup/runtime changes; they do not connect to deployed
 services. Backend `erasableSyntaxOnly` prevents unsupported native TypeScript
 syntax from passing the existing type gate.
 
-There is no tracked Playwright/Cypress E2E command, no formatting or pre-commit hook script, and no backend ESLint script. Do not claim automated E2E, formatting, or backend lint coverage. Browser verification is a focused manual/available-tool check today. Database migrations, seeding, backup/restore, MFA provisioning and replay scripts are operational actions, never routine validation.
+There is no installed Playwright/Cypress package command or backend ESLint script. Tracked browser acceptance scripts now exist in `scripts/performance/check-pharmacy-checkout.mjs`, `check-pharmacy-browser.mjs` and `check-pharmacy-supplier-flow.mjs`. They use separately available browser tooling and synthetic API responses; passing them is not live-server, physical-printer or external-provider acceptance. Database migrations, seeding, backup/restore, MFA provisioning and replay scripts are operational actions, never routine validation.
 
 ## B. Fast development workflow
 
@@ -74,7 +74,7 @@ Frontend `npm test -- src/tests/name.test.tsx -t "case name"` and backend `npm t
 
 Keep full frontend/backend suites, full lint, package-wide TypeScript, production Next build, dependency audit and backend architecture auditor in CI. Keep tag-release manifest generation, production config checks, critical journey checks and deployment health probes at release/deployment. PR CI currently runs comprehensive gates too; retain this until a measured and proven affected-check pipeline can protect cross-file and cross-repository contracts. Avoid reproducing all of it locally after every small edit.
 
-There is currently no tracked automated browser E2E runner. A future dedicated CI project should cover login, booking, the patient-to-reception-to-doctor handoff, and billing/payment with stable test data. Until then, use focused manual release smoke checks and do not report browser E2E as passed.
+The tracked pharmacy browser probes supplement unit/integration tests but are not a full real-backend E2E CI project. Login, booking, clinical handoff and configured-store billing still need release smoke checks with stable test data. Report the exact synthetic/browser/manual boundary exercised.
 
 ## F. Checks that remain immediate
 
@@ -89,3 +89,17 @@ Inspect the diff, run changed-file ESLint for frontend code, affected tests for 
 - Re-running unrelated frontend and backend suites because both repositories are open adds wait without coverage of the changed module. A changed API contract is the exception.
 
 Nothing here removes tests, changes lint rules, changes CI coverage, or treats a passed scoped check as a substitute for the release gate.
+
+## H. Measured pharmacy feedback improvement (18 November 2026)
+
+The backend now has an explicit four-file `unit` project for reviewed pure calculations, CSV parsing and supplier configuration checks. The other source tests retain per-file replica-set setup and serial execution in the `integration` project. `npm test` still runs both projects; do not put a test using models, fixtures or persistence into the pure allowlist merely to speed it up.
+
+The same 99 assertions took **26.57 seconds before** and **3.37 seconds after** removing unnecessary MongoDB setup from those four files on this development PC (about 87% less elapsed time in these runs). This is a local observation, not a guarantee for other machines or the whole suite. JSON measurements are in ignored `backend/build/pharmacy-feedback-{baseline,after}.json`.
+
+- Pure pharmacy changes: `npm run test:unit` or a narrower affected file.
+- Database/API behavior: `npm test -- tests/pharmacyCounter.test.ts` and relevant related integration files.
+- Extended editing: frontend/backend `npm run test:watch`; frontend retains two-worker/serial-file limits.
+- Repository auditor source: backend `npm run check:tooling`. The release auditor runs this Node test-runner suite separately from Vitest.
+- Full regression: one `npm test` per affected package at the requested final checkpoint. Avoid running the auditor immediately afterwards and duplicating that same suite.
+
+Vitest excludes generated `build`, `dist` and cache files. Its separate Node tooling suite remains a release check. No business regression cases or database isolation were removed. Keep heavy Mongo tests and Next builds sequential on memory-constrained PCs; a higher worker count can make the feedback loop slower through paging.

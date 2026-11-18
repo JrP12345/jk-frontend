@@ -27,7 +27,9 @@ it("links shared discovery to the counter without issuing a bill or changing sto
   api.post.mockImplementation(async (url, body, config) => url.endsWith("/adopt") ? response({ medicine: { ...product, id: branchId, price: 10 }, reused: true }) : post(url, body, config));
   useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["MANAGE_ORGANIZATION", "PHARMACY_MANAGE_CATALOG", "PHARMACY_SELL"] } });
   render(<ToastProvider><PharmacyCounter locationId="branch" canCollect={false} canManageCatalog /></ToastProvider>);
-  fireEvent.click(await screen.findByRole("button", { name: "Find in shared catalogue" }));
+  const discover = await screen.findByRole("button", { name: "Find in shared catalogue" });
+  await waitFor(() => expect(discover).toBeEnabled());
+  fireEvent.click(discover);
   fireEvent.click(await screen.findByRole("button", { name: "Use branch product" }));
   fireEvent.click(screen.getByRole("checkbox", { name: /confirmed the exact medicine/ }));
   fireEvent.click(screen.getByRole("button", { name: "Use existing branch product" }));

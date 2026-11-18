@@ -61,8 +61,12 @@ export async function readCounterInvoice(id: string, locationId: string, signal?
       [invoice.balanceDue, invoice.amountPaid, invoice.totalAmount].some(value => !Number.isFinite(value) || value < 0)) throw new Error("Counter invoice could not be loaded completely");
   return invoice;
 }
-export async function collectionInvoicePage(locationId: string, cursor?: string, signal?: AbortSignal): Promise<{ items: InvoiceSummary[]; nextCursor: string | null }> {
-  const response = await api.get(`/pharmacy/invoices?locationId=${encodeURIComponent(locationId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, { signal }), page = response.data?.data;
+export async function collectionInvoicePage(locationId: string, cursor?: string, signal?: AbortSignal, filters: { search?: string; status?: string } = {}): Promise<{ items: InvoiceSummary[]; nextCursor: string | null }> {
+  const query = new URLSearchParams({ locationId });
+  if (cursor) query.set("cursor", cursor);
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  if (filters.status && filters.status !== "all") query.set("status", filters.status);
+  const response = await api.get(`/pharmacy/invoices?${query}`, { signal }), page = response.data?.data;
   if (!page || !Array.isArray(page.items) || page.items.length > 25 || page.nextCursor !== null && typeof page.nextCursor !== "string") throw new Error("Counter invoice page could not be loaded completely");
   return page;
 }

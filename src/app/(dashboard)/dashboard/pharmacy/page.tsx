@@ -57,14 +57,13 @@ export default function PharmacyPage() {
 
 function PharmacySession() {
   const user = useAuthStore(state => state.user);
-  const { locations, fetchLocations, activeLocationId, error, isLoading, isLoaded } = useLocationStore();
-  const [choice, setChoice] = useState(activeLocationId || "");
+  const { locations, fetchLocations, activeLocationId, setActiveLocation, error, isLoading, isLoaded } = useLocationStore();
   const canView = Boolean(user && !["patient", "family_member", "guest"].includes(user.role)) && hasAnyPermission(user, ...pharmacyEntryPermissions);
   useEffect(() => { if (canView) void fetchLocations(); }, [canView, fetchLocations]);
-  const locationId = validSingleChoice(locations, location => location.id, choice);
+  const locationId = validSingleChoice(locations, location => location.id, activeLocationId || "");
   if (!canView) return <Alert variant="warning" title="Pharmacy access required">Your account cannot view pharmacy records.</Alert>;
   if (!error && (!isLoaded || isLoading && !locations.length)) return <PharmacySkeleton counter={user?.workspaceProfile === "pharmacy" || isCounterSalesUser(user)} />;
-  return <PharmacyWorkspace key={locationId} locationId={locationId} locations={locations} onLocationChange={setChoice} locationError={error} locationsLoading={isLoading} onRetryLocations={() => { void fetchLocations(true); }} />;
+  return <PharmacyWorkspace key={locationId} locationId={locationId} locations={locations} onLocationChange={id => setActiveLocation(id || null)} locationError={error} locationsLoading={isLoading} onRetryLocations={() => { void fetchLocations(true); }} />;
 }
 
 function PharmacyWorkspace({ locationId, locations, onLocationChange, locationError, locationsLoading, onRetryLocations }: { locationId: string; locations: LocationInfo[]; onLocationChange: (id: string) => void; locationError: string | null; locationsLoading: boolean; onRetryLocations: () => void }) {
@@ -133,15 +132,27 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const [dispenseResult, setDispenseResult] = useState<DispenseResult | null>(null);
   const confirmedDispense = dispenseResult?.dispenseOperation.key === pendingDispenseKey ? dispenseResult : null;
   const [recoveryMessage, setRecoveryMessage] = useState("");
+  const checkedCapabilities = useRef<{ value: PharmacyCapabilities; at: number } | null>(null);
+  const lastCatalogCriteria = useRef("");
 
   const fetchData = useCallback(async () => {
     const request = beginRead(); setReading(true);
     if (!locationId) { setCapabilities(null); setMedicines([]); setPending([]); setReading(false); return; }
+    const criteria = JSON.stringify([catalogPage, query, filter]);
+    const cached = checkedCapabilities.current;
+    // Only replaceable search/page/filter reads reuse this short-lived check.
+    // Refreshes, mutations and prescription events still recheck all authority.
+    const catalogOnly = Boolean(cached && lastCatalogCriteria.current !== criteria && Date.now() - cached.at < 30_000);
+    lastCatalogCriteria.current = criteria;
     let current: PharmacyCapabilities;
     try {
-      const response = await api.get(`/pharmacy/locations/${locationId}/capabilities`, { signal: request.signal });
-      current = parsePharmacyCapabilities(response.data?.data, locationId);
+      if (catalogOnly) current = cached!.value;
+      else {
+        const response = await api.get(`/pharmacy/locations/${locationId}/capabilities`, { signal: request.signal });
+        current = parsePharmacyCapabilities(response.data?.data, locationId);
+      }
       if (!request.isCurrent()) return;
+      if (!catalogOnly) checkedCapabilities.current = { value: current, at: Date.now() };
       setCapabilities(current); setCapabilityError(null);
       if (current.inventoryMode === "billing_only") setFilter("all");
       if (!current.actions.viewRxQueue) { setPending([]); setPrescription(null); }
@@ -155,21 +166,27 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
       if (!current.actions.receiveStock) setBatchTarget(null);
     } catch {
       if (!request.isCurrent()) return;
+      checkedCapabilities.current = null;
       setCapabilities(null); setMedicines([]); setSelectionStock([]); setPending([]); setPrescription(null); setMedicineOpen(false); setBatchTarget(null); setDeleting(null);
       setCapabilityError("Pharmacy access could not be checked. Retry before viewing records or making changes."); setReading(false); return;
     }
     const [catalog, prescriptions] = await Promise.allSettled([
       current.actions.viewStock ? readMedicinePage(locationId, request.signal, { page: catalogPage, search: query, stockFilter: current.inventoryMode === "billing_only" ? "all" : filter }) : Promise.resolve({ items: [] as Medicine[], totalPages: 0, totalCount: 0, page: 1 }),
-      current.actions.viewRxQueue ? api.get(`/pharmacy/pending-prescriptions?locationId=${encodeURIComponent(locationId)}`, { signal: request.signal }).then(response => {
+      catalogOnly ? Promise.resolve(null) : current.actions.viewRxQueue ? api.get(`/pharmacy/pending-prescriptions?locationId=${encodeURIComponent(locationId)}`, { signal: request.signal }).then(response => {
         if (!Array.isArray(response.data?.data)) throw new Error("Incomplete prescriptions");
         return response.data.data as PendingPrescription[];
       }) : Promise.resolve([] as PendingPrescription[]),
     ]);
     if (!request.isCurrent()) return;
+    if (catalog.status === "rejected" && [401, 403].includes(catalog.reason?.response?.status)) {
+      checkedCapabilities.current = null;
+      setCapabilities(null); setMedicines([]); setSelectionStock([]); setPending([]); setPrescription(null); setMedicineOpen(false); setBatchTarget(null); setDeleting(null);
+      setCapabilityError("Pharmacy access changed. Refresh before viewing records or making changes."); setReading(false); return;
+    }
     if (catalog.status === "fulfilled") { setMedicines(catalog.value.items); setCatalogPages(catalog.value.totalPages); setCatalogTotal(catalog.value.totalCount); setCatalogLoaded(true); setCatalogError(null); }
     else setCatalogError("Inventory could not be loaded. Retry before changing stock or dispensing.");
-    if (prescriptions.status === "fulfilled") { setPending(prescriptions.value); setPendingLoaded(true); setPendingError(null); }
-    else setPendingError("Prescriptions could not be loaded. Please try again.");
+    if (prescriptions.status === "fulfilled" && prescriptions.value !== null) { setPending(prescriptions.value); setPendingLoaded(true); setPendingError(null); }
+    else if (prescriptions.status === "rejected") setPendingError("Prescriptions could not be loaded. Please try again.");
     setDataRevision(previous => previous + 1);
     setReading(false);
   }, [beginRead, locationId, catalogPage, query, filter]);
@@ -360,10 +377,9 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   }
   const actionable = Boolean(capabilities) && !capabilityError && catalogLoaded && !catalogError && !busy && !reading && query === search.trim();
   const selectedLocation = locations.find(location => location.id === locationId);
-  const filteredMedicines = medicines.filter(medicine => {
-    const matches = `${medicine.name} ${medicine.genericName} ${medicine.batchNumber || ""} ${medicine.strength || ""} ${medicine.manufacturer || ""} ${(medicine.barcodes || []).join(" ")}`.toLowerCase().includes(search.trim().toLowerCase());
-    return matches && (filter === "all" || filter === "low" && lowStock(medicine) || filter === "out" && medicine.stockQuantity === 0 || filter === "expired" && expired(medicine.expiryDate));
-  });
+  // Matching and stock filters belong to the server's bounded page. Repeating a
+  // substring match here hides valid multi-token, normalized and salt matches.
+  const filteredMedicines = medicines;
   const filteredPending = pending.filter(group => `${group.patientId.name} ${group.patientId.phone || ""} ${group.tokenNumber || ""} ${group.prescriptions.map(rx => rx.name).join(" ")}`.toLowerCase().includes(dispenseSearch.trim().toLowerCase().replace(/^#/, "")));
   const canReviewProducts = hasAnyPermission(user, "MANAGE_ORGANIZATION") && Boolean(capabilities?.moduleEnabled && capabilities.actions.viewStock);
   const stockActions = (medicine: Medicine) => (canCatalog || canReceive || canReviewProducts) && <Dropdown align="right" trigger={<Button variant="ghost" size="sm" className={styles.icon} aria-label={`Actions for ${medicine.name}`} disabled={!actionable}><MoreHorizontal size={18} /></Button>} items={[
@@ -381,7 +397,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const activeView = (activeTab === "alerts" && capabilities?.inventoryMode === "billing_only" ? false : activeTab === "professional-reviews" ? canProfessionalReview : activeTab === "external-prescriptions" ? capabilities?.actions.viewExternalPrescriptions : activeTab === "transfers" ? capabilities?.actions.transferStock && capabilities?.actions.viewCost : activeTab === "reports" ? capabilities?.actions.viewReports : activeTab === "till" ? capabilities?.actions.viewTill : activeTab === "finance" ? canFinance : activeTab === "returns" ? capabilities?.actions.viewReturns : activeTab === "counter" ? capabilities?.actions.sell : activeTab === "storefront" ? capabilities?.actions.manageSettings : activeTab === "pickups" || activeTab === "sales" ? capabilities?.actions.viewSales : activeTab === "purchases" ? capabilities?.actions.viewPurchases : activeTab === "dispensing" ? capabilities?.actions.viewRxQueue : capabilities?.actions.viewStock) ? activeTab : capabilities?.actions.viewStock ? "inventory" : capabilities?.actions.viewExternalPrescriptions ? "external-prescriptions" : capabilities?.actions.viewRxQueue ? "dispensing" : capabilities?.actions.viewPurchases ? "purchases" : capabilities?.actions.sell ? "counter" : capabilities?.actions.viewSales ? "sales" : capabilities?.actions.viewReturns ? "returns" : canFinance ? "finance" : capabilities?.actions.viewTill ? "till" : capabilities?.actions.viewReports ? "reports" : "transfers";
   const compactWorkspace = user?.workspaceProfile === "pharmacy" || counterOnly;
   const compactCounter = compactWorkspace && activeView === "counter";
-  const locationContext = (<div className={styles.context}>{locations.length > 1 ? <Select aria-label="Pharmacy location" value={locationId} disabled={Boolean(busy)} onChange={event => onLocationChange(event.target.value)} options={[{ value: "", label: "All locations" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} /> : <><Building2 size={15} /><p>{selectedLocation?.name || (locationsLoading ? "Loading locations..." : "No location available")}</p></>}</div>);
+  const locationContext = (<div className={styles.context}>{locations.length > 1 ? <Select aria-label="Pharmacy location" value={locationId} disabled={Boolean(busy)} onChange={event => onLocationChange(event.target.value)} options={[{ value: "", label: "Choose location" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} /> : <><Building2 size={15} /><p>{selectedLocation?.name || (locationsLoading ? "Loading locations..." : "No location available")}</p></>}</div>);
   const refreshAction = <Button variant="ghost" size="sm" aria-label="Refresh pharmacy" className={styles.icon} disabled={reading || Boolean(busy)} onClick={fetchData}><RotateCw size={17} className={reading ? "animate-spin" : ""} /></Button>;
   const showStockTools = user?.workspaceProfile !== "pharmacy" || ["inventory", "alerts"].includes(activeView);
   const stockTools = <>
@@ -391,7 +407,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   </>;
   const inventory = <div className={styles.list}>
     {compactWorkspace && <div className={styles.actions}>{stockTools}</div>}
-    <section className={styles.panel} aria-label="Medicine inventory">
+    <section className={styles.panel} aria-label="Medicine inventory" aria-busy={reading || query !== search.trim()}>
       <div className={styles.toolbar}><Input type="search" maxLength={100} icon={<Search size={16} />} aria-label="Search medicines" placeholder="Name, composition, manufacturer or barcode" value={search} onChange={event => setSearch(event.target.value)} /><Select aria-label="Filter inventory" value={filter} onChange={event => { setFilter(event.target.value); setCatalogPage(1); }} options={capabilities?.inventoryMode === "billing_only" ? [{ value: "all", label: "Catalogue" }] : [{ value: "all", label: "All stock" }, { value: "low", label: "Low stock" }, { value: "out", label: "Out of stock" }, { value: "expired", label: "Catalog expired" }]} /></div>
       {user?.workspaceProfile === "pharmacy" && catalogLoaded && !catalogError ? <div className="px-4 sm:px-5">
         <h2 className="py-4 text-sm font-semibold">Inventory <span className="ml-2 text-xs font-normal text-text-secondary">{capabilities?.inventoryMode === "billing_only" ? "Stock not tracked" : "Physical stock in base units"}</span></h2>

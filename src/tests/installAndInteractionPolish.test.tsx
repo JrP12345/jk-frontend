@@ -69,6 +69,9 @@ describe("On-demand copilot", () => {
 describe("Production install assets", () => {
   it("provides opaque icons at their declared sizes and keeps maskable artwork in its safe circle", async () => {
     const manifest = JSON.parse(readFileSync("public/manifest.json", "utf8"));
+    // The supplied monochrome kit uses opaque white installation backgrounds.
+    const background = [255, 255, 255, 255];
+    expect(manifest.background_color).toBe("#FFFFFF");
     for (const icon of [...manifest.icons, { src: "/app-icon-180.png", sizes: "180x180" }]) {
       const size = Number(icon.sizes.split("x")[0]);
       const { data, info } = await sharp(`public${icon.src.split("?")[0]}`).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -76,12 +79,12 @@ describe("Production install assets", () => {
       let minimumAlpha = 255;
       for (let offset = 3; offset < data.length; offset += 4) minimumAlpha = Math.min(minimumAlpha, data[offset]);
       expect(minimumAlpha).toBe(255);
-      expect(Array.from(data.subarray(0, 4))).toEqual([246, 242, 232, 255]);
+      expect(Array.from(data.subarray(0, 4))).toEqual(background);
       if (icon.purpose === "maskable") {
         let radius = 0;
         for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
           const offset = (y * size + x) * 4;
-          if (Math.abs(data[offset] - 247) + Math.abs(data[offset + 1] - 247) + Math.abs(data[offset + 2] - 242) > 30) radius = Math.max(radius, Math.hypot(x - size / 2, y - size / 2));
+          if (Math.abs(data[offset] - background[0]) + Math.abs(data[offset + 1] - background[1]) + Math.abs(data[offset + 2] - background[2]) > 30) radius = Math.max(radius, Math.hypot(x - size / 2, y - size / 2));
         }
         expect(radius).toBeLessThanOrEqual(size * 0.4);
       }

@@ -46,6 +46,7 @@
 .filters > * { flex-shrink: 0; }
 .filters > button { white-space: nowrap; }
 .filters:focus-within { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { .filters:focus-within { scroll-behavior: auto; } }
 .saveActions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .saveActions button { min-width: 0; min-height: 44px; padding-inline: 8px; }
 .saveStatus { min-height: 30px; font-size: .6875rem; line-height: 1.4; color: var(--text-secondary); }
@@ -261,3 +262,8 @@
 }
 .catalogueStatus { flex-shrink: 0; padding: .375rem .625rem; border-top: 1px solid var(--border); color: var(--text-secondary); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem; font-size: .6875rem; }
 .catalogueStatus > small:last-child:not(:first-child) { flex-basis: 100%; }
+@container pharmacy-counter (max-width: 999px) {
+  .filters > button, .cashChips button, .counter .recentList button { min-height: 44px; }
+  .productMeta, .productPack, .lineIdentity small, .hint { font-size: .75rem; }
+  .panels[data-mobile-panel=pay] .customerHint, .panels[data-mobile-panel=pay] .totals { font-size: .75rem; }
+}

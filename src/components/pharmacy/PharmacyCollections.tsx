@@ -42,15 +42,20 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
   }, [journal, initial.pending, current]);
   const [items, setItems] = useState<InvoiceSummary[]>([]), [cursor, setCursor] = useState<string | undefined>(), [next, setNext] = useState<string | null>(null), [loading, setLoading] = useState(true), [listError, setListError] = useState("");
   const [invoice, setInvoice] = useState<CounterInvoice | null>(null), [refresh, setRefresh] = useState(0);
-  const [search, setSearch] = useState(""), [status, setStatus] = useState("all");
-  const visibleItems = items.filter(row => (!search.trim() || `${row.invoiceNumber} ${row.customerSnapshot?.name || "Walk-in"}`.toLowerCase().includes(search.trim().toLowerCase())) && (status === "all" || status === "paid" && row.status === "paid" || status === "unpaid" && ["unpaid", "partially_paid"].includes(row.status)));
+  const [search, setSearch] = useState(""), [query, setQuery] = useState(""), [status, setStatus] = useState("all");
+  useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setCursor(undefined); }, 250); return () => clearTimeout(timer); }, [search]);
+  const listKey = JSON.stringify([query, status, cursor]);
+  const [loadedListKey, setLoadedListKey] = useState("");
+  const showList = !focusOnly && !checkoutOnly;
+  const listBusy = loading || query !== search.trim() || loadedListKey !== listKey;
+  const visibleItems = listBusy ? [] : items;
   const beginRead = useLatestRead(), beginDetail = useLatestRead();
   const load = useCallback(async () => {
     const request = beginRead(); setLoading(true); setListError(""); setItems([]);
-    try { const page = await collectionInvoicePage(locationId, cursor, request.signal); if (request.isCurrent()) { setItems(page.items); setNext(page.nextCursor); } }
+    try { const page = await collectionInvoicePage(locationId, cursor, request.signal, { search: query, status }); if (request.isCurrent()) { setItems(page.items); setNext(page.nextCursor); } }
     catch (failure) { if (request.isCurrent()) setListError(errorMessage(failure)); }
-    finally { if (request.isCurrent()) setLoading(false); }
-  }, [beginRead, locationId, cursor]);
+    finally { if (request.isCurrent()) { setLoadedListKey(listKey); setLoading(false); } }
+  }, [beginRead, locationId, cursor, query, status, listKey]);
   useEffect(() => { if (!focusOnly && !checkoutOnly) void Promise.resolve().then(load); }, [load, refresh, focusOnly, checkoutOnly]);
   useEffect(() => {
     if (!initialInvoiceId || checkoutPayment && issuedTotalPaise !== undefined && !detailNeeded) return;
@@ -119,18 +124,17 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
         {submitted && canCollect && <Button size="sm" disabled={busy} onClick={() => { if (frozen.current) void send(frozen.current.invoiceId, frozen.current.input); }}>Retry same collection</Button>}
         {canCollect && (!submitted || canCorrect) && <Button size="sm" variant="outline" disabled={busy} onClick={() => { frozen.current = null; setSubmitted(false); setCanCorrect(false); void open(pending.invoiceId); }}>Re-enter original collection</Button>}</>}
     </Alert>}
-    {!checkoutOnly && loading && <p role="status">Loading counter invoices...</p>}{!checkoutOnly && listError && <Alert variant="error" title="Sales unavailable">{listError}<Button size="sm" onClick={() => setRefresh(value => value + 1)}>Retry sales</Button></Alert>}
-    {!checkoutOnly && !loading && !listError && !items.length && <EmptyState icon={<ReceiptText aria-hidden="true" />} title="No sales on this page" description="Saved invoices and their payment records will appear here." className="rounded-xl border border-border bg-surface" />}
-    {!checkoutOnly && items.length > 0 && <Card contentClassName="gap-4">
-      <Input aria-label="Search sales on this page" icon={<Search size={17} aria-hidden="true" />} size="lg" placeholder="Find a sale by bill number or customer" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} />
-      <div className="flex flex-wrap items-center justify-between gap-2"><div role="group" aria-label="Payment status" className="flex gap-2">{[{ id: "all", label: "All" }, { id: "unpaid", label: "Unpaid" }, { id: "paid", label: "Paid" }].map(filter => <Button key={filter.id} size="sm" variant={status === filter.id ? "primary" : "outline"} className="rounded-full" aria-pressed={status === filter.id} onClick={() => setStatus(filter.id)}>{filter.label}</Button>)}</div><p className="text-xs text-text-secondary">Filters apply to this page</p></div>
+    {showList && <div aria-busy={listBusy}><Card contentClassName="gap-4">
+      <Input type="search" aria-label="Search sales" icon={<Search size={17} aria-hidden="true" />} size="lg" placeholder="Find a sale by bill number or customer" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} />
+      <div className="flex flex-wrap items-center justify-between gap-2"><div role="group" aria-label="Payment status" className="flex gap-2">{[{ id: "all", label: "All" }, { id: "unpaid", label: "Unpaid" }, { id: "paid", label: "Paid" }].map(filter => <Button key={filter.id} size="sm" variant={status === filter.id ? "primary" : "outline"} className="rounded-full" aria-pressed={status === filter.id} onClick={() => { setStatus(filter.id); setCursor(undefined); }}>{filter.label}</Button>)}</div><p className="text-xs text-text-secondary">Newest first · This branch</p></div>
+      {listBusy && <p role="status">Loading counter invoices...</p>}{listError && <Alert variant="error" title="Sales unavailable">{listError}<Button size="sm" onClick={() => setRefresh(value => value + 1)}>Retry sales</Button></Alert>}
       <div className="divide-y divide-border">{visibleItems.map(row => <article className="flex min-w-0 flex-wrap items-center gap-3 py-4" key={row.id}>
         <div className="min-w-0 flex-1 break-words"><strong className="text-sm font-semibold">{row.invoiceNumber}</strong><p className="mt-1 text-xs text-text-secondary">{row.customerSnapshot?.name || "Walk-in customer"}</p></div>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-3"><div className="space-y-1 text-right"><p className="text-sm font-semibold tabular-nums">{money(row.totalAmount)}</p><Badge variant={row.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(row.status) ? "warning" : "neutral"}>{row.status.replaceAll("_", " ")}</Badge></div><Button size="sm" variant={canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "primary" : "outline"} disabled={busy} aria-label={`${row.documentVersion === 3 ? "Open opening balance" : "Open sale"} ${row.invoiceNumber}`} onClick={() => { void open(row.id); }}>{row.documentVersion === 3 ? "Open balance" : canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "Collect" : "View bill"}</Button></div>
       </article>)}</div>
-      {!visibleItems.length && <EmptyState title="No matching sales on this page" description="Try another bill number or change the payment filter." className="py-5" />}
-    </Card>}
-    <div className={styles.actions}>{!checkoutOnly && cursor && <Button size="sm" variant="outline" disabled={loading} onClick={() => setCursor(undefined)}>First sales page</Button>}{!checkoutOnly && next && <Button size="sm" variant="outline" disabled={loading} onClick={() => setCursor(next)}>Next sales page</Button>}</div>
+      {!listBusy && !listError && !visibleItems.length && <EmptyState icon={<ReceiptText aria-hidden="true" />} title={query || status !== "all" ? "No matching sales" : "No sales yet"} description={query || status !== "all" ? "Try another bill number, customer or payment filter." : "Saved invoices and their payment records will appear here."} className="py-5" />}
+    </Card></div>}
+    {showList && <div className={styles.actions}>{cursor && <Button size="sm" variant="outline" disabled={listBusy} onClick={() => setCursor(undefined)}>First sales page</Button>}{next && <Button size="sm" variant="outline" disabled={listBusy} onClick={() => setCursor(next)}>Next sales page</Button>}</div>}
     {invoiceForm}
   </section>;
 }

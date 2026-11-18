@@ -47,7 +47,15 @@ it("keeps the same toolbar and primary tabs when switching between sales and sec
   }
   view.rerender(<PharmacyNavigation {...props} activeTab="inventory" />);
   expect(screen.getByRole("region", { name: "Inventory" })).toHaveTextContent("Stock list");
-  fireEvent.click(within(screen.getByRole("group", { name: "Pharmacy tools", exact: true })).getByRole("button", { name: "More" }));
+  fireEvent.click(within(screen.getByRole("group", { name: "Pharmacy tools", exact: true })).getByRole("button", { name: "More tools, current: Inventory" }));
   expect(await screen.findByRole("menuitem", { name: "Inventory", exact: true })).toBeInTheDocument();
   expect(screen.queryByRole("menuitem", { name: "Cash drawer", exact: true })).not.toBeInTheDocument();
+});
+
+it("does not repeat visible primary tabs in the mobile tools menu", async () => {
+  render(<PharmacyNavigation compact scrollActiveIntoView={false} activeTab="counter" toolbarContext={<span>Branch</span>} tabs={tabs} />);
+  fireEvent.click(within(screen.getByRole("group", { name: "Mobile pharmacy tools" })).getByRole("button", { name: "More" }));
+  expect(await screen.findByRole("menuitem", { name: "Cash drawer" })).toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", { name: "Counter sale" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", { name: "Sales & collections" })).not.toBeInTheDocument();
 });
