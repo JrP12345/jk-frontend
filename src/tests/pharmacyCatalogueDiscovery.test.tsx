@@ -21,6 +21,22 @@ function change(label: string, value: string) {
   const control = screen.getByLabelText(label), input = control.getAttribute("aria-haspopup") === "dialog" ? datePickerInput(control) : control.getAttribute("role") === "combobox" ? document.getElementById(control.id.replace(/-trigger$/, ""))! : control;
   fireEvent.change(input, { target: { value } });
 }
+it("offers the existing local import flow when no shared catalogue is loaded", async () => {
+  vi.mocked(api.get).mockResolvedValue(response({ items: [], nextCursor: null }));
+  const onImportLocal = vi.fn();
+  render(<PharmacyCatalogueDiscovery locationId={locationId} onClose={vi.fn()} onAdded={vi.fn()} onImportLocal={onImportLocal} />);
+  await screen.findByText(/External catalogue approval is not needed for your own products/);
+  fireEvent.click(screen.getByRole("button", { name: "Import my product list" }));
+  expect(onImportLocal).toHaveBeenCalledOnce();
+  expect(api.post).not.toHaveBeenCalled();
+});
+it("does not show an import action when the host has not granted it", async () => {
+  vi.mocked(api.get).mockResolvedValue(response({ items: [], nextCursor: null }));
+  mount();
+  await screen.findByText(/External catalogue approval is not needed/);
+  expect(screen.queryByRole("button", { name: "Import my product list" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create local medicine instead" })).toBeEnabled();
+});
 it("adds only after explicit identity, pack and branch-price confirmation; sends no inventory facts", async () => {
   const view = mount(); fireEvent.click(await screen.findByRole("button", { name: "Review & add" }));
   change("Medicine form", "tablet"); change("Base unit", "tablet"); change("Pack unit", "strip"); change("Base units per pack", "10"); change("Branch selling price per base unit (INR)", "1.29");

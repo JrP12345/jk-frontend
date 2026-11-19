@@ -42,14 +42,14 @@ function savedKey(storageKey: string) {
   if (key !== null && !/^[a-zA-Z0-9_-]{8,100}$/.test(key)) throw new Error("Sale reference requires review before another issue.");
   return key;
 }
-interface Props { locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void }
+interface Props { locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void; onCreateLocal?: (name: string) => void; catalogueEditorOpen?: boolean; catalogueRevision?: number }
 export function PharmacyCounter(props: Props) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user);
   return <PharmacyOfflineCounterGate key={`${scope}:${props.locationId}:${props.inventoryMode || "tracked"}`} organizationId={user?.organization_id} locationId={props.locationId} actorId={user?.id} canIssue={props.canCollect}>
     <CounterSession {...props} />
   </PharmacyOfflineCounterGate>;
 }
-function CounterSession({ locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReviewProducts = false, onProductReviewed }: Props) {
+function CounterSession({ locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReviewProducts = false, onProductReviewed, onCreateLocal, catalogueEditorOpen = false, catalogueRevision = 0 }: Props) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user), storageKey = `pharmacy-sale:${referenceOwnerKey(user)}:${locationId}`;
   const [initial] = useState(() => { try { return { key: savedKey(storageKey), error: "" }; } catch (failure) { return { key: null, error: message(failure) }; } });
   const [pending, setPending] = useState(initial.key), [error, setError] = useState(initial.error), [busy, setBusy] = useState(false), [submitted, setSubmitted] = useState(false), [correctable, setCorrectable] = useState(false);
@@ -114,7 +114,7 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
   }, [catalogue, journal, initial.key, scope, locationId, inventoryMode, current]);
   const canReview = canReviewProducts && hasAnyPermission(user, "MANAGE_ORGANIZATION");
   const restoring = !draft.ready || !journalReady || !catalogueReady;
-  const editable = !restoring && !draft.error && !busy && !preparingBill && !submitted && !outcome && !catalogueOpen && !(canReview && reviewing);
+  const editable = !restoring && !draft.error && !busy && !preparingBill && !submitted && !outcome && !catalogueOpen && !catalogueEditorOpen && !(canReview && reviewing);
   function invalidate() { revision.current++; beginQuote(); setQuote(null); setQuoteError(""); setQuoting(false); setError(""); }
   function reviewProduct(id: string) { if (editable && canReview) { invalidate(); setReviewing(id); } }
   function add(product: CounterProduct) {
@@ -157,6 +157,14 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
   }
   const searchRead = useRef(lookup);
   useEffect(() => { searchRead.current = lookup; });
+  const lastCatalogueRevision = useRef(catalogueRevision);
+  useEffect(() => {
+    if (!editable || lastCatalogueRevision.current === catalogueRevision) return;
+    lastCatalogueRevision.current = catalogueRevision;
+    // Revalidate products after the shared editor saves, without clearing the cart
+    // or interpreting a numeric product name as an instruction to add a barcode.
+    void searchRead.current(false, undefined, false, true);
+  }, [catalogueRevision, editable]);
   useEffect(() => {
     if (!editable || initialBrowse.current) return;
     initialBrowse.current = true;
@@ -368,9 +376,9 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
         <section className={pos.products} aria-label="Counter products">
           <Card padding="sm" className={pos.panel} contentClassName={pos.panelContent}>
             <div className={pos.productTools}>
-              <form onSubmit={event => { event.preventDefault(); if (!exactLookup && selectedProduct?.eligible && selectedProduct.unitDefinition) add(selectedProduct); else void lookup(exactLookup); }}>
+              <form onSubmit={event => { event.preventDefault(); if (!editable) return; if (!exactLookup && selectedProduct?.eligible && selectedProduct.unitDefinition) add(selectedProduct); else void lookup(exactLookup); }}>
                 <div className={pos.search}>
-                  <Input ref={scanner} aria-label="Scan barcode or search products" icon={<Barcode size={16} aria-hidden="true" />} iconRight={<Button type="button" variant="ghost" size="xs" aria-label="Search products" loading={searching} onClick={() => { void lookup(exactLookup, undefined, true, true); }}><Search size={15} aria-hidden="true" /></Button>} placeholder="Scan barcode or type medicine" title="F1 to search · Scan and press Enter to add" size="lg" containerClassName="min-w-0 flex-1" value={search} maxLength={100} onChange={event => { beginLookup(); lookupFlight.current = null; setSearching(false); setPicked(0); setAddedMessage(""); setSearch(event.target.value); const local = catalogue.find(event.target.value, lookupMode === "barcode" || lookupMode === "auto" && /^\d+$/.test(event.target.value.trim())); setProducts(local.items); setNextProduct(local.nextCursor); setSearchError(""); setProductLookupDone(Boolean(local.items.length)); }} onKeyDown={event => { if (["ArrowDown", "ArrowUp"].includes(event.key) && visibleProducts.length) { event.preventDefault(); setPicked(value => (value + (event.key === "ArrowDown" ? 1 : -1) + visibleProducts.length) % visibleProducts.length); } }} />
+                  <Input ref={scanner} disabled={!editable} aria-label="Scan barcode or search products" icon={<Barcode size={16} aria-hidden="true" />} iconRight={<Button type="button" variant="ghost" size="xs" aria-label="Search products" disabled={!editable} loading={searching} onClick={() => { void lookup(exactLookup, undefined, true, true); }}><Search size={15} aria-hidden="true" /></Button>} placeholder="Scan barcode or type medicine" title="F1 to search · Scan and press Enter to add" size="lg" containerClassName="min-w-0 flex-1" value={search} maxLength={100} onChange={event => { beginLookup(); lookupFlight.current = null; setSearching(false); setPicked(0); setAddedMessage(""); setSearch(event.target.value); const local = catalogue.find(event.target.value, lookupMode === "barcode" || lookupMode === "auto" && /^\d+$/.test(event.target.value.trim())); setProducts(local.items); setNextProduct(local.nextCursor); setSearchError(""); setProductLookupDone(Boolean(local.items.length)); }} onKeyDown={event => { if (["ArrowDown", "ArrowUp"].includes(event.key) && visibleProducts.length) { event.preventDefault(); setPicked(value => (value + (event.key === "ArrowDown" ? 1 : -1) + visibleProducts.length) % visibleProducts.length); } }} />
                 </div>
               </form>
               <PharmacyCounterFilters>{[{ id: "frequent", label: "Frequent" }, { id: "all", label: "All" }, { id: "tablet", label: "Tablets" }, { id: "capsule", label: "Capsules" }, { id: "ml", label: "Liquids" }, { id: "other", label: "Other" }].map(filter => <Button size="sm" disabled={!editable} variant={productFilter === filter.id ? "primary" : "outline"} key={filter.id} aria-pressed={productFilter === filter.id} onClick={() => { setProductFilter(filter.id); setPicked(0); }}>{filter.label}</Button>)}<Select disabled={!editable} aria-label="Product lookup mode" size="sm" variant="flush" fullWidth={false} containerClassName={pos.lookupMode} value={lookupMode} onChange={event => { beginLookup(); lookupFlight.current = null; setSearching(false); setLookupMode(event.target.value); setProducts([]); setNextProduct(null); setProductLookupDone(false); }} options={[{ value: "auto", label: "Auto lookup" }, { value: "name", label: "By name" }, { value: "barcode", label: "Exact barcode" }]} /></PharmacyCounterFilters>
@@ -391,6 +399,7 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
               </article>; })}
               {!search.trim() && !searching && <Button variant="ghost" size="sm" fullWidth aria-label="Browse branch products" disabled={!editable} onClick={() => { void lookup(false, undefined, false, true); }}>Refresh products</Button>}
               {canManageCatalog && <Button variant="outline" size="sm" fullWidth disabled={!editable || network !== "online"} onClick={() => { invalidate(); setCatalogueOpen(true); }}>Find in shared catalogue</Button>}
+              {canManageCatalog && onCreateLocal && <Button variant="ghost" size="sm" fullWidth disabled={!editable || network !== "online"} onClick={() => { invalidate(); onCreateLocal(search.trim()); }}>Add custom product</Button>}
               {nextProduct && (productFilter !== "frequent" || search.trim()) && <Button size="sm" variant="outline" fullWidth disabled={!editable || searching} onClick={() => { void lookup(false, nextProduct); }}>Next product page</Button>}
             </div>
             <div className={pos.catalogueStatus} aria-label="Offline product catalogue">
@@ -419,7 +428,7 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
                   <span className={pos.lineGst} title={quote ? "GST rate from the current quote" : "Last captured rate; checked at billing"}><span className="sr-only">GST </span>{gstRate === undefined ? "—" : `${gstRate / 100}%`}</span>
                   <strong className={pos.lineAmount}><span className="sr-only">Line total </span><span>{calculated ? money(calculated.grossAmountPaise / 100) : estimated ? money(estimated.grossPaise / 100) : "—"}</span></strong>
                 </div>
-                <div className={pos.lineActions}><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} aria-label={`Edit item ${productLabel(line.product)}`} title="Pack quantities and line discount" onClick={() => setEditingLineId(line.lineId)}><SlidersHorizontal size={14} aria-hidden="true" /></Button><Button size="sm" variant="ghost" className={pos.remove} onClick={() => { invalidate(); setLines(previous => previous.filter(row => row.lineId !== line.lineId)); }} aria-label={`Remove ${productLabel(line.product)}`}><X size={16} aria-hidden="true" /></Button></div>
+                <div className={pos.lineActions}><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} aria-label={`Edit item ${productLabel(line.product)}`} title="Pack quantities and line discount" onClick={() => setEditingLineId(line.lineId)}><SlidersHorizontal size={14} aria-hidden="true" /></Button><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} onClick={() => { invalidate(); setLines(previous => previous.filter(row => row.lineId !== line.lineId)); }} aria-label={`Remove ${productLabel(line.product)}`}><X size={16} aria-hidden="true" /></Button></div>
 
               </fieldset>; })}
             </fieldset></div>
@@ -493,7 +502,7 @@ function CounterSession({ locationId, inventoryMode = "tracked", canCollect, can
     {priorPayment && <Modal open title="Resolve earlier payment" size="lg" onClose={() => setPriorPayment(null)}><PharmacyCollections locationId={locationId} canCollect={canCollect} canOpenTill={canOpenTill} initialInvoiceId={priorPayment} checkoutOnly embeddedCheckout autoAcknowledge onCollected={receipt => { if (receipt.invoiceId === priorPayment) { setPriorPayment(null); setError(""); } }} /></Modal>}
     {viewRecentInvoice && <PharmacyCollections locationId={locationId} canCollect={false} initialInvoiceId={viewRecentInvoice} focusOnly onInvoiceClose={() => setViewRecentInvoice(null)} />}
     {canReview && reviewing && <PharmacyProductReview medicineId={reviewing} locationId={locationId} onReviewed={invalidate} onClose={() => { setReviewing(null); onProductReviewed?.(); void lookup(exactLookup, undefined, false, true); }} />}
-    {canManageCatalog && catalogueOpen && <PharmacyCatalogueDiscovery locationId={locationId} inventoryMode={inventoryMode} initialSearch={search} onClose={() => setCatalogueOpen(false)} onAdded={product => {
+    {canManageCatalog && catalogueOpen && <PharmacyCatalogueDiscovery locationId={locationId} inventoryMode={inventoryMode} initialSearch={search} onClose={() => setCatalogueOpen(false)} onCreateLocal={onCreateLocal ? () => { setCatalogueOpen(false); onCreateLocal(search.trim()); } : undefined} onAdded={product => {
       setCatalogueOpen(false); setSearch(product.name); setProducts([]); setNextProduct(null); setProductLookupDone(false);
       setSearchError(inventoryMode === "tracked" ? "Product linked. Complete sale/tax review and receive actual stock in Inventory before billing." : "Product linked. Complete sale/tax review before billing; stock is not tracked.");
       if (canReview) setReviewing(product.id); onProductReviewed?.();

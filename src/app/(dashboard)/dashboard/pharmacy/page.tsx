@@ -105,6 +105,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const [showHealth, setShowHealth] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [medicineOpen, setMedicineOpen] = useState(false);
+  const [counterCatalogueRevision, setCounterCatalogueRevision] = useState(0);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const [medicineForm, setMedicineForm] = useState(blankMedicine);
   const [shortbookProduct, setShortbookProduct] = useState<PurchaseProduct>();
@@ -250,19 +251,20 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     try {
       await action();
       if (!alive.current || authScopeKey(useAuthStore.getState().user) !== scope) return;
-      close(); toast({ title: success, variant: "success" }); await fetchData();
+      close(); if (kind === "medicine" || kind === "delete") setCounterCatalogueRevision(value => value + 1);
+      toast({ title: success, variant: "success" }); await fetchData();
     } catch (error) {
       if (alive.current) toast({ title: "Could not save", description: message(error, "Your changes could not be saved. Check the record before retrying."), variant: "error" });
       if (kind === "dispense" && alive.current) await fetchData();
     } finally { writeLock.current = false; if (alive.current) setBusy(null); }
   }
 
-  function openMedicine(medicine?: Medicine) {
+  function openMedicine(medicine?: Medicine, initialName = "") {
     setEditingMedicine(medicine || null); setMedicineTab("medicine"); setErrors({});
     setMedicineForm(medicine ? { ...blankMedicine(), name: medicine.name, genericName: medicine.genericName, batchNumber: medicine.batchNumber || "", expiryDate: medicine.expiryDate?.slice(0, 10) || "", stockQuantity: String(medicine.stockQuantity), costPrice: medicine.costPrice === undefined ? "" : String(medicine.costPrice), price: String(medicine.price),
       manufacturer: medicine.manufacturer || "", strength: medicine.strength || "", rackLocation: medicine.rackLocation || "", category: medicine.category || "tablet", scheduleType: medicine.scheduleType || "general", barcodes: (medicine.barcodes || []).join(", "), reorderLevel: String(medicine.reorderLevel ?? 20), hsnCode: medicine.hsnCode || "", gstRate: medicine.gstRate === undefined ? "" : String(medicine.gstRate),
       supplyBatch: medicine.billingSupply?.batchNumber || "", supplyExpiry: medicine.billingSupply?.expiry.value || "", supplyPrecision: medicine.billingSupply?.expiry.precision || "month", supplyMrp: medicine.billingSupply ? String(medicine.billingSupply.mrpPaise / 100) : "",
-      baseUnit: medicine.unitDefinition?.baseUnit || "", packUnit: medicine.unitDefinition?.packUnit || "", unitsPerPack: medicine.unitDefinition ? String(medicine.unitDefinition.unitsPerPack) : "" } : blankMedicine());
+      baseUnit: medicine.unitDefinition?.baseUnit || "", packUnit: medicine.unitDefinition?.packUnit || "", unitsPerPack: medicine.unitDefinition ? String(medicine.unitDefinition.unitsPerPack) : "" } : { ...blankMedicine(), name: initialName.slice(0, 200) });
     setMedicineOpen(true);
   }
   function openBatch(medicine: Medicine) {
@@ -451,7 +453,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     <Modal open={importOpen && Boolean(capabilities?.importKinds?.length)} onClose={() => setImportOpen(false)} title="Reviewed pharmacy import" size="lg" bodyClassName={styles.dialog}>
       {importOpen && capabilities?.importKinds?.length && <PharmacyImports locationId={locationId} allowedKinds={capabilities.importKinds} onCommitted={() => { void fetchData(); }} />}
     </Modal>
-    {catalogueOpen && canCreate && locationId && <PharmacyCatalogueDiscovery inventoryMode={capabilities?.inventoryMode || "tracked"} locationId={locationId} onClose={() => setCatalogueOpen(false)} onAdded={() => { setCatalogueOpen(false); void fetchData(); }} onCreateLocal={() => { setCatalogueOpen(false); openMedicine(); }} />}
+    {catalogueOpen && canCreate && locationId && <PharmacyCatalogueDiscovery inventoryMode={capabilities?.inventoryMode || "tracked"} locationId={locationId} onClose={() => setCatalogueOpen(false)} onAdded={() => { setCatalogueOpen(false); void fetchData(); }} onCreateLocal={() => { setCatalogueOpen(false); openMedicine(); }} onImportLocal={capabilities?.importKinds?.includes("catalogue") ? () => { setCatalogueOpen(false); setImportOpen(true); } : undefined} />}
     {locationError && <Alert variant="error" title="Locations could not be loaded" action={<Button size="sm" variant="outline" onClick={onRetryLocations}>Retry locations</Button>}>{locationError}</Alert>}
     {capabilityError && <Alert variant="error" title="Pharmacy access unavailable" action={<Button size="sm" variant="outline" onClick={fetchData}>Retry access check</Button>}>{capabilityError}</Alert>}
     {capabilities && user?.workspaceProfile === "pharmacy" && user.role === "pharmacist" && !hasAnyPermission(user, "PHARMACY_SELL", "MANAGE_ORGANIZATION") && <Alert variant="info" title="Counter sales access is not assigned">Your current role provides inventory access. Ask the owner to assign a counter sales role in Roles & permissions if you work at the sales counter.</Alert>}
@@ -475,7 +477,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
       { id: "dispensing", label: "Dispense", badge: locationId && pendingLoaded ? pending.length : undefined, content: dispensing },
       { id: "alerts", label: "Alerts", content: <>{compactWorkspace && <div className={styles.actions}>{stockTools}</div>}<PharmacyAlertsCenter locationId={locationId} medicines={medicines} canManage={canReceive && actionable} onOpenAddBatch={openBatch} refreshKey={dataRevision} onShortbook={capabilities?.actions.managePurchases ? medicine => { if (medicine.unitDefinition) { setShortbookProduct({ ...medicine, unitDefinition: medicine.unitDefinition }); setActiveTab("purchases"); } } : undefined} onSupplierReturn={capabilities?.actions.viewPurchases && capabilities.actions.processReturn ? source => { setSupplierReturnTarget(source); setActiveTab("finance"); } : undefined} /></> },
       { id: "purchases", label: "Purchases", content: <PharmacyPurchases initialShortbookProduct={shortbookProduct} locationId={locationId} canManage={Boolean(capabilities?.actions.managePurchases)} canReceive={Boolean(capabilities?.actions.receiveStock)} /> },
-      { id: "counter", label: "Counter sale", content: <PharmacyCounter compact={user?.workspaceProfile === "pharmacy" || counterOnly} locationId={locationId} inventoryMode={capabilities?.inventoryMode || "tracked"} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} canManageCatalog={canCatalog} canReviewProducts={canReviewProducts} onProductReviewed={() => { void fetchData(); }} /> },
+      { id: "counter", label: "Counter sale", content: <PharmacyCounter compact={user?.workspaceProfile === "pharmacy" || counterOnly} locationId={locationId} inventoryMode={capabilities?.inventoryMode || "tracked"} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} canManageCatalog={canCatalog} canReviewProducts={canReviewProducts} onCreateLocal={canCatalog ? name => openMedicine(undefined, name) : undefined} catalogueEditorOpen={medicineOpen} catalogueRevision={counterCatalogueRevision} onProductReviewed={() => { void fetchData(); }} /> },
       { id: "returns", label: "Returns", content: <PharmacyReturns locationId={locationId} canProcess={Boolean(capabilities?.actions.processReturn)} canApprove={Boolean(capabilities?.actions.approveReturn)} /> },
       { id: "reports", label: "Reports & exports", content: <PharmacyReports locationId={locationId} /> },
       { id: "till", label: "Cash drawer", content: <PharmacyTill locationId={locationId} canOpen={Boolean(capabilities?.actions.openTill)} canClose={Boolean(capabilities?.actions.closeTill)} canMove={Boolean(capabilities?.actions.moveTillCash)} compact={user?.workspaceProfile === "pharmacy" || counterOnly} /> },

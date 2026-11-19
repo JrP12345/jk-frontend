@@ -20,6 +20,32 @@ const bill = { invoiceId: "invoice", dispenseId: "dispense", invoiceNumber: "I00
 const invoice = { id: "invoice", kind: "pharmacy", locationId: "branch", invoiceNumber: bill.invoiceNumber, totalAmount: 20, balanceDue: 20, amountPaid: 0, paymentRevision: 0, currency: "INR", status: "unpaid", customerSnapshot: { anonymous: true }, items: [] };
 function receipt(body: any, key: string) { return { receiptId: "receipt", invoiceId: "invoice", invoiceNumber: bill.invoiceNumber, locationId: "branch", currency: "INR", actorId: "cashier", paidAt: "2026-10-20T08:00:00Z", creditedPaise: 0, collectedPaise: body.entries.reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), paidPaise: body.entries.reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), balancePaise: 0, revision: 1, cashTenderedPaise: body.cashTenderedPaise, cashChangePaise: body.cashTenderedPaise - body.entries.filter((entry: any) => entry.paymentMethod === "cash").reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), status: "paid", evidenceMode: "staff_confirmed_manual", shiftId: drawerFixture.id, drawerCode: drawerFixture.drawerCode, entries: body.entries, requestKey: key }; }
 const mount = (canCollect = true, locationId = "branch", canReviewProducts = false) => render(<ToastProvider><PharmacyCounter locationId={locationId} canCollect={canCollect} canReviewProducts={canReviewProducts} /></ToastProvider>);
+it("preserves the cart while creating a custom product and refreshes search only after the editor saves", async () => {
+  const onCreateLocal = vi.fn();
+  const tree = (open = false, revision = 0) => <ToastProvider><PharmacyCounter locationId="branch" canCollect={false} canManageCatalog onCreateLocal={onCreateLocal} catalogueEditorOpen={open} catalogueRevision={revision} /></ToastProvider>;
+  const view = render(tree());
+  await scan();
+  change("Scan barcode or search products", "Custom cotton pack");
+  const create = screen.getByRole("button", { name: "Add custom product" });
+  await waitFor(() => expect(create).toBeEnabled());
+  fireEvent.click(create);
+  expect(onCreateLocal).toHaveBeenCalledExactlyOnceWith("Custom cotton pack");
+  expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1);
+  view.rerender(tree(true));
+  expect(screen.getByLabelText("Scan barcode or search products")).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Save counter bill" })).toBeDisabled();
+  const searches = () => api.get.mock.calls.filter(([url]) => url.includes("/sales/products?")).length;
+  const beforeSave = searches();
+  view.rerender(tree(false, 1));
+  await waitFor(() => expect(searches()).toBeGreaterThan(beforeSave));
+  expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1);
+  expect(api.post.mock.calls.filter(([url]) => !url.endsWith("/quote"))).toEqual([]);
+});
+it("does not offer custom product creation without catalogue authority", async () => {
+  render(<ToastProvider><PharmacyCounter locationId="branch" canCollect={false} onCreateLocal={vi.fn()} /></ToastProvider>);
+  await waitFor(() => expect(screen.getByLabelText("Scan barcode or search products")).toBeEnabled());
+  expect(screen.queryByRole("button", { name: "Add custom product" })).not.toBeInTheDocument();
+});
 it("links shared discovery to the counter without issuing a bill or changing stock", async () => {
   const get = api.get.getMockImplementation()!, post = api.post.getMockImplementation()!;
   const sourceId = "a".repeat(24), branchId = "b".repeat(24);

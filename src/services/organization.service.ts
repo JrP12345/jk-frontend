@@ -3,7 +3,6 @@ import type { ChimeType, VoiceAnnounceLanguage } from "@/utils/audioChimes";
 
 export interface OrganizationRecord {
   workspaceProfile?: "clinic" | "pharmacy";
-  staffMfaRequired?: boolean;
   workflowPreferences?: { registration?: "full" | "essential"; consultation?: "full" | "focused"; queueChime?: ChimeType; queueVoiceLanguage?: VoiceAnnounceLanguage };
   id: string; name: string; city: string; plan: string; status: string; isActive?: boolean;
   address?: string; email?: string; phone?: string; description?: string;

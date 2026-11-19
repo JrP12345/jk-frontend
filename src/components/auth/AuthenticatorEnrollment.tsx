@@ -29,7 +29,7 @@ export function AuthenticatorEnrollment({ required = false }: { required?: boole
   };
   return <Card className="p-4 sm:p-6 space-y-4 max-w-lg w-full mx-auto">
     <div><h2 className="text-xl font-bold">{required ? "Secure your workspace" : "Authenticator verification"}</h2>
-      <p className="text-sm text-text-secondary mt-2">{required ? "Set up an authenticator before accessing patient information." : "Add an authenticator code to protect staff sign-in."}</p></div>
+      <p className="text-sm text-text-secondary mt-2">{required ? "Set up an authenticator before accessing patient information." : "Optional: add an authenticator code to protect your sign-in. You can continue using Ekavyu without setting it up."}</p></div>
     {error && <Alert variant="error">{error}</Alert>}
     {!setup ? <Button onClick={start} loading={busy} disabled={busy}>Set up authenticator</Button> : <form onSubmit={verify} className="space-y-4">
       <p className="text-sm">Scan this code in your authenticator app, or enter the setup key manually.</p>

@@ -11,7 +11,7 @@ import type { OrganizationRecord } from "@/services/organization.service";
 import api from "@/lib/api";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
-const org: OrganizationRecord = { id: "org-a", name: "Synthetic pharmacy", city: "Surat", plan: "starter", status: "active", workspaceProfile: "pharmacy", staffMfaRequired: true, primaryAdmin: { name: "Owner", twoFactorEnabled: true, isActive: true } };
+const org: OrganizationRecord = { id: "org-a", name: "Synthetic pharmacy", city: "Surat", plan: "starter", status: "active", workspaceProfile: "pharmacy", primaryAdmin: { name: "Owner", twoFactorEnabled: true, isActive: true } };
 const branch = { id: "branch-a", name: "Synthetic branch", organizationId: org.id, address: "Synthetic address", phone: "9876543210" };
 const capabilities = { locationId: branch.id, revision: 0, enabled: false, moduleEnabled: true, mode: "configured", commercialEntitlement: "active", actions: Object.fromEntries(pharmacyActions.map(action => [action, true])) };
 const issuer = { organizationId: org.id, locationId: branch.id, revision: 1, registration: "unregistered", legalName: "Synthetic issuer", address: "Synthetic address", stateCode: "24", gstin: "", drugLicenceNumbers: ["SYNTHETIC-ONLY"], authorisedSignatory: "Owner", reviewReference: "Synthetic review", pricesIncludeTax: true, electronicReportingRequired: false, minimumHsnDigits: 4, issueSupported: true };
@@ -27,7 +27,7 @@ beforeEach(() => {
     return response(url.includes("/capabilities") ? capabilities : url.includes("/tax-profile") ? issuer : url.includes("/onboarding/options") ? { items: [offer] } : url.includes("/billing/plans") ? [productPlan] : [branch]);
   });
   vi.spyOn(api, "post").mockImplementation(async path => response(String(path).startsWith("/billing/quote") ? quote : { organization: { id: org.id } }));
-  vi.spyOn(api, "put").mockResolvedValue(response({ ...org, staffMfaRequired: true }));
+  vi.spyOn(api, "put").mockResolvedValue(response({ ...org }));
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -58,13 +58,13 @@ it("does not expose branch settings without location permission", () => {
   expect(api.get).not.toHaveBeenCalled();
   expect(screen.queryByText("Pharmacy setup")).not.toBeInTheDocument();
 });
-it("offers an explicit Root MFA-policy repair without marking stock or security complete", async () => {
-  const saved = vi.fn();
-  render(<OrganizationPharmacySetup organization={{ ...org, staffMfaRequired: false, primaryAdmin: { name: "Owner", twoFactorEnabled: false } }} onNavigate={vi.fn()} onOrganizationSaved={saved} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Require staff authenticator setup" }));
-  await waitFor(() => expect(api.put).toHaveBeenCalledExactlyOnceWith("/organizations/org-a", { staffMfaRequired: true }));
-  expect(saved).toHaveBeenCalledOnce();
-  expect(screen.getByText(/operational steps are not verified/)).toBeInTheDocument();
+it("keeps authenticator setup optional and outside pharmacy readiness checks", async () => {
+  render(<OrganizationPharmacySetup organization={{ ...org, primaryAdmin: { name: "Owner", twoFactorEnabled: false, isActive: true } }} onNavigate={vi.fn()} />);
+  const checklist = await screen.findByRole("list", { name: "Pharmacy setup checklist" });
+  expect(within(checklist).queryByText(/authenticator|MFA/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/Authenticator setup is optional/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Require staff authenticator setup" })).not.toBeInTheDocument();
+  expect(api.put).not.toHaveBeenCalled();
 });
 it("uses target pharmacy roles while Root is managing another organization", async () => {
   render(<ToastProvider><InviteOrganizationMember organizationId={org.id} workspaceProfile="pharmacy" onClose={vi.fn()} /></ToastProvider>);

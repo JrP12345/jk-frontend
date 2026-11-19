@@ -36,6 +36,53 @@ Research artifacts are development-only under `.next/catalogue-research/`; they 
 
 ## Source ingestion and actual connection status
 
+### Start without CDCI approval (19 November 2026)
+
+Counter sale now offers **Add custom product** to users with catalogue authority.
+It opens the same existing medicine editor with the search name prefilled, keeps
+the current cart, disables counter actions while the editor is open and refreshes
+product search after a successful save. Shared catalogue discovery exposes the same
+local-create option. Custom products remain branch-owned, and creating a product
+does not automatically grant sale/tax approval or manufacture tracked stock.
+
+Inventory → **Find in catalogue** → **Import my product list** opens the existing
+branch import when the operator has catalogue-import permission. It is also available
+from **Import source CSV**. Select **Empty catalogue products** and download the blank
+CSV template. It contains column names only, with no fabricated medicines, prices,
+stock or classifications. Fill it using a pharmacy's own export or a supplier list
+whose use is permitted. Stable source IDs, real pack conversions and selling prices
+per base unit are required. Keep the same source reference when retrying an import.
+
+Preview up to 200 rows, review errors and explicitly confirm product facts before
+posting. Existing duplicate detection, branch isolation, idempotent source records,
+10-unit posting chunks and zero-stock creation remain in use. The confirmation for
+catalogue imports now refers to product facts rather than physical stock. Record
+actual stock through the separate receiving/opening-stock flow. Do not infer tax or
+dispensing approval from an imported product. If there is no source file, create
+reviewed local products individually; no complete branded-medicine corpus is bundled.
+
+The operator can inspect storage from the backend checkout:
+
+```powershell
+npm run check:pharmacy-storage
+# Adjust only to the actual cluster budget and desired operational reserve:
+npm run check:pharmacy-storage -- --limit-mib=512 --reserve-mib=128
+```
+
+This bounded metadata-only command reads the configured database's uncompressed
+document size plus index size and the two product collection counts/sizes. It neither
+scans medicine records nor changes indexes, stock or products. The 512 MiB budget and
+128 MiB reserve are planning defaults, not detected Atlas settings or an enforced
+quota. Other databases on the cluster also consume its allowance. A successful report
+does not prove that a future import will fit. Start with products actually used and
+check again after each small import; retain room for invoices, movements and audits.
+
+The development check on 19 November reported 13,454,374 bytes (about 12.8 MiB) across
+the configured database's documents and indexes, zero global products and one branch
+medicine. This is a dated observation, not a continuing capacity guarantee. No real
+source products were loaded: the owner has no pharmacy/supplier file yet, and CDCI
+approval is still pending. The normal source-rights gate remains unchanged.
+
 **Working today:** owned/local CSV and values-only Excel imports, shared-reference storage/search/adoption with rights-reviewed operator input, and purchase discovery through that local reference store. Synthetic datasets exist only in disposable test databases.
 
 **Source status:** the real CDCI ZIP adapter is implemented and the supplied package has been fully validated without publication. It uses exact source IDs, retains joined external codes and keeps source suppliers separate from verified manufacturers. No live ABDM/eVitalRx feed, scheduled refresh or commercial API key is configured. No provider corpus was published into the development database. The eVitalRx documented record normalizer remains a tested mapping helper, not a live integration. The generic canonical batch loader remains available; CDCI operators can use the verified ZIP loader directly after rights approval.

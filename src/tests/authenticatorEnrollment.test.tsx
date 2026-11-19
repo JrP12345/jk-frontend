@@ -26,3 +26,11 @@ it("keeps a failed code retryable and does not claim enrollment succeeded", asyn
   expect(fixture.checkAuth).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: "Verify and continue" })).toBeEnabled();
 });
+
+it("offers optional enrollment without starting setup or blocking continued use", () => {
+  render(<AuthenticatorEnrollment />);
+  expect(screen.getByText(/Optional: add an authenticator/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Sign out and use another account" })).not.toBeInTheDocument();
+  expect(fixture.post).not.toHaveBeenCalled();
+});

@@ -10,13 +10,13 @@ import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
 import type { PurchaseProduct } from "@/services/pharmacyPurchase.service";
 import styles from "./PharmacyWorkspace.module.css";
 
-interface Props { locationId: string; inventoryMode?: "tracked" | "billing_only"; initialSearch?: string; onClose: () => void; onAdded: (product: PurchaseProduct) => void; onCreateLocal?: () => void }
+interface Props { locationId: string; inventoryMode?: "tracked" | "billing_only"; initialSearch?: string; onClose: () => void; onAdded: (product: PurchaseProduct) => void; onCreateLocal?: () => void; onImportLocal?: () => void }
 const message = (error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message || (error instanceof Error ? error.message : "Catalogue unavailable");
 export function PharmacyCatalogueDiscovery(props: Props) {
   const scope = authScopeKey(useAuthStore(state => state.user));
   return <CatalogueSession key={`${scope}:${props.locationId}`} {...props} />;
 }
-function CatalogueSession({ locationId, inventoryMode = "tracked", initialSearch = "", onClose, onAdded, onCreateLocal }: Props) {
+function CatalogueSession({ locationId, inventoryMode = "tracked", initialSearch = "", onClose, onAdded, onCreateLocal, onImportLocal }: Props) {
   const [search, setSearch] = useState(initialSearch.slice(0, 100)), [cursor, setCursor] = useState<string>();
   const [page, setPage] = useState<GlobalCataloguePage | null>(null), [selected, setSelected] = useState<GlobalCatalogueProduct | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(""), [attempt, setAttempt] = useState(0), [busy, setBusy] = useState(false);
@@ -62,9 +62,10 @@ function CatalogueSession({ locationId, inventoryMode = "tracked", initialSearch
       {loading ? <p role="status">Searching catalogue…</p> : page?.items.length ? <ul className="space-y-2">{page.items.map(item => <li key={item.id} className={styles.card}>
         <div className={styles.identity}><strong>{item.name}</strong><small>{[item.genericName || item.composition, item.strength, item.dosageForm, item.manufacturer, item.packSize].filter(Boolean).join(" · ")}</small>{item.supplierName && <small>Source supplier: {item.supplierName}</small>}<small>{item.provider} · {item.sourceId} · {item.release}</small></div>
         <Button size="sm" variant="outline" onClick={() => { setSelected(item); setConfirmed(false); setError(""); }}>{item.alreadyAdded ? "Use branch product" : "Review & add"}</Button>
-      </li>)}</ul> : <p>No matching shared products. Try another name or use a local medicine. External sources appear only after their data and usage rights have been reviewed.</p>}
+      </li>)}</ul> : !error && <p>No matching shared products. You can create a local product or import your own product list now. External catalogue approval is not needed for your own products.</p>}
       <div className={styles.actions}>{cursor && <Button variant="outline" size="sm" onClick={() => { setLoading(true); setCursor(undefined); }}>First page</Button>}{page?.nextCursor && <Button variant="outline" size="sm" disabled={loading} onClick={() => { setLoading(true); setCursor(page.nextCursor!); }}>More products</Button>}
-        {onCreateLocal && <Button variant="outline" onClick={onCreateLocal}>Create local medicine instead</Button>}</div>
+        {onCreateLocal && <Button variant="outline" onClick={onCreateLocal}>Create local medicine instead</Button>}
+        {onImportLocal && <Button variant="outline" onClick={onImportLocal}>Import my product list</Button>}</div>
       <p className="text-xs text-text-secondary">{page?.sourceNotice || "Sources require verified commercial-use permission before products can be loaded."}</p>
     </div> : <form onSubmit={add} className="space-y-3"><fieldset disabled={busy} className="space-y-3">
       <strong>{selected.name}</strong><p>{[selected.genericName || selected.composition, selected.strength, selected.manufacturer, selected.dosageForm, selected.packSize].filter(Boolean).join(" · ")}</p>

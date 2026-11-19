@@ -85,6 +85,11 @@ function ImportSession({ locationId, allowedKinds, onCommitted }: Props) {
   const pending = view?.units.filter(unit => ["unprocessed", "failed"].includes(unit.status)).length || 0;
   return <section aria-label="Reviewed pharmacy CSV import" className="space-y-4">
     <p className="text-sm text-text-secondary">Import up to 200 actual source rows. Catalogue creates empty products; opening stock requires explicit existing product IDs and units. Opening dues require existing party IDs and real dated evidence. Supply, tax and stock history are never inferred from an old sale bill.</p>
+    {kind === "catalogue" && !view && <div className="space-y-2 text-sm">
+      <p>Start with your pharmacy export or a supplier list you have permission to use. No external catalogue subscription is needed for your own products.</p>
+      <a className="font-medium text-accent underline" href="/templates/pharmacy-products.csv" download>Download blank product CSV template</a>
+      <p className="text-text-secondary">Fill in actual product details, a stable source row ID, pack conversion and selling price per base unit. Use the source schedule classification; do not guess it. Import only products you need. Stock, batches and dispensing or tax approvals are recorded separately.</p>
+    </div>}
     {error && <Alert variant="error" title="Import needs attention">{error}</Alert>}
     {!view ? <form onSubmit={preview} className="space-y-4"><fieldset disabled={busy} className="space-y-4">
       <Select label="Import kind" value={kind} onChange={event => { setKind(event.target.value as PharmacyImportKind); newFile(); }} options={allowedKinds.map(value => ({ value, label: pharmacyImportLabels[value] }))} />
@@ -104,7 +109,7 @@ function ImportSession({ locationId, allowedKinds, onCommitted }: Props) {
         const unit = view.units.find(item => item.sourceKey === row.sourceKey)!;
         return <tr key={row.sourceLine}><td>{row.sourceLine}</td><td>{row.sourceId || "Missing"}</td><td>{unit.status}</td><td>{row.error || unit.error || (unit.status === "posted" ? "Original source result recorded" : unit.status === "invalid" ? "Another row in this product group needs review" : "Reviewed source; awaiting posting")}</td></tr>;
       })}</tbody></table></div>
-      {pending > 0 && <Checkbox label="I confirm these valid sources match the reviewed physical stock or actual opening dues. Post only valid source units." checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}
+      {pending > 0 && <Checkbox label={view.kind === "catalogue" ? "I confirm the product identities, pack conversions and selling prices match my source. Add products with zero stock." : "I confirm these valid sources match the reviewed physical stock or actual opening dues. Post only valid source units."} checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}
       <div className={styles.actions}><Button disabled={busy || !confirmed || !pending} loading={busy} onClick={() => { void post(); }}>Post next {Math.min(10, pending)} source units</Button>
         <Button variant="outline" disabled={busy} onClick={() => { void check(); }}>Check saved import</Button><Button variant="outline" disabled={busy} onClick={() => { void download(); }}>Download reconciliation CSV</Button></div>
       <p className="text-sm text-text-secondary">After a connection failure, check this saved import before retrying. Posted source facts cannot be overwritten by changing the file, mapping or review reference. Use the existing reviewed stock/credit correction workflow for a posted error.</p>

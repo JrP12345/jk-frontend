@@ -16,12 +16,12 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { organizationPath, type OrganizationRecord } from "@/services/organization.service";
 
 interface Branch { id: string; name: string; isActive?: boolean; organizationId?: string; address?: string; phone?: string; timings?: string }
-interface Props { organization: OrganizationRecord; onNavigate: (section: string) => void; onOpenWorkspace?: () => void; onOrganizationSaved?: () => void | Promise<void> }
-export function OrganizationPharmacySetup({ organization, onNavigate, onOpenWorkspace, onOrganizationSaved }: Props) {
+interface Props { organization: OrganizationRecord; onNavigate: (section: string) => void; onOpenWorkspace?: () => void }
+export function OrganizationPharmacySetup({ organization, onNavigate, onOpenWorkspace }: Props) {
   const user = useAuthStore(state => state.user);
-  return <PharmacySetup key={`${organization.id}:${authScopeKey(user)}`} organization={organization} onNavigate={onNavigate} onOpenWorkspace={onOpenWorkspace} onOrganizationSaved={onOrganizationSaved} />;
+  return <PharmacySetup key={`${organization.id}:${authScopeKey(user)}`} organization={organization} onNavigate={onNavigate} onOpenWorkspace={onOpenWorkspace} />;
 }
-function PharmacySetup({ organization, onNavigate, onOpenWorkspace, onOrganizationSaved }: Props) {
+function PharmacySetup({ organization, onNavigate, onOpenWorkspace }: Props) {
   const user = useAuthStore(state => state.user);
   const canRead = hasAnyPermission(user, "VIEW_LOCATIONS", "MANAGE_LOCATIONS");
   const canReadIssuer = hasAnyPermission(user, "MANAGE_ORGANIZATION");
@@ -32,8 +32,6 @@ function PharmacySetup({ organization, onNavigate, onOpenWorkspace, onOrganizati
   const [error, setError] = useState("");
   const [accessError, setAccessError] = useState("");
   const [revision, setRevision] = useState(0);
-  const [savingPolicy, setSavingPolicy] = useState(false);
-  const [policyError, setPolicyError] = useState("");
   const [access, setAccess] = useState<{ capabilities: PharmacyCapabilities; issuer: PharmacyIssuerProfile | null } | null>(null);
   const beginRead = useLatestRead();
   const beginAccess = useLatestRead();
@@ -72,24 +70,14 @@ function PharmacySetup({ organization, onNavigate, onOpenWorkspace, onOrganizati
     { label: "Pharmacy enabled at this branch", complete: access.capabilities.enabled },
     { label: "Commercial pharmacy access", complete: ["active", "plan_included"].includes(access.capabilities.commercialEntitlement || "") },
     { label: "Administrator account active", complete: organization.primaryAdmin?.isActive },
-    { label: "Administrator authenticator enrolled", complete: organization.primaryAdmin?.twoFactorEnabled },
-    { label: "Staff MFA required", complete: organization.staffMfaRequired },
   ] : [];
-  return <Card><CardHeader><div className="flex items-center justify-between gap-4"><CardTitle as="h2">Pharmacy setup</CardTitle><Button variant="outline" size="sm" aria-label="Refresh pharmacy setup" loading={loading} onClick={reload} icon={<RotateCw className="h-4 w-4" />} /></div><p className="text-sm text-text-secondary">Review branch access, issuer details and administrator security before receiving stock or making sales.</p></CardHeader><CardContent className="space-y-4">
+  return <Card><CardHeader><div className="flex items-center justify-between gap-4"><CardTitle as="h2">Pharmacy setup</CardTitle><Button variant="outline" size="sm" aria-label="Refresh pharmacy setup" loading={loading} onClick={reload} icon={<RotateCw className="h-4 w-4" />} /></div><p className="text-sm text-text-secondary">Review branch access, issuer details and administrator access before receiving stock or making sales.</p></CardHeader><CardContent className="space-y-4">
     {loading ? <LoadingState label="Checking pharmacy setup" /> : error ? <Alert variant="error" title="Pharmacy setup unavailable" action={<Button onClick={reload}>Reload setup</Button>}>{error}</Alert> : !branches.length ? <Alert variant="warning" title="Create an active pharmacy branch" action={<Button onClick={() => onNavigate("locations")}>Open locations</Button>}>The pharmacy needs an active physical branch.</Alert> : <>
       <Select label="Review pharmacy branch" value={branchId} options={[{ value: "", label: "Choose a branch" }, ...branches.map(branch => ({ value: branch.id, label: branch.name }))]} onChange={event => { setAccess(null); setAccessError(""); setChecking(Boolean(event.target.value)); setBranchId(event.target.value); }} />
       {checking && <LoadingState label="Checking branch access" />}
       {accessError && <Alert variant="error" title="Branch checks unavailable" action={<Button onClick={reload}>Reload setup</Button>}>{accessError}</Alert>}
       {checklist.length > 0 && <ul aria-label="Pharmacy setup checklist" className="grid gap-x-6 sm:grid-cols-2">{checklist.map(row => <li key={row.label} className="flex items-start justify-between gap-4 border-b border-border py-3 text-sm"><span>{row.label}</span><span className={row.complete ? "shrink-0 text-success-text" : "shrink-0 text-warning-text"}>{row.complete === undefined ? "Not checked" : row.complete ? "Complete" : "Needs attention"}</span></li>)}</ul>}
-      {selected && <p className="text-sm leading-relaxed text-text-secondary">In Locations, open this branch’s Pharmacy settings to review issuer and licence details and enable pharmacy. The administrator enrolls their authenticator from their own Security page. If a security check needs attention, confirm it with the administrator; organization creation does not complete it.</p>}
-      {policyError && <Alert variant="error" title="Security policy could not be saved">{policyError}</Alert>}
-      {user?.role === "root" && organization.staffMfaRequired !== true && <Button variant="outline" size="sm" loading={savingPolicy} onClick={async () => {
-        if (savingPolicy) return;
-        setSavingPolicy(true); setPolicyError("");
-        try { await api.put(`/organizations/${encodeURIComponent(organization.id)}`, { staffMfaRequired: true }); await onOrganizationSaved?.(); }
-        catch { setPolicyError("Reload the organization to check its committed security policy before retrying."); }
-        finally { setSavingPolicy(false); }
-      }}>Require staff authenticator setup</Button>}
+      {selected && <p className="text-sm leading-relaxed text-text-secondary">In Locations, open this branch’s Pharmacy settings to review issuer and licence details and enable pharmacy. Authenticator setup is optional. Each user can enable it from Account security whenever they want.</p>}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={() => onNavigate("locations")}>Review branch settings</Button>
         {hasAnyPermission(user, "MANAGE_BILLING") && <Button variant="outline" size="sm" onClick={() => onNavigate("subscription")}>Review pharmacy subscription</Button>}

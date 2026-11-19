@@ -38,6 +38,22 @@ async function reviewed() {
 }
 const renderImport = () => render(<PharmacyImports locationId={locationId} allowedKinds={["catalogue"]} onCommitted={vi.fn()} />);
 
+it("offers a blank own-product template without fetching or creating medicine records", () => {
+  renderImport();
+  const template = screen.getByRole("link", { name: "Download blank product CSV template" });
+  expect(template).toHaveAttribute("href", "/templates/pharmacy-products.csv");
+  expect(template).toHaveAttribute("download");
+  expect(screen.getByText(/No external catalogue subscription is needed/)).toBeInTheDocument();
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+it("asks for product confirmation rather than physical stock for catalogue imports", async () => {
+  renderImport(); await reviewed();
+  expect(screen.getByRole("checkbox", { name: /product identities, pack conversions and selling prices/ })).not.toBeChecked();
+  expect(screen.queryByRole("checkbox", { name: /physical stock/ })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Post next 1 source units" })).toBeDisabled();
+});
+
 it("converts a values-only Excel list into the same server-reviewed catalogue import without posting products", async () => {
   renderImport();
   const rows = [fields, ["0001", "Synthetic product", "Synthetic salt", "tablet", "general", "tablet", "strip", "10", "0.29"]];

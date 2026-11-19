@@ -31,7 +31,7 @@ describe("organization management", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView; router.push.mockReset(); router.replace.mockReset(); window.history.replaceState(null, "", "/"); });
 
   it("uses pharmacy readiness and target pharmacy invitation roles from the Root workspace", async () => {
-    const pharmacy = { ...org, workspaceProfile: "pharmacy", staffMfaRequired: true };
+    const pharmacy = { ...org, workspaceProfile: "pharmacy" };
     window.history.replaceState(null, "", `/dashboard/organizations?organizationId=${org.id}`);
     vi.mocked(api.get).mockImplementation(async path => ({ data: { data: String(path) === "/organizations" ? [pharmacy] : [] } }));
     mount(<OrganizationsPage />);

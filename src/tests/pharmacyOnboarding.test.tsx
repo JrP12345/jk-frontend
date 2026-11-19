@@ -19,7 +19,7 @@ vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 vi.mock("@/components/ui", async original => ({ ...await original<typeof import("@/components/ui")>(), ModeSwitcher: () => null }));
 const plan = { id: "1".repeat(24), name: "Reviewed synthetic trial", fingerprint: "a".repeat(64), currency: "INR", monthlyTotalPaise: 49900, maxStaff: 5, trialDays: 7 };
 const proof = { requestId: "2".repeat(24), setupToken: "b".repeat(64), completionKey: "saved-completion-key" };
-const owner: User = { id: "3".repeat(24), name: "Owner", email: "owner@example.test", organization_id: "4".repeat(24), role: "admin", workspaceProfile: "pharmacy", mfaEnrollmentRequired: true, permissions: ["MANAGE_ORGANIZATION", "MANAGE_STAFF", "VIEW_LOCATIONS", "PHARMACY_SELL"] };
+const owner: User = { id: "3".repeat(24), name: "Owner", email: "owner@example.test", organization_id: "4".repeat(24), role: "admin", workspaceProfile: "pharmacy", mfaEnrollmentRequired: false, permissions: ["MANAGE_ORGANIZATION", "MANAGE_STAFF", "VIEW_LOCATIONS", "PHARMACY_SELL"] };
 const storageKey = "ekavyu:pharmacy-onboarding:anonymous";
 const response = (data: unknown) => ({ data: { data } });
 const checkAuth = vi.fn(async () => useAuthStore.setState({ user: owner, isAuthenticated: true }));
@@ -36,12 +36,12 @@ async function details() {
   fireEvent.submit(screen.getByRole("form", { name: "Pharmacy business details" })); await screen.findByRole("form", { name: "Verify business account email" });
 }
 async function verify() { fireEvent.change(screen.getByLabelText("Business email verification code"), { target: { value: "123456" } }); fireEvent.submit(screen.getByRole("form", { name: "Verify business account email" })); await screen.findByRole("button", { name: "Create or resume pharmacy workspace" }); }
-it("uses the published offer and verified owner flow, retaining only opaque recovery proof before MFA enrollment", async () => {
+it("uses the published offer and verified owner flow, retaining only opaque recovery proof without mandatory MFA enrollment", async () => {
   await details(); const saved = JSON.parse(sessionStorage.getItem(storageKey)!); expect(saved).toMatchObject({ requestId: proof.requestId, setupToken: proof.setupToken }); expect(Object.keys(saved).sort()).toEqual(["completionKey", "requestId", "setupToken"]);
   expect(screen.queryByDisplayValue("StrongPassword123!")).not.toBeInTheDocument();
   expect(vi.mocked(api.post).mock.calls[0][1]).toMatchObject({ planId: plan.id, planFingerprint: plan.fingerprint, city: "Pune", password: "StrongPassword123!" });
   await verify(); fireEvent.click(screen.getByRole("button", { name: "Create or resume pharmacy workspace" })); await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dashboard"));
-  expect(checkAuth).toHaveBeenCalledOnce(); expect(sessionStorage.getItem(storageKey)).toBeNull(); expect(useAuthStore.getState().user?.mfaEnrollmentRequired).toBe(true);
+  expect(checkAuth).toHaveBeenCalledOnce(); expect(sessionStorage.getItem(storageKey)).toBeNull(); expect(useAuthStore.getState().user?.mfaEnrollmentRequired).toBe(false);
 });
 it("resumes a recorded business after connection loss using the original completion key", async () => {
   sessionStorage.setItem(storageKey, JSON.stringify(proof)); vi.mocked(api.post).mockImplementation(async url => { if (url.endsWith("/status")) return response({ state: "provisioned", organizationId: owner.organization_id }); throw Error("Connection lost"); });

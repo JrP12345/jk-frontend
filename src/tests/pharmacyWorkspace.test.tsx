@@ -189,6 +189,28 @@ it("clears private stock and dialogs when a search request reports revoked acces
   expect(screen.queryByRole("button", { name: "Add medicine" })).not.toBeInTheDocument();
 });
 
+it("opens the existing custom product editor from billing with the search prefilled and returns to the counter", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, role: "admin", workspaceProfile: "pharmacy", permissions: ["VIEW_LOCATIONS", "MANAGE_ORGANIZATION", "PHARMACY_MANAGE_CATALOG", "PHARMACY_SELL"] } });
+  fixture.capabilities.mockResolvedValue(response({ ...capabilities(["viewStock", "manageCatalog"]), actions: { ...capabilities(["viewStock", "manageCatalog"]).actions, sell: true, viewSales: true } }));
+  const get = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation(async (url: string) => url.includes("/sales/products?") ? response({ items: [], nextCursor: null }) : get(url));
+  mount();
+  fireEvent.click(await screen.findByRole("tab", { name: "Counter sale" }));
+  const search = await screen.findByLabelText("Scan barcode or search products");
+  await waitFor(() => expect(search).toBeEnabled());
+  fireEvent.change(search, { target: { value: "Custom store product" } });
+  const create = screen.getByRole("button", { name: "Add custom product" });
+  await waitFor(() => expect(create).toBeEnabled());
+  fireEvent.click(create);
+  const dialog = await screen.findByRole("dialog", { name: "Add medicine" });
+  expect(within(dialog).getByLabelText("Medicine name *")).toHaveValue("Custom store product");
+  expect(search).toBeDisabled();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel", exact: true }));
+  expect(screen.getByRole("tab", { name: "Counter sale" })).toHaveAttribute("aria-selected", "true");
+  await waitFor(() => expect(search).toBeEnabled());
+  expect(search).toHaveValue("Custom store product");
+  expect(fixture.post).not.toHaveBeenCalled();
+});
 it("opens the counter for sales-only staff without inventory, prescription or purchase access", async () => {
   useAuthStore.setState({ user: { id: "seller", name: "Seller", email: "seller@example.test", role: "pharmacy_counter_sales", workspaceProfile: "pharmacy", organization_id: "org", permissions: ["VIEW_LOCATIONS", "PHARMACY_SELL", "PHARMACY_COLLECT_PAYMENT", "PHARMACY_CLOSE_TILL"] } });
   fixture.capabilities.mockResolvedValue(response({ ...capabilities([]), actions: { ...capabilities([]).actions, sell: true, viewSales: true, collect: true, viewTill: true, openTill: true, closeTill: true, moveTillCash: false } }));
