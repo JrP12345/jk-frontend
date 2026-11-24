@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import DashboardOverview from "@/app/(dashboard)/dashboard/page";
 import { useAuthStore } from "@/store/authStore";
 import { ToastProvider } from "@/components/ui";
-const fixture = vi.hoisted(() => ({ get: vi.fn(), locations: [{ id: "branch", name: "Granted branch" }], fetchLocations: vi.fn().mockResolvedValue([{ id: "branch", name: "Granted branch" }]) }));
+const fixture = vi.hoisted(() => ({ get: vi.fn(), replace: vi.fn(), locations: [{ id: "branch", name: "Granted branch" }], fetchLocations: vi.fn().mockResolvedValue([{ id: "branch", name: "Granted branch" }]) }));
 vi.mock("@/lib/api", () => ({ default: { get: fixture.get } }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: fixture.replace }) }));
 vi.mock("@/store/locationStore", () => ({ useLocationStore: Object.assign(() => fixture, { getState: () => ({ reset: vi.fn() }) }) }));
 vi.mock("@/components/dashboard", () => ({
   DashboardStatCards: (props: unknown) => <output data-testid="statistics">{JSON.stringify(props)}</output>,
@@ -14,6 +14,14 @@ vi.mock("@/components/dashboard", () => ({
 }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); useAuthStore.setState({ user: null }); });
 describe("Dashboard authoritative role loading", () => {
+  it("redirects a counter-only account without loading an empty overview", async () => {
+    useAuthStore.setState({ user: { id: "counter", name: "Counter", email: "counter@example.test", role: "pharmacy_counter_sales", organization_id: "org", workspaceProfile: "pharmacy", permissions: ["PHARMACY_SELL", "PHARMACY_COLLECT_PAYMENT"] } });
+    render(<ToastProvider><DashboardOverview /></ToastProvider>);
+    expect(screen.getByText("Opening counter sales...")).toHaveAttribute("role", "status");
+    await waitFor(() => expect(fixture.replace).toHaveBeenCalledWith("/dashboard/pharmacy"));
+    expect(fixture.get).not.toHaveBeenCalled();
+  });
+
   it("loads family visits and partial invoice counts without calling staff summaries", async () => {
     useAuthStore.setState({ user: { id: "family", name: "Family", email: "family@example.test", role: "family_member", permissions: ["VIEW_APPOINTMENTS", "VIEW_EHR", "VIEW_BILLING"] } });
     fixture.get.mockImplementation(async (path: string) => ({ data: { data: [] }, headers: { "x-total-count": path.includes("status=partially_paid") ? "3" : path.includes("status=unpaid") ? "7" : "120" } }));

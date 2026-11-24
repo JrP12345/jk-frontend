@@ -11,6 +11,7 @@ import auth from "@/components/auth/AuthPageShell.module.css";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
 import LoginWorkspacePicker from "@/components/auth/LoginWorkspacePicker";
 import type { WorkspaceSelection } from "@/types/workspace";
+import { workspaceEntryPath } from "@/lib/workspaceEntry";
 import { detectPatientOtpTarget, patientOtpDestination, type PatientOtpTarget } from "@/lib/patientLogin";
 import { COUNTRIES, phoneCountryOptions, type CountryCode } from "@/lib/countries";
 import { NavigationPending } from "@/components/ui/RouteProgress";
@@ -63,11 +64,11 @@ export default function LoginForm({ onRegister, initialAudience = "patient" }: {
   const { isAuthenticated, isLoading, login } = useAuthStore();
   const { toast } = useToast();
 
-  const openDashboard = useCallback(() => {
+  const openDashboard = useCallback((user?: User | null) => {
     if (navigationStarted.current) return;
     navigationStarted.current = true;
     setIsNavigating(true);
-    startTransition(() => router.replace("/dashboard"));
+    startTransition(() => router.replace(workspaceEntryPath(user || useAuthStore.getState().user)));
   }, [router]);
 
   const completeSignIn = (user: User) => {
@@ -76,7 +77,7 @@ export default function LoginForm({ onRegister, initialAudience = "patient" }: {
     login(user);
     if (!useAuthStore.getState().isAuthenticated) throw new Error("Sign-in did not establish a session");
     setSessionExpired(false);
-    openDashboard();
+    openDashboard(user);
   };
 
   const acceptSignIn = (data: { user?: User; workspaceRequired?: boolean } & Partial<WorkspaceSelection>) => {
@@ -523,7 +524,7 @@ export default function LoginForm({ onRegister, initialAudience = "patient" }: {
         <fieldset disabled={isNavigating} aria-busy={isNavigating} aria-label="Sign in" className="min-w-0 w-full border-0 p-0">
         <Card padding="none" className={`${auth.card} ${isShaking ? "animate-shake" : ""}`}>
           {!isForgotPassword ? (
-            <div className="space-y-5">
+            <div className={auth.loginLayout}>
               <CardHeader className={auth.formHeader}>
                 <CardTitle as="h1" className="page-title">Welcome back</CardTitle>
                 <CardDescription className="text-sm text-text-secondary">

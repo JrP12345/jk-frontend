@@ -20,6 +20,63 @@ const bill = { invoiceId: "invoice", dispenseId: "dispense", invoiceNumber: "I00
 const invoice = { id: "invoice", kind: "pharmacy", locationId: "branch", invoiceNumber: bill.invoiceNumber, totalAmount: 20, balanceDue: 20, amountPaid: 0, paymentRevision: 0, currency: "INR", status: "unpaid", customerSnapshot: { anonymous: true }, items: [] };
 function receipt(body: any, key: string) { return { receiptId: "receipt", invoiceId: "invoice", invoiceNumber: bill.invoiceNumber, locationId: "branch", currency: "INR", actorId: "cashier", paidAt: "2026-10-20T08:00:00Z", creditedPaise: 0, collectedPaise: body.entries.reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), paidPaise: body.entries.reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), balancePaise: 0, revision: 1, cashTenderedPaise: body.cashTenderedPaise, cashChangePaise: body.cashTenderedPaise - body.entries.filter((entry: any) => entry.paymentMethod === "cash").reduce((sum: number, entry: any) => sum + entry.amountPaise, 0), status: "paid", evidenceMode: "staff_confirmed_manual", shiftId: drawerFixture.id, drawerCode: drawerFixture.drawerCode, entries: body.entries, requestKey: key }; }
 const mount = (canCollect = true, locationId = "branch", canReviewProducts = false) => render(<ToastProvider><PharmacyCounter locationId={locationId} canCollect={canCollect} canReviewProducts={canReviewProducts} /></ToastProvider>);
+function toggleFilter(label: string) {
+  fireEvent.click(screen.getByRole("button", { name: "Product filters" }));
+  fireEvent.click(screen.getByRole("menuitemcheckbox", { name: label, exact: true }));
+  fireEvent.keyDown(document, { key: "Escape" });
+}
+function clearFilters() {
+  fireEvent.click(screen.getByRole("button", { name: "Product filters" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Clear filters" }));
+}
+it("confirms an added product briefly without changing the product card or bill", async () => {
+  mount(false);
+  const productButton = await screen.findByRole("button", { name: "Add Ordinary product" });
+  fireEvent.click(productButton);
+  expect(productButton.closest("article")).toHaveAttribute("data-added", "true");
+  expect(screen.getByRole("group", { name: "Cart Ordinary product" })).toHaveAttribute("data-added", "true");
+  await waitFor(() => expect(productButton.closest("article")).not.toHaveAttribute("data-added"), { timeout: 2000 });
+  expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1);
+});
+it("opens history from the mobile panel controls", async () => {
+  const onViewHistory = vi.fn();
+  render(<ToastProvider><PharmacyCounter locationId="branch" canCollect={false} onViewHistory={onViewHistory} /></ToastProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "Open bill history" }));
+  expect(onViewHistory).toHaveBeenCalledOnce();
+});
+it("explains a full held-bill limit without losing any cart", async () => {
+  mount(false);
+  for (let index = 0; index < 3; index++) {
+    await scan();
+    fireEvent.click(screen.getByRole("button", { name: "New bill", exact: true }));
+  }
+  await scan();
+  const create = screen.getByRole("button", { name: "New bill", exact: true });
+  expect(create).toBeEnabled();
+  fireEvent.click(create);
+  expect(screen.getByText(/Three bills are already on hold/)).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: /Resume held cart/ })).toHaveLength(3);
+  expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1);
+});
+it("shows the product cursor only during keyboard picking", async () => {
+  mount(false);
+  const button = await screen.findByRole("button", { name: "Add Ordinary product" });
+  const row = button.closest("article")!;
+  expect(row).toHaveAttribute("data-picked", "false");
+  fireEvent.keyDown(screen.getByLabelText("Scan barcode or search products"), { key: "ArrowDown" });
+  expect(row).toHaveAttribute("data-picked", "true");
+  fireEvent.click(button);
+  expect(row).toHaveAttribute("data-picked", "false");
+});
+it("keeps offline navigation hidden online and keeps all product filters available without a scrolling strip", async () => {
+  mount(false);
+  await waitFor(() => expect(screen.getByLabelText("Scan barcode or search products")).toBeEnabled());
+  expect(screen.queryByRole("link", { name: "Offline preparation" })).not.toBeInTheDocument();
+  const filters = screen.getByRole("group", { name: "Filter product results by unit" });
+  expect(within(filters).getAllByRole("button")).toHaveLength(1);
+  expect(screen.queryByRole("button", { name: /Scroll filters/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Product filters" })).not.toBeInTheDocument();
+});
 it("preserves the cart while creating a custom product and refreshes search only after the editor saves", async () => {
   const onCreateLocal = vi.fn();
   const tree = (open = false, revision = 0) => <ToastProvider><PharmacyCounter locationId="branch" canCollect={false} canManageCatalog onCreateLocal={onCreateLocal} catalogueEditorOpen={open} catalogueRevision={revision} /></ToastProvider>;
@@ -287,9 +344,16 @@ it("filters current product results and adds the highlighted result with keyboar
   mount(false); await waitFor(() => expect(screen.getByLabelText("Scan barcode or search products")).toBeEnabled());
   change("Scan barcode or search products", "Synthetic"); fireEvent.click(screen.getByRole("button", { name: "Search products" }));
   await screen.findByRole("button", { name: "Add Synthetic capsule" });
-  fireEvent.click(screen.getByRole("button", { name: "Capsules", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Product filters" }));
+  expect(screen.queryByRole("dialog", { name: "Product filters" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Capsules", exact: true }));
+  expect(screen.getByRole("menuitemcheckbox", { name: "Capsules" })).toBeChecked();
+  fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Tablets" }));
+  expect(screen.getByRole("button", { name: "Add Ordinary product" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Tablets" }));
+  fireEvent.keyDown(document, { key: "Escape" });
   expect(screen.queryByRole("button", { name: "Add Ordinary product" })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "All", exact: true }));
+  clearFilters();
   fireEvent.keyDown(screen.getByLabelText("Scan barcode or search products"), { key: "ArrowDown" });
   fireEvent.submit(screen.getByLabelText("Scan barcode or search products").closest("form")!);
   expect(screen.getByLabelText("Quantity Synthetic capsule")).toHaveValue(1);
@@ -607,8 +671,6 @@ it("uses a name lookup for words and preserves an explicit alphanumeric barcode 
   fireEvent.click(screen.getByRole("button", { name: "Search products" }));
   await screen.findByRole("button", { name: "Add Ordinary product" });
   expect(api.get).toHaveBeenCalledWith(expect.stringContaining("search=Ordinary"), expect.any(Object));
-  fireEvent.click(screen.getByRole("combobox", { name: "Product lookup mode" }));
-  fireEvent.click(await screen.findByRole("option", { name: "Exact barcode" }));
   change("Scan barcode or search products", "00ABC123");
   fireEvent.submit(screen.getByLabelText("Scan barcode or search products").closest("form")!);
   await screen.findByLabelText("Quantity Ordinary product");
@@ -823,15 +885,31 @@ it("keeps a later-page pick available in Frequent after returning to the first q
   const get = api.get.getMockImplementation()!;
   api.get.mockImplementation((url, config) => url.includes("/sales/products?") ? response(url.includes("cursor=") ? { items: [{ ...product, id: "later", name: "Later medicine" }], nextCursor: null } : { items: [product], nextCursor: "page-2" }) : get(url, config));
   mount(false); await screen.findByRole("button", { name: "Next product page" });
-  fireEvent.click(screen.getByRole("button", { name: "Frequent", exact: true }));
+  toggleFilter("Frequent only");
   expect(screen.getByText(/Products you add often appear here/)).toBeInTheDocument();
   expect(screen.queryByText("No products at this branch")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "All", exact: true }));
+  clearFilters();
   fireEvent.click(screen.getByRole("button", { name: "Next product page" }));
   fireEvent.click(await screen.findByRole("button", { name: "Add Later medicine" }));
-  fireEvent.click(screen.getByRole("button", { name: "Frequent", exact: true }));
+  toggleFilter("Frequent only");
   expect(await screen.findByRole("button", { name: "Add Later medicine" })).toBeEnabled();
   expect(screen.queryByRole("button", { name: "Next product page" })).not.toBeInTheDocument();
+});
+
+it("keeps the visible frequent product order after a product is selected", async () => {
+  const get = api.get.getMockImplementation()!;
+  const later = { ...product, id: "later", name: "Later medicine" };
+  api.get.mockImplementation((url, config) => url.includes("/sales/products?") ? response({ items: [product, later], nextCursor: null }) : get(url, config));
+  mount(false);
+  await screen.findByRole("button", { name: "Add Ordinary product" });
+  fireEvent.click(screen.getByRole("button", { name: "Add Ordinary product" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add Ordinary product" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add Later medicine" }));
+  toggleFilter("Frequent only");
+  const labels = () => screen.getAllByRole("button", { name: /^Add / }).map(button => button.getAttribute("aria-label"));
+  expect(labels()).toEqual(["Add Ordinary product", "Add Later medicine"]);
+  fireEvent.click(screen.getByRole("button", { name: "Add Later medicine" }));
+  expect(labels()).toEqual(["Add Ordinary product", "Add Later medicine"]);
 });
 
 it("saves a named customer's split part-payment and immediately frees the counter with a visible remaining due", async () => {

@@ -6,6 +6,7 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { money } from "./pharmacyWorkspace";
 import { readCounterOverview, type CounterOverview } from "@/lib/pharmacyCounterOverview";
 import pos from "./PharmacyCounter.module.css";
+import type { CounterResult } from "@/lib/pharmacyCounter";
 
 export function useCounterOverview(locationId: string, revision: string) {
   const [data, setData] = useState<CounterOverview | null>(null), [error, setError] = useState(false), [loading, setLoading] = useState(true);
@@ -38,11 +39,12 @@ export function PharmacyCounterOverview({ state, held }: { state: OverviewState;
   </section>;
 }
 
-export function PharmacyCounterRecentBills({ state, onOpen }: { state: OverviewState; onOpen: (id: string) => void }) {
+export function PharmacyCounterRecentBills({ state, onOpen, latest, onHistory }: { state: OverviewState; onOpen: (id: string) => void; latest?: CounterResult | null; onHistory?: () => void }) {
   const { data, error, loading, reload } = state;
+  const recent = [...(latest ? [{ id: latest.invoiceId, invoiceNumber: latest.invoiceNumber, totalPaise: latest.totalPaise, status: latest.status }] : []), ...(data?.recent || []).filter(bill => bill.id !== latest?.invoiceId)].slice(0, 5);
   return <section className={pos.recentBills} aria-label="Recent bills today">
-    <h3>Recent bills <span>Today</span></h3>
+    <h3>Recent bills {onHistory && <Button size="xs" variant="ghost" onClick={onHistory} aria-label="View bill history">History →</Button>}</h3>
     {error && <div className="flex flex-wrap items-center justify-between gap-2"><p role="status">{data ? "Recent bills could not be refreshed; showing the last snapshot." : "Recent bills unavailable."}</p><Button size="sm" variant="ghost" loading={loading} onClick={() => { void reload(); }}>Retry recent bills</Button></div>}
-    {data?.recent.length ? <div className={pos.recentList}>{data.recent.map(bill => <Button size="sm" variant="ghost" key={bill.id} onClick={() => onOpen(bill.id)} aria-label={`View recent bill ${bill.invoiceNumber}`}><span className={pos.recentBody}><span>{bill.invoiceNumber}</span><span>{amount(bill.totalPaise)} <small>{bill.status.replaceAll("_", " ")}</small></span></span></Button>)}</div> : loading && !data ? <Skeleton className="h-4 w-52" /> : !error && <p>No bills issued at this branch today.</p>}
+    {recent.length ? <div className={pos.recentList}>{recent.map(bill => <Button size="sm" variant="ghost" key={bill.id} onClick={() => onOpen(bill.id)} aria-label={bill.id === latest?.invoiceId ? "View last saved bill" : `View recent bill ${bill.invoiceNumber}`} title={`${bill.invoiceNumber} · ${bill.status.replaceAll("_", " ")}`}><span className={pos.recentBody}><span>{bill.invoiceNumber}</span><span>({amount(bill.totalPaise)})</span></span></Button>)}</div> : loading && !data ? <Skeleton className="h-4 w-52" /> : !error && <p>No bills issued at this branch today.</p>}
   </section>;
 }

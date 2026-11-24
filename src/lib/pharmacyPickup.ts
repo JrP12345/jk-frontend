@@ -1,4 +1,5 @@
 import api from "./api";
+import { organizationPath } from "@/services/organization.service";
 import { parsePickupTicket, type StaffPickup } from "./publicPharmacy";
 
 export interface StorefrontSettings { locationId: string; inventoryMode?: "tracked" | "billing_only"; catalogueEnabled: boolean; pickupEnabled: boolean; revision: number }
@@ -11,11 +12,11 @@ function staffPickup(raw: StaffPickup, locationId: string) {
   if (typeof raw.customerName !== "string" || typeof raw.phone !== "string") throw Error("Pickup contact details could not be loaded");
   return raw;
 }
-export async function readStorefront(locationId: string, signal?: AbortSignal) {
-  return settings((await api.get(`/pharmacy/locations/${locationId}/storefront`, { signal })).data?.data, locationId);
+export async function readStorefront(locationId: string, signal?: AbortSignal, organizationId?: string) {
+  return settings((await api.get(organizationPath(`/pharmacy/locations/${locationId}/storefront`, organizationId), { signal })).data?.data, locationId);
 }
-export async function saveStorefront(locationId: string, input: Pick<StorefrontSettings, "catalogueEnabled" | "pickupEnabled"> & { expectedRevision: number }) {
-  return settings((await api.put(`/pharmacy/locations/${locationId}/storefront`, input)).data?.data, locationId);
+export async function saveStorefront(locationId: string, input: Pick<StorefrontSettings, "catalogueEnabled" | "pickupEnabled"> & { expectedRevision: number }, organizationId?: string) {
+  return settings((await api.put(organizationPath(`/pharmacy/locations/${locationId}/storefront`, organizationId), input)).data?.data, locationId);
 }
 export async function readPickupQueue(locationId: string, status: string, cursor?: string, signal?: AbortSignal) {
   const page = (await api.get("/pharmacy/pickups", { params: { locationId, ...(status ? { status } : {}), ...(cursor ? { cursor } : {}) }, signal })).data?.data;

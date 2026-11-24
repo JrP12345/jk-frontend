@@ -14,6 +14,7 @@ export interface NavItem {
   active?: boolean;
   section?: string;
   children?: NavItem[];
+  onSelect?: () => void;
 }
 
 export interface SidebarProps {
@@ -102,6 +103,7 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
     <Link
       href={item.href}
       prefetch={false}
+      onClick={item.onSelect ? event => { event.preventDefault(); item.onSelect?.(); } : undefined}
       aria-label={collapsed ? item.label : undefined}
       aria-current={item.active ? "page" : undefined}
       className={cn(
@@ -149,7 +151,7 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
           {content}
         </Tooltip>
       ) : (
-        content
+        item.children?.length ? <details open={item.active || undefined} className="group/workspace"><summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-text"><span>{item.icon}</span><span className="flex-1">{item.label}</span><span aria-hidden="true" className="transition-transform group-open/workspace:rotate-90">›</span></span></summary><ul aria-label={`${item.label} pages`} className="ml-5 border-l border-border pl-2 space-y-0.5">{item.children.map(child => <SidebarItem key={child.href} item={child} collapsed={false} />)}</ul></details> : content
       )}
     </li>
   );

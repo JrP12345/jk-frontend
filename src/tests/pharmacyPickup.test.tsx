@@ -158,12 +158,13 @@ it("shows a QR and clear status, but removes usable QR after handover", async ()
 });
 it("separates catalogue publication from pickup permission and saves the current revision", async () => {
   vi.mocked(saveStorefront).mockResolvedValue({ locationId: "branch", catalogueEnabled: true, pickupEnabled: false, revision: 1 });
-  render(<PharmacyStorefrontSettings locationId="branch" />);
+  render(<PharmacyStorefrontSettings locationId="branch" organizationId="organization" />);
   const catalogue = await screen.findByRole("checkbox", { name: /^Publish medicine list/ });
   expect(screen.getByRole("checkbox", { name: /^Allow pickup requests/ })).toBeDisabled(); fireEvent.click(catalogue);
   expect(screen.getByRole("checkbox", { name: /^Allow pickup requests/ })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Save public pharmacy settings" }));
-  await waitFor(() => expect(saveStorefront).toHaveBeenCalledWith("branch", { catalogueEnabled: true, pickupEnabled: false, expectedRevision: 0 }));
+  expect(readStorefront).toHaveBeenCalledWith("branch", expect.any(AbortSignal), "organization");
+  await waitFor(() => expect(saveStorefront).toHaveBeenCalledWith("branch", { catalogueEnabled: true, pickupEnabled: false, expectedRevision: 0 }, "organization"));
 });
 it("scans a parcel, links a saved bill and uses the authoritative revision for preparation", async () => {
   vi.mocked(changePickup).mockResolvedValue({ ...ticket, status: "ready", revision: 1, customerName: "Customer", phone: "9999999999" });

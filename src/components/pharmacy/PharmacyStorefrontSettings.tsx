@@ -6,21 +6,21 @@ import { useAuthStore } from "@/store/authStore";
 import { authScopeKey } from "@/lib/authScope";
 import { pickupError, readStorefront, saveStorefront, type StorefrontSettings } from "@/lib/pharmacyPickup";
 
-export function PharmacyStorefrontSettings({ locationId }: { locationId: string }) {
+export function PharmacyStorefrontSettings({ locationId, organizationId }: { locationId: string; organizationId?: string }) {
   const scope = authScopeKey(useAuthStore(state => state.user));
-  return <StorefrontSession key={`${scope}:${locationId}`} locationId={locationId} scope={scope} />;
+  return <StorefrontSession key={`${scope}:${organizationId || "session"}:${locationId}`} locationId={locationId} organizationId={organizationId} scope={scope} />;
 }
-function StorefrontSession({ locationId, scope }: { locationId: string; scope: string }) {
+function StorefrontSession({ locationId, organizationId, scope }: { locationId: string; organizationId?: string; scope: string }) {
   const [value, setValue] = useState<StorefrontSettings | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false), [saved, setSaved] = useState(false);
   const begin = useLatestRead(), lock = useRef(false), alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const current = () => alive.current && authScopeKey(useAuthStore.getState().user) === scope;
-  const load = useCallback(async () => { const request = begin(); setError(""); try { const next = await readStorefront(locationId, request.signal); if (request.isCurrent()) setValue(next); } catch (failure) { if (request.isCurrent()) setError(pickupError(failure)); } }, [begin, locationId]);
+  const load = useCallback(async () => { const request = begin(); setError(""); try { const next = await readStorefront(locationId, request.signal, organizationId); if (request.isCurrent()) setValue(next); } catch (failure) { if (request.isCurrent()) setError(pickupError(failure)); } }, [begin, locationId, organizationId]);
   useEffect(() => { let active = true; void Promise.resolve().then(() => { if (active) void load(); }); return () => { active = false; }; }, [load]);
   async function save() {
     if (!value || lock.current || !current()) return;
     lock.current = true; setBusy(true); setError(""); setSaved(false);
-    try { const next = await saveStorefront(locationId, { catalogueEnabled: value.catalogueEnabled, pickupEnabled: value.pickupEnabled, expectedRevision: value.revision }); if (current()) { setValue(next); setSaved(true); } }
+    try { const next = await saveStorefront(locationId, { catalogueEnabled: value.catalogueEnabled, pickupEnabled: value.pickupEnabled, expectedRevision: value.revision }, organizationId); if (current()) { setValue(next); setSaved(true); } }
     catch (failure) { if (current()) setError(pickupError(failure)); }
     finally { lock.current = false; if (current()) setBusy(false); }
   }

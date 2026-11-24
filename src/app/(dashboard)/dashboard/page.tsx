@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import PlatformOwnerDashboard from "@/components/dashboard/PlatformOwnerDashboard";
 import { PharmacyHome } from "@/components/pharmacy/PharmacyHome";
 import { isPharmacyWorkspace } from "@/lib/workspaceProfile";
+import { isFocusedCounterWorkspace, workspaceEntryPath } from "@/lib/workspaceEntry";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
@@ -21,8 +22,18 @@ export default function DashboardOverview() {
   const user = useAuthStore(state => state.user);
   if (!user) return null;
   if (user.role === "root" && !user.impersonatedBy?.id) return <PlatformOwnerDashboard />;
+  if (isFocusedCounterWorkspace(user)) return <FocusedWorkspaceRedirect />;
   if (isPharmacyWorkspace(user)) return <PharmacyHome />;
   return <OperationalDashboard key={authScopeKey(user)} />;
+}
+
+function FocusedWorkspaceRedirect() {
+  const router = useRouter();
+  const user = useAuthStore(state => state.user);
+  useEffect(() => {
+    router.replace(workspaceEntryPath(user));
+  }, [router, user]);
+  return <div role="status" className="min-h-[16rem] grid place-items-center text-sm text-text-secondary">Opening counter sales...</div>;
 }
 
 function OperationalDashboard() {

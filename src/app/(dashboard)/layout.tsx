@@ -11,6 +11,7 @@ import { hasRoutePermission } from "@/lib/routePermissions";
 import { orderNavigation } from "@/lib/navigationOrder";
 import { isPharmacyWorkspace, pharmacyWorkspaceRoute } from "@/lib/workspaceProfile";
 import { isCounterSalesUser } from "@/lib/pharmacyCapabilities";
+import { isFocusedCounterWorkspace } from "@/lib/workspaceEntry";
 import { getDisabledRouteModule, requiresTenantModules } from "@/lib/routeModules";
 import dynamic from "next/dynamic";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
@@ -23,6 +24,7 @@ import { MobileBottomNav } from "@/components/dashboard";
 import { useTrafficTracker } from "@/hooks/useTrafficTracker";
 import DashboardLoading from "./loading";
 import { PharmacySkeleton } from "@/components/pharmacy/PharmacySkeleton";
+import { WorkspacePageNavigationProvider, useWorkspacePageNavigation } from "@/components/dashboard/WorkspacePageNavigation";
 import AICopilotLauncher from "@/components/ai/AICopilotLauncher";
 import { getAvatarInitials } from "@/components/ui/Avatar";
 import { LayoutDashboard, Calendar, User, CreditCard, Bell, BarChart3, Building2, Users, FileText, Video, FlaskConical, Image as ImageIcon, Pill, Receipt, ShieldCheck, ClipboardList, Clock, MessageSquare, Settings, Activity, ChevronLeft, ChevronRight, Menu, X, LogOut, Lock } from "lucide-react";
@@ -38,6 +40,10 @@ interface NavItem {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return <WorkspacePageNavigationProvider><DashboardShell>{children}</DashboardShell></WorkspacePageNavigationProvider>;
+}
+function DashboardShell({ children }: { children: React.ReactNode }) {
+  const workspaceNavigation = useWorkspacePageNavigation();
   const { user, logout, stopImpersonation, checkAuth, isLoading, isLoggingOut, authError } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -195,6 +201,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const hasAccess = user ? hasRoutePermission(pathname, user.role, user.permissions) : true;
+  const focusedCounter = isFocusedCounterWorkspace(user);
+  const canManageOrganization = hasAnyPermission(user, "MANAGE_ORGANIZATION");
 
   // Dedicated Navigation sets: Patients vs Platform Root Superadmin vs Clinical Operations
   const allNavItems: NavItem[] = user?.role === "patient" ? [
@@ -253,7 +261,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     : orderNavigation(allNavItems.filter((item) => {
         if (isCounterSalesUser(user) && item.href === "/dashboard/locations") return false;
         if (isPharmacyWorkspace(user) && !pharmacyWorkspaceRoute(item.href)) return false;
-        // Overview and Notifications are always visible to authenticated users
+        // Counter staff enter straight into sales. The notification bell remains
+        // available in the header, but it does not need a separate workspace page.
+        if (focusedCounter && (item.href === "/dashboard" || item.href === "/dashboard/notifications")) return false;
+        // Overview and Notifications are always visible to other authenticated users.
         if (item.href === "/dashboard" || item.href === "/browse" || item.href === "/dashboard/notifications") return true;
 
         // Patient lab reports is allowed
@@ -271,6 +282,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         return true;
       }), user.role, isPharmacyWorkspace(user));
+  const workNavItems = filteredNavItems.filter((item) => item.href !== "/dashboard" && item.href !== "/dashboard/notifications");
+  const soleWorkRoute = workNavItems.length === 1 ? workNavItems[0].href : null;
+  const navigationItems = soleWorkRoute ? workNavItems : filteredNavItems;
+
+  useEffect(() => {
+    if (!user || focusedCounter || pathname !== "/dashboard" || !soleWorkRoute) return;
+    if (requiresTenantModules(user) && !modulesLoaded) return;
+    router.replace(soleWorkRoute);
+  }, [focusedCounter, modulesLoaded, pathname, router, soleWorkRoute, user]);
 
   const locationSelector = user && hasAnyPermission(user, "VIEW_LOCATIONS") && user.role !== "patient" && !isRootAdmin && headerLocations.length > 1 ? <Select
     size="sm"
@@ -347,9 +367,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )
           }
-          items={filteredNavItems.map(item => ({
+          items={navigationItems.map(item => ({
             ...item,
-            active: pathname === item.href
+            active: pathname === item.href,
+            ...(item.href === "/dashboard/pharmacy" && pathname === item.href && workspaceNavigation?.pages ? {
+              label: "Pharmacy",
+              children: workspaceNavigation.pages.items.map(page => ({
+                label: page.label,
+                href: `/dashboard/pharmacy#${page.id}`,
+                active: workspaceNavigation.pages?.active === page.id,
+                onSelect: () => { workspaceNavigation.pages?.select(page.id); setMobileMenuOpen(false); },
+              })),
+            } : {}),
           }))}
           footer={<div className="w-full">
             <div className="lg:hidden flex items-center justify-between gap-3 px-3 py-2 text-sm text-text-secondary"><span>Appearance</span><ModeSwitcher variant="icon" /></div>
@@ -446,12 +475,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </button>
                 }
                 items={[
-                  {
-                    label: "Profile & Settings",
-                    onClick: () => router.push(user.role === "patient" ? "/dashboard/patient-portal" : "/dashboard/settings"),
+                  ...(user.role === "patient" ? [{
+                    label: "My health profile",
+                    onClick: () => router.push("/dashboard/patient-portal"),
                     icon: <User className="w-4 h-4" />
-                  },
-                  { label: "Account security", onClick: () => router.push("/dashboard/security"), icon: <Lock className="w-4 h-4" /> },
+                  }] : canManageOrganization ? [{
+                    label: "Profile & Settings",
+                    onClick: () => router.push("/dashboard/settings"),
+                    icon: <User className="w-4 h-4" />
+                  }, { label: "Account security", onClick: () => router.push("/dashboard/security"), icon: <Lock className="w-4 h-4" /> }] : [{
+                    label: "My account & security",
+                    onClick: () => router.push("/dashboard/security"),
+                    icon: <Lock className="w-4 h-4" />
+                  }]),
                   { divider: true, label: "" },
                   {
                     label: "Sign out",
@@ -500,7 +536,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <MobileBottomNav
         user={user}
         pathname={pathname}
-        availableItems={filteredNavItems}
+        availableItems={navigationItems}
         onOpenMenu={() => setMobileMenuOpen(true)}
         isMenuOpen={mobileMenuOpen}
       />

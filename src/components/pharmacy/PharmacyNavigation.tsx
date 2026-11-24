@@ -1,6 +1,7 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useWorkspacePageNavigation } from "@/components/dashboard/WorkspacePageNavigation";
 import { Button, Dropdown, Tabs } from "@/components/ui";
 import type { TabsProps } from "@/components/ui/Tabs";
 import { ChevronDown, Wallet } from "lucide-react";
@@ -10,6 +11,23 @@ import styles from "./PharmacyWorkspace.module.css";
 /** Keep clinical navigation intact; put occasional standalone pharmacy tools in More. */
 export function PharmacyNavigation({ compact, toolbarContext, toolbarActions, tabs, activeTab, onChange, ...props }: TabsProps & { compact: boolean; toolbarContext?: ReactNode; toolbarActions?: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const navigation = useWorkspacePageNavigation();
+  const publish = navigation?.publish;
+  const change = useRef(onChange);
+  useEffect(() => { change.current = onChange; }, [onChange]);
+  const entries = JSON.stringify(tabs.map(({ id, label }) => ({ id, label: String(label) })));
+  useEffect(() => {
+    if (!publish) return;
+    publish({ items: JSON.parse(entries), active: activeTab || "", select: id => change.current?.(id) });
+    return () => publish(null);
+  }, [publish, entries, activeTab]);
+  if (navigation) {
+    const selected = tabs.find(tab => tab.id === activeTab);
+    return <div className={styles.counterNavigation} data-no-toolbar={!toolbarContext && !toolbarActions || undefined}>
+      {(toolbarContext || toolbarActions) && <div className={styles.counterToolbar}><div className={styles.toolbarContext}>{toolbarContext}</div><div className="ml-auto">{toolbarActions}</div></div>}
+      <section aria-label={selected?.label} className="min-w-0">{selected?.content}</section>
+    </div>;
+  }
   if (!compact) return <Tabs {...props} tabs={tabs} activeTab={activeTab} onChange={onChange} />;
   const primaryIds = ["counter", "inventory", "sales", "dispensing"];
   const primary = primaryIds.flatMap(id => tabs.find(tab => tab.id === id) || []);

@@ -9,6 +9,16 @@ const response = (data: unknown) => ({ data: { data } });
 beforeEach(() => { api.get.mockReset().mockResolvedValue(response(snapshot)); });
 function View({ revision = "" }: { revision?: string }) { const state = useCounterOverview("branch", revision); return <><PharmacyCounterOverview state={state} held={2} /><PharmacyCounterRecentBills state={state} onOpen={openBill} /></>; }
 const openBill = vi.fn();
+it("limits recent bills to five compact number-and-amount chips and opens full history", () => {
+  const history = vi.fn();
+  const recent = Array.from({ length: 8 }, (_, index) => ({ ...snapshot.recent[0], id: String(index), invoiceNumber: `BILL-${index}` }));
+  render(<PharmacyCounterRecentBills state={{ data: { ...snapshot, recent }, error: false, loading: false, reload: vi.fn() }} onOpen={openBill} onHistory={history} />);
+  expect(screen.getAllByRole("button", { name: /^View recent bill/ })).toHaveLength(5);
+  expect(screen.getByRole("button", { name: "View recent bill BILL-0" })).toHaveTextContent("BILL-0(₹15.00)");
+  expect(screen.queryByRole("button", { name: "View recent bill BILL-5" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "View bill history" }));
+  expect(history).toHaveBeenCalledOnce();
+});
 it("uses authoritative totals rather than summing the recent page, and opens a deliberate read-only bill", async () => {
   render(<View />);
   const summary = screen.getByRole("region", { name: "Counter summary" });

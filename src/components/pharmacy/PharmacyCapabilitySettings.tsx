@@ -13,6 +13,7 @@ import { PharmacyIssuerSettings } from "./PharmacyIssuerSettings";
 import { PharmacyInvoiceNumberingSettings } from "./PharmacyInvoiceNumberingSettings";
 import { PharmacyOfflineDeviceSettings } from "./PharmacyOfflineDeviceSettings";
 import { PharmacyStockReconciliation } from "./PharmacyStockReconciliation";
+import { PharmacyStorefrontSettings } from "./PharmacyStorefrontSettings";
 import { stockCountStorageKey } from "@/lib/pharmacyStockReconciliation";
 
 interface Props {
@@ -121,6 +122,7 @@ function CapabilitySettingsSession({ location, organizationId, onClose, onSaved 
         <p className="text-sm text-text-secondary">Disabling stops new stock changes and prescription supply. Authorized history and recovery of committed operations stay available.</p>
       </>}
     </form>
+    {settings?.actions.manageSettings && canManage && <div className="mt-4"><PharmacyStorefrontSettings locationId={location.id} organizationId={issuerOrganizationId} /></div>}
     {settings && canManageIssuer && issuerOrganizationId && <section className="mt-4 space-y-3" aria-label="Branch issuer administration">
       <Button type="button" size="sm" variant="outline" disabled={saving || issuerBusy || !settings.moduleEnabled} onClick={() => setIssuerOpen(value => !value)}>{issuerOpen ? "Hide issuer details" : "Review issuer and licence details"}</Button>
       {issuerOpen && <PharmacyIssuerSettings locationId={location.id} organizationId={issuerOrganizationId} disabled={saving || issuerBusy} onBusyChange={setIssuerBusy} />}

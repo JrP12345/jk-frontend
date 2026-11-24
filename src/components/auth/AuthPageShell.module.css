@@ -28,6 +28,16 @@
 .tabs > [role=tablist] > div { display: none; }
 .tabs [role=tab] { justify-content: center; min-height: 44px; padding-inline: 8px; border: 1px solid transparent; }
 .tabs [role=tab][aria-selected=true] { background: var(--surface); border-color: var(--border); box-shadow: var(--s-shadow-xs); }
+.loginLayout { display: grid; gap: 20px; }
+.loginLayout .formHeader { margin: 0; gap: 6px; }
+.loginLayout .formHeader > * { margin: 0; }
+.loginLayout .tabs > [role=tablist] { width: 100%; gap: 4px; padding: 4px; margin: 0; overflow: visible; border-radius: 14px; align-items: stretch; }
+.loginLayout .tabs [role=tab] { width: 100%; min-width: 0; margin: 0; height: 44px; padding: 8px 12px; border-radius: 10px; line-height: 1.25; }
+.loginLayout .tabs > [role=tabpanel] { padding-top: 24px; }
+.loginLayout .accountLinks { margin: 0; gap: 4px; }
+.loginLayout .accountLinks > p, .loginLayout .accountLinks > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: 6px; min-height: 36px; }
+.loginLayout .accountLinks p a { min-height: 36px; }
+.loginLayout .formFooter { margin: 0; padding: 0; }
 .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .pairedFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .fullField { grid-column: 1 / -1; }

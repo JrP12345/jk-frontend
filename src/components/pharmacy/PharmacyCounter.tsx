@@ -2,16 +2,16 @@
 import { PharmacyPackQuantity } from "./PharmacyPackQuantity";
 import { packDescription } from "@/lib/pharmacyUnits";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, Card, CardDescription, CardTitle, ConfirmDialog, EmptyState, Input, Modal, QuantityInput, Select, Tabs } from "@/components/ui";
-import { Barcode, Search, ShoppingBasket, Plus, X, SlidersHorizontal, FileText, RotateCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Alert, Badge, Button, Card, CardDescription, CardTitle, ConfirmDialog, EmptyState, Input, Modal, QuantityInput, Tabs } from "@/components/ui";
+import { Barcode, Search, ShoppingBasket, Plus, X, SlidersHorizontal, FileText, RotateCw, History } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { authScopeKey, referenceOwnerKey } from "@/lib/authScope";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
 import { counterProducts, counterCustomers, quoteCounter, issueCounter, recoverCounter, type CounterProduct, type CounterCustomer, type CounterIntent, type CounterQuote, type CounterResult, type CounterIssueInput } from "@/lib/pharmacyCounter";
 import type { StaffPickup } from "@/lib/publicPharmacy";
-import { PharmacyCounterFilters } from "./PharmacyCounterFilters";
+import { PharmacyCounterFilters, matchesCounterType } from "./PharmacyCounterFilters";
 import { PharmacyCounterRecentBills, useCounterOverview } from "./PharmacyCounterOverview";
 import { PharmacyCounterCustomerHistory } from "./PharmacyCounterCustomerHistory";
 import { PharmacyCounterCustomerForm } from "./PharmacyCounterCustomerForm";
@@ -51,14 +51,14 @@ function savedKey(storageKey: string) {
   if (key !== null && !/^[a-zA-Z0-9_-]{8,100}$/.test(key)) throw new Error("Sale reference requires review before another issue.");
   return key;
 }
-interface Props { initialPickup?: StaffPickup | null; onPickupPrepared?: () => void; locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void; onCreateLocal?: (name: string) => void; catalogueEditorOpen?: boolean; catalogueRevision?: number }
+interface Props { onViewHistory?: () => void; toolbarContext?: ReactNode; toolbarActions?: ReactNode; initialPickup?: StaffPickup | null; onPickupPrepared?: () => void; locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void; onCreateLocal?: (name: string) => void; catalogueEditorOpen?: boolean; catalogueRevision?: number }
 export function PharmacyCounter(props: Props) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user);
   return <PharmacyOfflineCounterGate key={`${scope}:${props.locationId}:${props.inventoryMode || "tracked"}`} organizationId={user?.organization_id} locationId={props.locationId} actorId={user?.id} canIssue={props.canCollect}>
     <CounterSession {...props} />
   </PharmacyOfflineCounterGate>;
 }
-function CounterSession({ initialPickup, onPickupPrepared, locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReviewProducts = false, onProductReviewed, onCreateLocal, catalogueEditorOpen = false, catalogueRevision = 0 }: Props) {
+function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initialPickup, onPickupPrepared, locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReviewProducts = false, onProductReviewed, onCreateLocal, catalogueEditorOpen = false, catalogueRevision = 0 }: Props) {
   const availability = usePharmacyCounterAvailability(locationId);
   const user = useAuthStore(state => state.user), scope = authScopeKey(user), storageKey = `pharmacy-sale:${referenceOwnerKey(user)}:${locationId}`;
   const [initial] = useState(() => { try { return { key: savedKey(storageKey), error: "" }; } catch (failure) { return { key: null, error: message(failure) }; } });
@@ -66,7 +66,7 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
   const [lines, setLines] = useState<CartLine[]>([]), [customer, setCustomer] = useState<CounterCustomer | null>(null), [discount, setDiscount] = useState("0");
   const [held, setHeld] = useState<Cart[]>([]), [quote, setQuote] = useState<CounterQuote | null>(null), [outcome, setOutcome] = useState<CounterResult | null>(null);
   const [billNumber, setBillNumber] = useState(1), nextBillNumber = useRef(2);
-  const [search, setSearch] = useState(""), [lookupMode, setLookupMode] = useState("auto"), [customerMode, setCustomerMode] = useState("walk-in"), [products, setProducts] = useState<CounterProduct[]>([]), [nextProduct, setNextProduct] = useState<string | null>(null);
+  const [search, setSearch] = useState(""), [customerMode, setCustomerMode] = useState("walk-in"), [products, setProducts] = useState<CounterProduct[]>([]), [nextProduct, setNextProduct] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState(""), [customers, setCustomers] = useState<CounterCustomer[]>([]), [nextCustomer, setNextCustomer] = useState<string | null>(null);
   const [reminderCustomer, setReminderCustomer] = useState<string | null>(null);
   const [searching, setSearching] = useState(false), [searchError, setSearchError] = useState("");
@@ -89,21 +89,23 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
   const [printDocument, setPrintDocument] = useState<CounterInvoice>();
   const [catalogue] = useState(() => createPharmacyCatalogue(scope, locationId, inventoryMode)), [journal] = useState(() => createSaleJournal(scope, locationId));
   const [catalogueVersion, setCatalogueVersion] = useState(0), [catalogueReady, setCatalogueReady] = useState(false), [journalReady, setJournalReady] = useState(false), [network, setNetwork] = useState("unknown");
-  const branchCatalogue = usePharmacyCatalogueSync(scope, locationId, catalogue, network === "online");
-  const [recentInvoice, setRecentInvoice] = useState<string | null>(null), [viewReceipt, setViewReceipt] = useState(false);
+  usePharmacyCatalogueSync(scope, locationId, catalogue, network === "online");
+  const [recentInvoice, setRecentInvoice] = useState<string | null>(null), [lastSavedBill, setLastSavedBill] = useState<CounterResult | null>(null);
   const [viewRecentInvoice, setViewRecentInvoice] = useState<string | null>(null);
   const [priorPayment, setPriorPayment] = useState<string | null>(null);
   const overview = useCounterOverview(locationId, recentInvoice || "");
-  const [onAccount, setOnAccount] = useState(false), [recentDue, setRecentDue] = useState<CounterResult | null>(null);
+  const [onAccount, setOnAccount] = useState(false);
   const [preparingBill, setPreparingBill] = useState(false), [collectionVersion, setCollectionVersion] = useState(0);
-  const [mobilePanel, setMobilePanel] = useState("products"), [productFilter, setProductFilter] = useState("all"), [picked, setPicked] = useState(0);
+  const [keyboardPicking, setKeyboardPicking] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState("products"), [productFilter, setProductFilter] = useState<string[]>([]), [picked, setPicked] = useState(0);
+  const [productResultsSnapshot, setProductResultsSnapshot] = useState<CounterProduct[] | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<CounterPaymentPreference["method"]>("cash"), [cashPreview, setCashPreview] = useState<string | null>(null);
   const [issuedPreference, setIssuedPreference] = useState<CounterPaymentPreference>();
   const [editingLineId, setEditingLineId] = useState<string | null>(null), [quoteDetailsOpen, setQuoteDetailsOpen] = useState(false), [closingHeld, setClosingHeld] = useState<number | null>(null);
   const initialBrowse = useRef(false);
   const customerPanel = useRef<HTMLElement>(null), discountInput = useRef<HTMLInputElement>(null), paymentPanel = useRef<HTMLDivElement>(null);
   const checkoutLock = useRef(false);
-  const [clearOpen, setClearOpen] = useState(false), [collectionPending, setCollectionPending] = useState(false), [lastReceipt, setLastReceipt] = useState<CollectionReceipt | null>(null);
+  const [clearOpen, setClearOpen] = useState(false), [collectionPending, setCollectionPending] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lookupFlight = useRef<{ key: string; repeats: number } | null>(null);
   const scanner = useRef<HTMLInputElement>(null), quantityInputs = useRef(new Map<string, HTMLInputElement>());
@@ -156,6 +158,19 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
     return () => { controller.abort(); };
   }, [initialPickup, restoring, pending, outcome, pickup, lines, held.length, customer, discount, billNumber, locationId, current, pickupLoadRetry]);
   function reviewProduct(id: string) { if (editable && canReview) { invalidate(); setReviewing(id); } }
+  function productResults() {
+    const frequentOnly = !productResultsSnapshot && !search.trim() && productFilter.includes("frequent");
+    const displayProducts = productResultsSnapshot || (frequentOnly ? catalogue.frequent() : search.trim() || productLookupDone ? products : catalogue.find("").items);
+    const visibleProducts = productResultsSnapshot ? [...displayProducts] : displayProducts.filter(product => (!productFilter.includes("frequent") || catalogue.frequency(product.id) > 0) && matchesCounterType(product.unitDefinition?.baseUnit || "", productFilter));
+    if (!productResultsSnapshot && productFilter.includes("frequent")) visibleProducts.sort((a, b) => catalogue.frequency(b.id) - catalogue.frequency(a.id));
+    return { frequentOnly, displayProducts, visibleProducts };
+  }
+  const [addedProduct, setAddedProduct] = useState<{ id: string; sequence: number } | null>(null);
+  useEffect(() => {
+    if (!addedProduct) return;
+    const timer = setTimeout(() => setAddedProduct(null), 1000);
+    return () => clearTimeout(timer);
+  }, [addedProduct]);
   function add(product: CounterProduct) {
     if (pickup) { setError("Keep this parcel bill to its requested items. Hold or clear it before a separate purchase."); return; }
     if (!editable) return;
@@ -165,10 +180,15 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
     if (!lines.some(line => line.product.id === product.id) && lines.length >= 100) { setSearchError("A counter invoice supports at most 100 distinct products."); return; }
     invalidate();
     catalogue.recordUse(product.id);
+    setAddedProduct(previous => ({ id: product.id, sequence: (previous?.sequence || 0) + 1 }));
     setLines(previous => { const found = previous.find(line => line.product.id === product.id); return found ? previous.map(line => line.lineId === found.lineId ? { ...line, loose: String(Number(line.loose) + 1) } : line) : [...previous, { lineId: crypto.randomUUID(), product, packs: "0", loose: "1", discount: "0" }]; });
-    setSearch(""); setSearchError(""); setProducts([]); setNextProduct(null); setProductLookupDone(false); setPicked(0); setAddedMessage(`Added 1 ${product.unitDefinition.baseUnit} of ${product.name} to cart.`); requestAnimationFrame(() => scanner.current?.focus());
+    // Recording a use changes the Frequent ranking. Keep the current rows where the
+    // operator saw them until they deliberately search or change a filter.
+    const visible = productResults().visibleProducts;
+    setProductResultsSnapshot(visible.length ? visible : null);
+    setSearch(""); setSearchError(""); setPicked(0); setKeyboardPicking(false); setAddedMessage(`Added 1 ${product.unitDefinition.baseUnit} of ${product.name} to cart.`); requestAnimationFrame(() => scanner.current?.focus());
   }
-  const exactLookup = lookupMode === "barcode" || lookupMode === "auto" && /^\d+$/.test(search.trim());
+  const exactLookup = /^\d+$/.test(search.trim());
   async function lookup(exact = false, cursor?: string, addExact = true, force = false) {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const flightKey = JSON.stringify([search.trim(), exact, cursor || null]);
@@ -259,15 +279,16 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
     setOnAccount(false); setAdvancedPayment(null); setPaymentMethod("cash"); setCashPreview(null); setMobilePanel("products");
     sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {});
     frozen.current = null; setPending(null); setSubmitted(false); setOutcome(null); setCollectionPending(false); setLines([]); setQuote(null); setDiscount("0"); setCustomer(null); setCustomerMode("walk-in"); setAddedMessage(""); setError("");
-    setSearch(""); setSearchError(""); setCustomerSearch(""); setCustomers([]); setNextCustomer(null); setCustomerLookupEmpty(false);
+    setSearch(""); setSearchError(""); setProductResultsSnapshot(null); setCustomerSearch(""); setCustomers([]); setNextCustomer(null); setCustomerLookupEmpty(false);
     requestAnimationFrame(() => scanner.current?.focus());
   }
   function acceptSale(result: CounterResult, recovered = false) {
-    if (result.pickup) { setRecentInvoice(result.invoiceId); setRecentDue(result); setLastReceipt(null); finishCart(result); onPickupPrepared?.(); return; }
-    if (result.collection) { setLastReceipt(result.collection); setRecentDue(result.collection.balancePaise ? result : null); setRecentInvoice(result.invoiceId); finishCart(result); return; }
-    if (!canCollect && !recovered) { setLastReceipt(null); setRecentInvoice(result.invoiceId); finishCart(result); return; }
-    if (onAccount && frozen.current?.input.customerId && result.status === "unpaid") { setRecentDue(result); setLastReceipt(null); setRecentInvoice(result.invoiceId); finishCart(result); }
-    else if (result.totalPaise === 0 && result.status === "paid") { setLastReceipt(null); setRecentInvoice(result.invoiceId); finishCart(result); }
+    setLastSavedBill(result);
+    if (result.pickup) { setRecentInvoice(result.invoiceId); finishCart(result); onPickupPrepared?.(); return; }
+    if (result.collection) { setRecentInvoice(result.invoiceId); finishCart(result); return; }
+    if (!canCollect && !recovered) { setRecentInvoice(result.invoiceId); finishCart(result); return; }
+    if (onAccount && frozen.current?.input.customerId && result.status === "unpaid") { setRecentInvoice(result.invoiceId); finishCart(result); }
+    else if (result.totalPaise === 0 && result.status === "paid") { setRecentInvoice(result.invoiceId); finishCart(result); }
     else {
       if (!canCollect && printRequested.current) { setPrintInvoiceId(result.invoiceId); printRequested.current = false; }
       setOutcome(result); setMobilePanel("pay");
@@ -277,11 +298,9 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
     if (!current() || lock.current || outcome || !retry && !prepared) return;
     if (!retry && availability.blocked) { setError("Use the designated offline PC or reconcile its original session before issuing a new bill here."); return; }
     if (!retry) {
-      setRecentDue(null); setIssuedPreference({ method: paymentMethod, ...(paymentMethod === "cash" && cashPreview !== null ? { cashTendered: cashPreview } : {}) }); }
+      setIssuedPreference({ method: paymentMethod, ...(paymentMethod === "cash" && cashPreview !== null ? { cashTendered: cashPreview } : {}) }); }
     lock.current = true; setBusy(true); setError(""); setCorrectable(false);
     try {
-      await measurePharmacyStep("draft_write", () => draft.flush(draftValue));
-      if (!current()) return;
       if (savedKey(storageKey) !== pending) throw new Error("Sale reference changed. Check the saved result before another issue.");
       const key = pending || crypto.randomUUID();
       if (!pending) sessionStorage.setItem(storageKey, key);
@@ -289,9 +308,15 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
       const payment = !retry && canCollect && !pickup && !onAccount && prepared && prepared.expectedTotalPaise > 0 ? advancedPayment ? allocatedPayment?.input || null : prepareIssuedCheckoutPayment(locationId, prepared.expectedTotalPaise, { method: paymentMethod, tender: paymentMethod === "cash" ? tenderPreview : "0", referenceNumber: paymentReference.trim(), expectedTotalPaise: prepared.expectedTotalPaise }) : null;
       if (!retry && canCollect && !pickup && !onAccount && prepared!.expectedTotalPaise > 0 && !payment) throw Error("Review the payment amount and actual receipt before saving.");
       const pinned = frozen.current || { key, input: JSON.parse(JSON.stringify({ ...prepared!, ...(creditOverride.trim() ? { creditOverrideReference: creditOverride.trim() } : {}), ...(printRequested.current ? { includeDocument: true } : {}), ...(payment ? { payment } : {}) })) as CounterIssueInput };
-      await measurePharmacyStep("intent_write", () => journal.save(pinned));
+      // Both records are required before the request, but they are independent local
+      // recovery writes. Persisting them together removes one serial storage wait.
+      frozen.current = pinned; setSubmitted(true);
+      await Promise.all([
+        measurePharmacyStep("draft_write", () => draft.flush(draftValue)),
+        measurePharmacyStep("intent_write", () => journal.save(pinned)),
+      ]);
       if (!current()) return;
-      frozen.current = pinned; setSubmitted(true); revision.current++;
+      revision.current++;
       const result = await measurePharmacyStep("save_request", () => issueCounter(pinned.input, pinned.key));
       if (current()) acceptSale(result);
     } catch (failure) { if (current()) {
@@ -340,16 +365,16 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
   usePharmacyReconnect(network === "offline" || Boolean(pending && !outcome && !correctable), async () => { if (pending && !outcome) await recover(); else if (!outcome && !lock.current) { setNetwork("online"); } });
   function collected(receipt: CollectionReceipt) {
     if (!outcome || receipt.invoiceId !== outcome.invoiceId || !current()) return;
-    setLastReceipt(receipt); setRecentInvoice(outcome.invoiceId);
+    setRecentInvoice(outcome.invoiceId);
     try { finishCart(outcome); } catch (failure) { setError(message(failure)); }
   }
   function newSale() {
     if (!outcome || busy || collectionPending) return;
     setOnAccount(false); setAdvancedPayment(null); setPaymentMethod("cash"); setCashPreview(null); setMobilePanel("products"); setPaymentReference(""); setDrawerReady(false); printRequested.current = false; setBillNumber(nextBillNumber.current++);
-    try { if (savedKey(storageKey) !== outcome.requestKey) throw new Error("Sale reference changed; recover the saved result."); sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {}); frozen.current = null; setPending(null); setSubmitted(false); setOutcome(null); setLines([]); setPickup(undefined); setCustomer(null); setQuote(null); setLastReceipt(null); setDiscount("0"); setCustomerMode("walk-in"); setCustomers([]); setCustomerSearch(""); setAddedMessage(""); setError(""); requestAnimationFrame(() => scanner.current?.focus()); }
+    try { if (savedKey(storageKey) !== outcome.requestKey) throw new Error("Sale reference changed; recover the saved result."); sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {}); frozen.current = null; setPending(null); setSubmitted(false); setOutcome(null); setLines([]); setPickup(undefined); setCustomer(null); setQuote(null); setDiscount("0"); setCustomerMode("walk-in"); setCustomers([]); setCustomerSearch(""); setAddedMessage(""); setError(""); requestAnimationFrame(() => scanner.current?.focus()); }
     catch (failure) { setError(message(failure)); }
   }
-  function hold() { if (!editable || pending || !lines.length || held.length >= 3) return; setOnAccount(false); setAdvancedPayment(null); setPaymentMethod("cash"); setCashPreview(null); setMobilePanel("products"); setPaymentReference(""); setHeld(previous => [...previous, { lines, customer, discount, billNumber, ...(pickup ? { pickup } : {}) }]); setBillNumber(nextBillNumber.current++); setLines([]); setPickup(undefined); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0"); invalidate(); }
+  function hold() { if (!editable || pending || !lines.length) return; if (held.length >= 3) { setError("Three bills are already on hold. Resume and finish one, or close a held bill using its close button, before creating another. Your current bill is unchanged."); return; } setOnAccount(false); setAdvancedPayment(null); setPaymentMethod("cash"); setCashPreview(null); setMobilePanel("products"); setPaymentReference(""); setHeld(previous => [...previous, { lines, customer, discount, billNumber, ...(pickup ? { pickup } : {}) }]); setBillNumber(nextBillNumber.current++); setLines([]); setPickup(undefined); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0"); invalidate(); }
   function resume(index: number) {
     if (!editable || pending) return;
     const cart = held[index]; if (!cart) return; setPaymentReference(""); setOnAccount(false); setAdvancedPayment(null); setPaymentMethod("cash"); setCashPreview(null); setMobilePanel("cart");
@@ -367,10 +392,7 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
     invalidate(); setLines(previous => previous.map(row => row.lineId === id ? { ...row, packs: String(next) } : row));
   }
   function changeQuantity(id: string, value: string) { if (!editable) return; invalidate(); setLines(previous => previous.map(line => line.lineId === id ? { ...line, packs: "0", loose: value } : line)); }
-  const frequentOnly = !search.trim() && productFilter === "frequent";
-  const displayProducts = frequentOnly ? catalogue.frequent() : search.trim() || productLookupDone ? products : catalogue.find("").items;
-  const visibleProducts = displayProducts.filter(product => productFilter === "all" || (productFilter === "frequent" ? catalogue.frequency(product.id) > 0 : productFilter === "other" ? !["tablet", "capsule", "ml"].includes(product.unitDefinition?.baseUnit || "") : product.unitDefinition?.baseUnit === productFilter));
-  if (productFilter === "frequent") visibleProducts.sort((a, b) => catalogue.frequency(b.id) - catalogue.frequency(a.id));
+  const { frequentOnly, displayProducts, visibleProducts } = productResults();
   const selectedProduct = visibleProducts[Math.min(picked, Math.max(0, visibleProducts.length - 1))];
   const payable = quote ? quote.calculation.totals.payablePaise : estimate?.totalPaise ?? (lines.length ? undefined : 0);
   const enteredDiscounts = [discount, ...lines.map(line => line.discount)].map(parseReceiptPaise);
@@ -396,9 +418,9 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
       if (document.querySelector('[role="dialog"], [role="menu"]') || event.metaKey || event.repeat) return;
       if (event.altKey) { if (/^[1-4]$/.test(event.key)) { event.preventDefault(); if (Number(event.key) > 1) resume(Number(event.key) - 2); } return; }
       const action = event.key === "F1" ? () => showPanel("products", true)
-        : event.key === "F2" ? () => { if (editable && lines.length && held.length < 3) { hold(); showPanel("products", true); } }
+        : event.key === "F2" ? () => { if (editable && lines.length) { hold(); showPanel("products", true); } }
         : event.key === "F3" ? () => showPanel("pay", true)
-        : event.key === "F4" ? () => { if (editable && lines.length && held.length < 3) hold(); }
+        : event.key === "F4" ? () => { if (editable && lines.length) hold(); }
         : event.key === "F6" ? () => { showPanel("pay"); requestAnimationFrame(() => discountInput.current?.focus()); }
         : event.key === "F8" ? () => { showPanel("pay"); requestAnimationFrame(() => paymentPanel.current?.querySelector<HTMLButtonElement>("button")?.focus()); }
         : event.key === "F10" ? () => { if (canCheckout) void checkout(); }
@@ -412,13 +434,15 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
   return <section className={pos.counter} data-counter-ready data-save-state={busy ? "saving" : preparingBill ? "checking" : undefined} aria-label="Pharmacy counter checkout">
     <PharmacyCounterAvailabilityNotice snapshot={availability.snapshot} error={availability.error} checking={availability.checking} onRefresh={() => { void availability.refresh(); }} />
     <nav aria-label="Open counter bills" className={pos.bills}>
+      <div className={pos.billTabs}>
+      {toolbarContext && <div className={pos.billLocation}>{toolbarContext}</div>}
       <span className={pos.activeBill}>Bill {billNumber} · {customer ? "Recorded" : "Walk-in"}{payable !== undefined && <strong>{money(payable / 100)}</strong>}<Button size="sm" variant="ghost" className={pos.closeBill} disabled={!editable || !lines.length || Boolean(pending)} aria-label="Clear current bill" title="Clear current bill" onClick={() => setClearOpen(true)}><X size={12} aria-hidden="true" /></Button></span>
       {held.map((cart, index) => <span className={pos.heldBill} key={index}><Button size="sm" variant="ghost" disabled={!editable || Boolean(pending)} onClick={() => resume(index)} aria-label={`Resume held cart ${index + 1} (${cart.lines.length} products)`}>Bill {cart.billNumber || index + 2} · {cart.customer ? "Recorded" : "Walk-in"}</Button><Button size="sm" variant="ghost" className={pos.closeBill} disabled={!editable || Boolean(pending)} aria-label={`Close held bill ${index + 1}`} onClick={() => setClosingHeld(index)}><X size={12} aria-hidden="true" /></Button></span>)}
-      <Button size="sm" variant="ghost" disabled={!editable || Boolean(pending) || !lines.length || held.length >= 3} onClick={() => { hold(); showPanel("products", true); }}><Plus size={14} aria-hidden="true" />New bill <kbd>F2</kbd></Button>
-      <Button size="sm" variant="ghost" aria-label="Hold cart" disabled={!editable || !lines.length || held.length >= 3 || Boolean(pending)} onClick={hold}>Hold <kbd>F4</kbd></Button>
-      {recentInvoice && <Button size="sm" variant="ghost" className={pos.lastBill} onClick={() => setViewReceipt(true)} aria-label="View last saved bill"><span role="status">{lastReceipt ? `${lastReceipt.balancePaise ? "Received" : "Paid"} ${lastReceipt.invoiceNumber} · ${money(lastReceipt.collectedPaise / 100)}` : recentDue ? `Saved on account · ${money(recentDue.totalPaise / 100)}` : "Last saved bill"}</span></Button>}
+      </div>
+      <Button size="sm" variant="primary" className={pos.newBill} aria-label="New bill" title={held.length >= 3 ? "Three bills on hold: finish or close one to create another" : !lines.length ? "Current bill is already empty" : "New bill (F2)"} disabled={!editable || Boolean(pending) || !lines.length} onClick={() => { hold(); showPanel("products", true); }}><Plus size={18} aria-hidden="true" /><span className={pos.newBillLabel}>New bill <kbd>F2</kbd></span></Button>
+      <Button size="sm" variant="ghost" className={pos.holdButton} aria-label="Hold cart" disabled={!editable || !lines.length || Boolean(pending)} onClick={hold}>Hold <kbd>F4</kbd></Button>
       {!compact && <span className={pos.counterLabel}>Counter sale</span>}
-      <div role="status" aria-label="Bill save status" className={pos.billStatus}><Badge variant={["Needs review", "Needs attention", "Price check failed", "Check save result", "Offline draft"].includes(syncState) ? "warning" : "neutral"}>{syncState}</Badge><a href="/pharmacy-offline.html" title="Prepare cached drafts when offline" aria-label="Offline preparation">Offline draft</a></div>
+      <div role="status" aria-label="Bill save status" className={pos.billStatus}><span className={syncState === "Draft" ? "sr-only" : undefined}><Badge variant={["Needs review", "Needs attention", "Price check failed", "Check save result", "Offline draft"].includes(syncState) ? "warning" : "neutral"}>{syncState}</Badge></span>{network === "offline" && <a href="/pharmacy-offline.html" aria-label="Offline preparation">Open offline counter</a>}{toolbarActions}</div>
     </nav>
     {pickupLoadFailed && <Button size="sm" disabled={pickupLoading} onClick={() => setPickupLoadRetry(value => value + 1)}>Retry loading requested parcel</Button>}
     {pickupLoading && <p role="status">Loading requested parcel products...</p>}
@@ -432,21 +456,22 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
         <section className={pos.products} aria-label="Counter products">
           <Card padding="sm" className={pos.panel} contentClassName={pos.panelContent}>
             <div className={pos.productTools}>
-              <form onSubmit={event => { event.preventDefault(); if (!editable) return; if (!exactLookup && selectedProduct?.eligible && selectedProduct.unitDefinition) add(selectedProduct); else void lookup(exactLookup); }}>
+              <form onSubmit={event => { event.preventDefault(); if (!editable) return; if (!exactLookup && selectedProduct?.eligible && selectedProduct.unitDefinition) add(selectedProduct); else void lookup(exactLookup || /^(?=.*\d)[A-Z0-9-]{6,}$/.test(search.trim())); }}>
                 <div className={pos.search}>
-                  <Input ref={scanner} disabled={!editable} aria-label="Scan barcode or search products" icon={<Barcode size={16} aria-hidden="true" />} iconRight={<Button type="button" variant="ghost" size="xs" aria-label="Search products" disabled={!editable} loading={searching} onClick={() => { void lookup(exactLookup, undefined, true, true); }}><Search size={15} aria-hidden="true" /></Button>} placeholder="Scan barcode or type medicine" title="F1 to search · Scan and press Enter to add" size="lg" containerClassName="min-w-0 flex-1" value={search} maxLength={100} onChange={event => { beginLookup(); lookupFlight.current = null; setSearching(false); setPicked(0); setAddedMessage(""); setSearch(event.target.value); const local = catalogue.find(event.target.value, lookupMode === "barcode" || lookupMode === "auto" && /^\d+$/.test(event.target.value.trim())); setProducts(local.items); setNextProduct(local.nextCursor); setSearchError(""); setProductLookupDone(Boolean(local.items.length)); }} onKeyDown={event => { if (["ArrowDown", "ArrowUp"].includes(event.key) && visibleProducts.length) { event.preventDefault(); setPicked(value => (value + (event.key === "ArrowDown" ? 1 : -1) + visibleProducts.length) % visibleProducts.length); } }} />
+                  <Input ref={scanner} disabled={!editable} aria-label="Scan barcode or search products" icon={<Barcode size={16} aria-hidden="true" />} iconRight={<Button type="button" variant="ghost" size="xs" aria-label="Search products" disabled={!editable} loading={searching} onClick={() => { setProductResultsSnapshot(null); void lookup(exactLookup, undefined, true, true); }}><Search size={15} aria-hidden="true" /></Button>} placeholder="Scan barcode or type medicine" title="F1 to search · Scan and press Enter to add" size="lg" containerClassName="min-w-0 flex-1" value={search} maxLength={100} onChange={event => { beginLookup(); lookupFlight.current = null; setSearching(false); setPicked(0); setKeyboardPicking(false); setAddedMessage(""); setProductResultsSnapshot(null); setSearch(event.target.value); const local = catalogue.find(event.target.value, /^\d+$/.test(event.target.value.trim())); setProducts(local.items); setNextProduct(local.nextCursor); setSearchError(""); setProductLookupDone(Boolean(local.items.length)); }} onKeyDown={event => { if (["ArrowDown", "ArrowUp"].includes(event.key) && visibleProducts.length) { event.preventDefault(); setKeyboardPicking(true); setPicked(value => (value + (event.key === "ArrowDown" ? 1 : -1) + visibleProducts.length) % visibleProducts.length); } }} />
+                  <PharmacyCounterFilters value={productFilter} disabled={!editable} onChange={value => { setProductResultsSnapshot(null); setProductFilter(value); setPicked(0); setKeyboardPicking(false); }} />
                 </div>
               </form>
-              <PharmacyCounterFilters>{[{ id: "frequent", label: "Frequent" }, { id: "all", label: "All" }, { id: "tablet", label: "Tablets" }, { id: "capsule", label: "Capsules" }, { id: "ml", label: "Liquids" }, { id: "other", label: "Other" }].map(filter => <Button size="sm" disabled={!editable} variant={productFilter === filter.id ? "primary" : "outline"} key={filter.id} aria-pressed={productFilter === filter.id} onClick={() => { setProductFilter(filter.id); setPicked(0); }}>{filter.label}</Button>)}<Select disabled={!editable} aria-label="Product lookup mode" size="sm" variant="flush" fullWidth={false} containerClassName={pos.lookupMode} value={lookupMode} onChange={event => { beginLookup(); lookupFlight.current = null; setSearching(false); setLookupMode(event.target.value); setProducts([]); setNextProduct(null); setProductLookupDone(false); }} options={[{ value: "auto", label: "Auto lookup" }, { value: "name", label: "By name" }, { value: "barcode", label: "Exact barcode" }]} /></PharmacyCounterFilters>
               <p role="status" className="sr-only">{searching ? "Finding products..." : addedMessage}</p>
             </div>
-            <div className={pos.productResults} aria-busy={searching} role="region" aria-label="Available products" tabIndex={0}>
+            <div className={pos.productResults} aria-busy={searching} role="region" aria-label="Available products" tabIndex={0} onPointerDown={() => setKeyboardPicking(false)}>
               {searchError && <Alert variant="error" title="Lookup needs attention">{searchError}</Alert>}
               {productLookupDone && !displayProducts.length && !searching && !searchError && !frequentOnly && <EmptyState title={search.trim() ? "No products found" : "No products at this branch"} description="Try another name or check this branch's inventory." className="py-5" />}
               {!displayProducts.length && !productLookupDone && !searching && !frequentOnly && <EmptyState icon={<Search aria-hidden="true" />} title="Find a medicine" description="Type a name, scan a barcode or browse branch products." className="py-5" />}
-              {frequentOnly && !displayProducts.length && !searching && <p className={pos.hint}>Products you add often appear here. Choose All to browse.</p>}
-              {displayProducts.length > 0 && !visibleProducts.length && <p className={pos.hint}>{productFilter === "frequent" ? "Products you add often appear here. Choose All to browse." : "No products with this unit in the current results. Choose All or search again."}</p>}
-              {visibleProducts.map((product, index) => { const snapshot = catalogue.price(product.id), observedRate = snapshot && snapshot.quantity > 0 ? snapshot.grossPaise / snapshot.quantity : null, cachedRate = observedRate ?? (Number.isSafeInteger(product.retailPricePaise) && product.retailPricePaise! >= 0 ? product.retailPricePaise! : null); return <article key={product.id} className={pos.product} data-picked={index === picked}>
+              {frequentOnly && !displayProducts.length && !searching && <p className={pos.hint}>Products you add often appear here. Clear filters to browse all products.</p>}
+              {displayProducts.length > 0 && !visibleProducts.length && <p className={pos.hint}>{productFilter.includes("frequent") ? "Products you add often appear here. Clear filters to browse all products." : "No products match these types. Clear filters or search again."}</p>}
+              {visibleProducts.map((product, index) => { const snapshot = catalogue.price(product.id), observedRate = snapshot && snapshot.quantity > 0 ? snapshot.grossPaise / snapshot.quantity : null, cachedRate = observedRate ?? (Number.isSafeInteger(product.retailPricePaise) && product.retailPricePaise! >= 0 ? product.retailPricePaise! : null); return <article key={product.id} className={pos.product} data-picked={keyboardPicking && index === picked} data-added={addedProduct?.id === product.id || undefined}>
+                {addedProduct?.id === product.id && <span key={addedProduct.sequence} className={pos.addedFeedback} aria-hidden="true" />}
                 {product.eligible && !product.saleBlocked && product.unitDefinition ? <Button variant="ghost" disabled={!editable || inventoryMode === "tracked" && product.stockQuantity === 0} className={pos.productPick} aria-label={`Add ${productLabel(product)}`} onClick={() => add(product)}><span className={pos.productBody}>
                   <span className={pos.productHeading}><strong>{product.name}{product.strength && !product.name.toLowerCase().includes(product.strength.toLowerCase()) && <span className={pos.strength}> {product.strength}</span>}</strong><strong className={pos.productRate} title={observedRate === null ? "Catalogue retail price; batch price is checked at billing" : "Last checked unit price; revalidated when saving"}>{cachedRate === null ? "—" : money(cachedRate / 100)}</strong></span>
                   <span className={pos.productMeta}><span title={[product.rackLocation ? `Rack ${product.rackLocation}` : "", product.manufacturer, snapshot?.batches[0] ? `Batch ${snapshot.batches[0].batchNumber} · Exp ${snapshot.batches[0].expiryValue}` : "Batch checked at billing", inventoryMode === "billing_only" ? "Stock not tracked" : `${product.stockQuantity} ${product.unitDefinition.baseUnit} in stock (snapshot)`].filter(Boolean).join(" · ")}>{product.rackLocation && <>Rack {product.rackLocation} · </>}{inventoryMode === "billing_only" ? "Stock not tracked" : product.stockQuantity === 0 ? "Out of stock" : `${product.stockQuantity} in stock`}{product.manufacturer && <> · {product.manufacturer}</>}{snapshot?.batches[0] && <> · {snapshot.batches[0].batchNumber} · {snapshot.batches[0].expiryValue}</>}</span><span>{cachedRate === null ? "Price at billing" : `/${product.unitDefinition.baseUnit}`} · {product.unitDefinition.packUnit} {product.unitDefinition.unitsPerPack}</span></span>
@@ -456,15 +481,9 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
               {!search.trim() && !searching && <Button variant="ghost" size="sm" fullWidth aria-label="Browse branch products" disabled={!editable} onClick={() => { void lookup(false, undefined, false, true); }}>Refresh products</Button>}
               {canManageCatalog && <Button variant="outline" size="sm" fullWidth disabled={!editable || network !== "online"} onClick={() => { invalidate(); setCatalogueOpen(true); }}>Find in shared catalogue</Button>}
               {canManageCatalog && onCreateLocal && <Button variant="ghost" size="sm" fullWidth disabled={!editable || network !== "online"} onClick={() => { invalidate(); onCreateLocal(search.trim()); }}>Add custom product</Button>}
-              {nextProduct && (productFilter !== "frequent" || search.trim()) && <Button size="sm" variant="outline" fullWidth disabled={!editable || searching} onClick={() => { void lookup(false, nextProduct); }}>Next product page</Button>}
+              {nextProduct && (!productFilter.includes("frequent") || search.trim()) && <Button size="sm" variant="outline" fullWidth disabled={!editable || searching} onClick={() => { void lookup(false, nextProduct); }}>Next product page</Button>}
             </div>
-            <div className={pos.catalogueStatus} aria-label="Offline product catalogue">
-              <small title={branchCatalogue.status.checkedAt ? `Last complete refresh: ${new Date(branchCatalogue.status.checkedAt).toLocaleString()}. Availability and prices are checked at Save.` : "Recent products remain cached. Prepare the branch catalogue for wider offline search."}>
-                {branchCatalogue.busy ? `Updating offline products · ${branchCatalogue.progress}` : branchCatalogue.status.complete ? `${branchCatalogue.status.count.toLocaleString()} offline products · ${new Date(branchCatalogue.status.checkedAt!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}${branchCatalogue.status.durable ? "" : " · memory only"}` : "Offline products · recent only"}
-              </small>
-              <Button variant="ghost" size="xs" disabled={network !== "online" || branchCatalogue.busy} onClick={() => { void branchCatalogue.refresh(); }}> {branchCatalogue.status.complete ? "Update offline products" : "Prepare offline products"}</Button>
-              {branchCatalogue.status.error && <small>Refresh incomplete. {branchCatalogue.status.complete ? "Previous catalogue retained." : "Use online search or recent products."}</small>}
-            </div>
+
           </Card>
         </section>
         <section aria-label="Counter cart" className={pos.cart}>
@@ -473,14 +492,14 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
             <div className={pos.columnHead} aria-hidden="true"><span>#</span><span>Product</span><span>Quantity</span><span>Rate</span><span>GST</span><span>Amount</span><span /></div>
             <div className={pos.cartLines} role="region" aria-label="Bill product list" tabIndex={0}><fieldset disabled={!editable} className={pos.cartFields} aria-label="Products and cart">
               {!lines.length && <EmptyState icon={<ShoppingBasket aria-hidden="true" />} title="Your cart is empty" description="Scan or select a medicine to begin." className={pos.emptyCart} />}
-              {lines.map((line, index) => { const priced = quote?.lines.find(row => row.lineId === line.lineId), calculated = quote?.calculation.lines.find(row => row.lineId === line.lineId), estimated = estimate?.lines.find(row => row.lineId === line.lineId), gstRate = calculated?.gstRateBps ?? catalogue.price(line.product.id)?.gstRateBps, total = /^\d+$/.test(line.packs) && /^\d+$/.test(line.loose) ? String(BigInt(line.packs) * BigInt(line.product.unitDefinition!.unitsPerPack) + BigInt(line.loose)) : line.loose; return <fieldset className={pos.cartLine} key={line.lineId} aria-label={`Cart ${productLabel(line.product)}`}>
+              {lines.map((line, index) => { const priced = quote?.lines.find(row => row.lineId === line.lineId), calculated = quote?.calculation.lines.find(row => row.lineId === line.lineId), estimated = estimate?.lines.find(row => row.lineId === line.lineId), gstRate = calculated?.gstRateBps ?? catalogue.price(line.product.id)?.gstRateBps, total = /^\d+$/.test(line.packs) && /^\d+$/.test(line.loose) ? String(BigInt(line.packs) * BigInt(line.product.unitDefinition!.unitsPerPack) + BigInt(line.loose)) : line.loose; return <fieldset className={pos.cartLine} data-added={addedProduct?.id === line.product.id || undefined} key={line.lineId} aria-label={`Cart ${productLabel(line.product)}`}>
                 <span className={pos.lineNumber} aria-label="Item number">{index + 1}</span>
-                <div className={pos.lineIdentity}><strong>{line.product.name}{line.product.strength && !line.product.name.toLowerCase().includes(line.product.strength.toLowerCase()) && <span className={pos.strength}> {line.product.strength}</span>}</strong><small className={pos.lineBatch} title={[line.product.rackLocation ? `Rack ${line.product.rackLocation}` : "", line.product.manufacturer, priced?.batches.map(lot => `Batch ${lot.batchNumber} · Exp ${lot.expiryValue}`).join("; ")].filter(Boolean).join(" · ")}>{line.product.rackLocation && <>Rack {line.product.rackLocation} · </>}{line.product.manufacturer && <>{line.product.manufacturer} · </>}{priced ? <>Batch {priced.batches[0]?.batchNumber} · Exp {priced.batches[0]?.expiryValue}{priced.batches.length > 1 ? ` · +${priced.batches.length - 1} more` : ""}</> : inventoryMode === "billing_only" ? "Supply details checked at billing" : "Batch assigned at billing"}</small></div>
+                <div className={pos.lineIdentity}><strong>{line.product.name}{line.product.strength && !line.product.name.toLowerCase().includes(line.product.strength.toLowerCase()) && <span className={pos.strength}> {line.product.strength}</span>}</strong><small className={pos.lineBatch} title={[line.product.rackLocation ? `Rack ${line.product.rackLocation}` : "", line.product.manufacturer, priced?.batches.map(lot => `Batch ${lot.batchNumber} · Exp ${lot.expiryValue}`).join("; ")].filter(Boolean).join(" · ")}>{line.product.rackLocation && <>Rack {line.product.rackLocation} · </>}{line.product.manufacturer && <>{line.product.manufacturer} · </>}{priced ? <>Batch {priced.batches[0]?.batchNumber} · Exp {priced.batches[0]?.expiryValue}{priced.batches.length > 1 ? ` · +${priced.batches.length - 1} more` : ""}</> : packDescription(line.product.unitDefinition!)}</small></div>
                 <div className={pos.quantity}>
                   <QuantityInput variant="compact" ref={element => { if (element) quantityInputs.current.set(line.lineId, element); else quantityInputs.current.delete(line.lineId); }} label={`Quantity ${productLabel(line.product)}`} decreaseLabel={`Decrease quantity ${productLabel(line.product)}`} increaseLabel={`Increase quantity ${productLabel(line.product)}`} min={1} value={total} disabled={!editable || Boolean(pickup)} onValueChange={value => changeQuantity(line.lineId, value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); showPanel("products", true); } }} />
                 <div className={pos.units}><span>{line.product.unitDefinition?.baseUnit}</span><Button size="sm" variant="ghost" onClick={() => addPacks(line.lineId, 1)}>+1 {line.product.unitDefinition?.packUnit} ({line.product.unitDefinition?.unitsPerPack})</Button>{line.product.unitDefinition?.outerPackUnit && <Button size="sm" variant="ghost" onClick={() => addPacks(line.lineId, line.product.unitDefinition!.packsPerOuter!)}>+1 {line.product.unitDefinition.outerPackUnit} ({line.product.unitDefinition.packsPerOuter! * line.product.unitDefinition.unitsPerPack})</Button>}</div></div>
                 <div className={pos.linePrice} aria-label={`Pricing ${productLabel(line.product)}`}>
-                  <div className={pos.unitRate}><span className="sr-only">Rate </span>{priced ? [...new Set(priced.batches.map(lot => lot.sellingPricePaise))].map(price => <small key={price}>{money(price / 100)}<span className="sr-only"> per {priced.unitSnapshot.baseUnit}</span></small>) : <small>{estimated ? <>{money(estimated.unitPaise / 100)}<span className="sr-only"> per {line.product.unitDefinition?.baseUnit}</span></> : network === "offline" ? "Price not cached" : "Calculating..."}</small>}</div>
+                  <div className={pos.unitRate}><span className="sr-only">Rate </span>{priced ? [...new Set(priced.batches.map(lot => lot.sellingPricePaise))].map(price => <small key={price}>{money(price / 100)}<span className={pos.priceUnit}> per {priced.unitSnapshot.baseUnit}</span></small>) : <small>{estimated ? <>{money(estimated.unitPaise / 100)}<span className={pos.priceUnit}> per {line.product.unitDefinition?.baseUnit}</span></> : network === "offline" ? "Price not cached" : "Calculating..."}</small>}</div>
                   <span className={pos.lineGst} title={quote ? "GST rate from the current quote" : "Last captured rate; checked at billing"}><span className="sr-only">GST </span>{gstRate === undefined ? "—" : `${gstRate / 100}%`}</span>
                   <strong className={pos.lineAmount}><span className="sr-only">Line total </span><span>{calculated ? money(calculated.grossAmountPaise / 100) : estimated ? money(estimated.grossPaise / 100) : "—"}</span></strong>
                 </div>
@@ -489,7 +508,7 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
               </fieldset>; })}
             </fieldset></div>
             <dl className={pos.cartSummary} aria-label="Bill summary"><div><dt>Products</dt><dd>{lines.length}</dd></div><div><dt>Units</dt><dd>{String(pieces)}</dd></div><div><dt>GST</dt><dd>{quote ? money((quote.calculation.totals.cgstPaise + quote.calculation.totals.sgstPaise) / 100) : lines.length ? "At billing" : money(0)}</dd></div><div><dt>Discount</dt><dd>{discountTotal === null ? "—" : money(discountTotal / 100)}</dd></div><div><dt>Payable</dt><dd>{payable === undefined ? lines.length ? "—" : money(0) : money(payable / 100)}</dd></div></dl>
-            <PharmacyCounterRecentBills state={overview} onOpen={setViewRecentInvoice} />
+            <PharmacyCounterRecentBills state={overview} onOpen={setViewRecentInvoice} latest={lastSavedBill?.invoiceId === recentInvoice ? lastSavedBill : null} onHistory={onViewHistory} />
             <p role="status" className={pos.draftStatus}>{draft.status}</p>
           </Card>
         </section>
@@ -548,7 +567,7 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
           </Card>
         </aside>
       </div>
-      <nav className={pos.mobileNav} aria-label="Counter workspace panels"><Button variant={mobilePanel === "products" ? "outline" : "ghost"} aria-pressed={mobilePanel === "products"} onClick={() => showPanel("products")}>Products</Button><Button variant={mobilePanel === "cart" ? "outline" : "ghost"} aria-pressed={mobilePanel === "cart"} onClick={() => showPanel("cart")}>Cart ({lines.length})</Button><Button variant="primary" aria-pressed={mobilePanel === "pay"} onClick={() => showPanel("pay")}>Pay {payable === undefined ? "" : money(payable / 100)}</Button></nav>
+      <nav className={pos.mobileNav} data-history={Boolean(onViewHistory) || undefined} aria-label="Counter workspace panels">{onViewHistory && <Button variant="ghost" aria-label="Open bill history" title="Bill history" onClick={onViewHistory}><History size={18} aria-hidden="true" /></Button>}<Button variant={mobilePanel === "products" ? "outline" : "ghost"} aria-pressed={mobilePanel === "products"} onClick={() => showPanel("products")}>Products</Button><Button variant={mobilePanel === "cart" ? "outline" : "ghost"} aria-pressed={mobilePanel === "cart"} onClick={() => showPanel("cart")}>Cart ({lines.length})</Button><Button variant="primary" aria-pressed={mobilePanel === "pay"} onClick={() => showPanel("pay")}>Pay {payable === undefined ? "" : money(payable / 100)}</Button></nav>
       <footer className={pos.shortcutBar} aria-label="Counter keyboard shortcuts"><span><kbd>F1</kbd> Search</span><span><kbd>F2</kbd> New bill</span><span><kbd>F3</kbd> Customer</span><span><kbd>F4</kbd> Hold</span><span><kbd>F6</kbd> Discount</span><span><kbd>F8</kbd> Payment</span><span><kbd>F10</kbd> Save</span><span><kbd>↑</kbd><kbd>↓</kbd> Pick</span><span><kbd>Enter</kbd> Add</span><span><kbd>Alt+1–4</kbd> Switch bill</span></footer>
     </>
     {printInvoiceId && <PharmacySavedBillPrint key={printInvoiceId} invoiceId={printInvoiceId} locationId={locationId} savedDocument={printDocument} onClose={() => setPrintInvoiceId(null)} />}
@@ -568,7 +587,6 @@ function CounterSession({ initialPickup, onPickupPrepared, locationId, inventory
     <ConfirmDialog open={closingHeld !== null} title="Close held bill?" description="Remove this held draft? The current bill will stay saved." confirmLabel="Close held bill" onClose={() => setClosingHeld(null)} onConfirm={() => { if (editable && !pending && closingHeld !== null) { setHeld(previous => previous.filter((_, index) => index !== closingHeld)); setClosingHeld(null); } }} />
     <ConfirmDialog open={clearOpen} onClose={() => setClearOpen(false)} title="Clear this cart?" description="Remove the current items and discounts. Held carts will stay saved." confirmLabel="Clear cart" variant="danger" onConfirm={() => { if (!editable || pending) return; setPaymentMethod("cash"); setCashPreview(null); invalidate(); setLines([]); setPickup(undefined); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0"); setClearOpen(false); scanner.current?.focus(); }} />
     {reminderCustomer && <PharmacyCustomerReminders key={`${scope}:${locationId}:${reminderCustomer}`} partyId={reminderCustomer} locationId={locationId} onClose={() => setReminderCustomer(null)} />}
-    {viewReceipt && recentInvoice && <PharmacyCollections locationId={locationId} canCollect={false} initialInvoiceId={recentInvoice} focusOnly onInvoiceClose={() => setViewReceipt(false)} />}
     {priorPayment && <Modal open title="Resolve earlier payment" size="lg" onClose={() => setPriorPayment(null)}><PharmacyCollections locationId={locationId} canCollect={canCollect} canOpenTill={canOpenTill} initialInvoiceId={priorPayment} checkoutOnly embeddedCheckout autoAcknowledge onCollected={receipt => { if (receipt.invoiceId === priorPayment) { setPriorPayment(null); setError(""); } }} /></Modal>}
     {viewRecentInvoice && <PharmacyCollections locationId={locationId} canCollect={false} initialInvoiceId={viewRecentInvoice} focusOnly onInvoiceClose={() => setViewRecentInvoice(null)} />}
     {canReview && reviewing && <PharmacyProductReview medicineId={reviewing} locationId={locationId} onReviewed={invalidate} onClose={() => { setReviewing(null); onProductReviewed?.(); void lookup(exactLookup, undefined, false, true); }} />}

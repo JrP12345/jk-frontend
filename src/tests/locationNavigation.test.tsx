@@ -104,6 +104,18 @@ describe("Dashboard location navigation", () => {
     render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><p>Counter</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
     expect(screen.getAllByRole("link", { name: "Counter sales" }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /Locations|Branches|Team|Staff|Organization|Pharmacy Inventory/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Overview" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Account menu:/ }));
+    expect(screen.getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(["My account & security", "Sign out"]);
+  });
+  it("opens the only granted work area and removes empty utility navigation", async () => {
+    useAuthStore.setState({ user: { id: "crm", name: "CRM", email: "crm@example.test", role: "crm_desk", organization_id: "organization", permissions: ["VIEW_CRM"] }, isLoading: false, isAuthenticated: true, isLoggingOut: false });
+    render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><p>CRM workspace</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dashboard/crm"));
+    expect(screen.getAllByRole("link", { name: "Patient relationships" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: "Overview" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
   });
   it('shows a patient relationship entry in the platform root menu', () => {
     useAuthStore.setState({ user: { id: 'root', name: 'Root', email: 'root@example.test', role: 'root' } });
@@ -154,8 +166,9 @@ describe("Dashboard location navigation", () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(router.replace).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /^Account menu:/ }));
-    expect(screen.getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(["Profile & Settings", "Account security", "Sign out"]);
-    fireEvent.click(screen.getByRole("menuitem", { name: "Account security" }));
+    const accountItem = role === "root" ? "Account security" : "My account & security";
+    expect(screen.getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(role === "root" ? ["Profile & Settings", "Account security", "Sign out"] : ["My account & security", "Sign out"]);
+    fireEvent.click(screen.getByRole("menuitem", { name: accountItem }));
     expect(router.push).toHaveBeenCalledWith("/dashboard/security");
   });
 

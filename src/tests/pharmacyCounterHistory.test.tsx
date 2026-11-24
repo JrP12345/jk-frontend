@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { PharmacyCounterCustomerHistory } from "@/components/pharmacy/PharmacyCounterCustomerHistory";
-import { PharmacyCounterFilters } from "@/components/pharmacy/PharmacyCounterFilters";
 import { counterCustomerHistory } from "@/lib/pharmacyCollections";
 import { ToastProvider } from "@/components/ui";
 const api = vi.hoisted(() => ({ get: vi.fn() }));
@@ -48,13 +47,4 @@ it("ignores late customer history after switching customers", async () => {
   await screen.findByText("No saved bills for this customer");
   await act(async () => { finish(response(page())); });
   expect(screen.queryByText(row.invoiceNumber)).not.toBeInTheDocument();
-});
-it("fades only scrollable filter edges and clears the fades when the strip fits", () => {
-  render(<PharmacyCounterFilters><button>All</button><button>Tablets</button></PharmacyCounterFilters>);
-  const strip = screen.getByRole("group"), viewport = strip.parentElement!;
-  Object.defineProperties(strip, { clientWidth: { configurable: true, value: 200 }, scrollWidth: { configurable: true, value: 500 }, scrollLeft: { configurable: true, value: 0, writable: true } });
-  fireEvent.scroll(strip); expect(viewport).not.toHaveAttribute("data-fade-start"); expect(viewport).toHaveAttribute("data-fade-end");
-  strip.scrollLeft = 300; fireEvent.scroll(strip); expect(viewport).toHaveAttribute("data-fade-start"); expect(viewport).not.toHaveAttribute("data-fade-end");
-  Object.defineProperty(strip, "scrollWidth", { value: 200 }); strip.scrollLeft = 0; fireEvent.scroll(strip);
-  expect(viewport).not.toHaveAttribute("data-fade-start"); expect(viewport).not.toHaveAttribute("data-fade-end");
 });

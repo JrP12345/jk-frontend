@@ -20,8 +20,41 @@ form.actions { display: grid; grid-template-columns: minmax(0,1fr) auto; align-i
 .primaryNav > [role=tablist] { border: 0; background: none; box-shadow: none; backdrop-filter: none; }
 .primaryNav [role=tab][aria-selected=true] { color: var(--accent); background: var(--selected); }
 .counterNavigation { display: grid; gap: 8px; min-width: 0; }
+.counterNavigation[data-no-toolbar] { grid-template-rows: minmax(0, 1fr) !important; }
+/* Mobile counter owns the space between the app header and bottom navigation.
+   Let its lists scroll; never grow the dashboard document to fit all cart rows. */
+@media (max-width:767px) {
+  :global([data-pharmacy-compact]):has(.workspace[data-counter-layout=true] [data-counter-ready]) {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+  :global([data-pharmacy-compact]):has(.workspace[data-counter-layout=true] [data-counter-ready]) > :global([data-dashboard-content]) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  :global([data-pharmacy-compact]) > :global([data-dashboard-content]) > div:has(> .workspace[data-counter-layout=true] [data-counter-ready]) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace[data-counter-layout=true]:has([data-counter-ready]) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+  .workspace[data-counter-layout=true] .counterNavigation { flex: 1; min-height: 0; }
+  .workspace[data-counter-layout=true] .counterNavigation > section { min-height: 0; overflow: hidden; }
+}
 /* Let the existing scroll viewport size the counter, rather than adding a guessed vh height to its padding. */
-@media (min-width:1360px) and (min-height:650px) {
+@media (min-width:1280px) and (min-height:560px) {
   :global([data-pharmacy-compact]):has(.workspace[data-counter-layout=true] [data-counter-ready]) { overflow-y: hidden; }
   :global([data-pharmacy-compact]):has(.workspace[data-counter-layout=true] [data-counter-ready]) > :global([data-dashboard-content]) { height: 100%; min-height: 0; display: flex; flex-direction: column; }
   :global([data-pharmacy-compact]) > :global([data-dashboard-content]) > div:has(> .workspace[data-counter-layout=true] [data-counter-ready]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }

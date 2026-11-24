@@ -60,3 +60,25 @@ it("allows retry when the server rejects the assertion", async () => {
   expect(fixture.onSuccess).not.toHaveBeenCalled();
   expect(await screen.findByRole("button", { name: "Sign in with a passkey" })).toBeEnabled();
 });
+
+it("explains a deployment-domain mismatch and keeps password sign-in available", async () => {
+  fixture.post.mockResolvedValueOnce({ data: { data: { challenge: "challenge" } } });
+  fixture.start.mockRejectedValue(new DOMException("Invalid RP ID", "SecurityError"));
+  render(<PasskeySignIn onSuccess={fixture.onSuccess} onTwoFactor={vi.fn()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
+  await vi.waitFor(() => expect(fixture.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Passkey unavailable on this address" })));
+  expect(fixture.onSuccess).not.toHaveBeenCalled();
+  expect(fixture.post).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("button", { name: "Sign in with a passkey" })).toBeEnabled();
+});
+
+it("explains a deployment-domain mismatch and keeps password sign-in available", async () => {
+  fixture.post.mockResolvedValueOnce({ data: { data: { challenge: "challenge" } } });
+  fixture.start.mockRejectedValue(new DOMException("Invalid RP ID", "SecurityError"));
+  render(<PasskeySignIn onSuccess={fixture.onSuccess} onTwoFactor={vi.fn()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
+  await vi.waitFor(() => expect(fixture.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Passkey unavailable on this address" })));
+  expect(fixture.onSuccess).not.toHaveBeenCalled();
+  expect(fixture.post).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("button", { name: "Sign in with a passkey" })).toBeEnabled();
+});

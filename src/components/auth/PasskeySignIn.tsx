@@ -44,6 +44,8 @@ export default function PasskeySignIn({ onSuccess, onTwoFactor, onWorkspace, dis
     } catch (error: any) {
       if (error.name === "NotAllowedError" || error.name === "AbortError") {
         toast({ title: "Passkey sign-in was not completed", description: "Choose a passkey already added to your account, or sign in with your usual method. You can add a passkey from Account security.", variant: "warning" });
+      } else if (error.name === "SecurityError" || error.code === "ERROR_INVALID_RP_ID") {
+        toast({ title: "Passkey unavailable on this address", description: "Sign in with your password, then add a passkey for this website from Account security. If this continues, contact support to check the sign-in domain.", variant: "error" });
       } else {
         toast({ title: "Passkey sign-in failed", description: error.response?.data?.message || error.message || "Please try again or use your usual sign-in method.", variant: "error" });
       }

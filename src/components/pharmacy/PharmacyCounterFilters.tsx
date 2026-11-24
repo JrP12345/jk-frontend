@@ -1,26 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Button, Dropdown } from "@/components/ui";
+import { SlidersHorizontal } from "lucide-react";
 import styles from "./PharmacyCounter.module.css";
 
-export function PharmacyCounterFilters({ children }: { children: ReactNode }) {
-  const strip = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ start: false, end: false });
-  useEffect(() => {
-    const element = strip.current;
-    if (!element) return;
-    const update = () => {
-      const start = element.scrollLeft > 1, end = element.scrollWidth - element.clientWidth - element.scrollLeft > 1;
-      setEdges(previous => previous.start === start && previous.end === end ? previous : { start, end });
-    };
-    const frame = requestAnimationFrame(update);
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
-    observer?.observe(element);
-    element.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => { cancelAnimationFrame(frame); observer?.disconnect(); element.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
-  }, []);
-  return <div className={styles.filterViewport} data-fade-start={edges.start || undefined} data-fade-end={edges.end || undefined}>
-    <div ref={strip} className={styles.filters} role="group" aria-label="Filter product results by unit" tabIndex={0}>{children}</div>
+const types = [{ id: "tablet", label: "Tablets" }, { id: "capsule", label: "Capsules" }, { id: "ml", label: "Liquids" }, { id: "other", label: "Other" }];
+export function matchesCounterType(unit: string, filters: string[]) {
+  const selected = filters.filter(value => value !== "frequent");
+  return !selected.length || selected.includes(["tablet", "capsule", "ml"].includes(unit) ? unit : "other");
+}
+export function PharmacyCounterFilters({ value, onChange, disabled, frequent = true }: { value: string[]; onChange: (value: string[]) => void; disabled?: boolean; frequent?: boolean }) {
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter(item => item !== id) : [...value, id]);
+  const options = [...(frequent ? [{ id: "frequent", label: "Frequent only" }] : []), ...types];
+  return <div className={styles.filters} role="group" aria-label="Filter product results by unit">
+    <Dropdown align="right" width="w-48" trigger={<Button type="button" variant="outline" disabled={disabled} aria-label="Product filters" title={value.length ? value.length + " active filters" : "Filter products"} data-active={Boolean(value.length) || undefined} className={styles.filterTrigger}><SlidersHorizontal size={17} aria-hidden="true" />{value.length > 0 && <span className={styles.filterCount} aria-hidden="true">{value.length}</span>}</Button>} items={[
+      ...options.map(type => ({ label: type.label, active: value.includes(type.id), checked: value.includes(type.id), keepOpen: true, onClick: () => toggle(type.id) })),
+      { label: "", divider: true },
+      { label: "Clear filters", disabled: !value.length, onClick: () => onChange([]) },
+    ]} />
   </div>;
 }

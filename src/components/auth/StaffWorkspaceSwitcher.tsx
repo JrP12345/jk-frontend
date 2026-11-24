@@ -7,6 +7,7 @@ import { Button, Select, useToast } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import type { StaffWorkspace } from "@/types/workspace";
 import api from "@/lib/api";
+import { workspaceEntryPath } from "@/lib/workspaceEntry";
 
 export default function StaffWorkspaceSwitcher() {
   const user = useAuthStore(state => state.user);
@@ -27,7 +28,10 @@ export default function StaffWorkspaceSwitcher() {
       onChange={async event => {
         if (busy || event.target.value === user?.organization_id) return;
         setBusy(true);
-        try { await switchOrg(event.target.value); router.replace("/dashboard"); }
+        try {
+          await switchOrg(event.target.value);
+          router.replace(workspaceEntryPath(useAuthStore.getState().user));
+        }
         catch { toast({ title: "Workspace could not be opened", description: "Sign in again to verify your current workspace.", variant: "error" }); }
         finally { setBusy(false); }
       }} />

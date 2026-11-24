@@ -18,6 +18,8 @@ export interface DropdownItem {
   disabled?: boolean;
   divider?: boolean;
   active?: boolean;
+  checked?: boolean;
+  keepOpen?: boolean;
 }
 
 export interface DropdownProps {
@@ -159,7 +161,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     } else if (e.key === "Enter" || e.key === " ") {
       if (focusedIndex >= 0 && focusedIndex < focusableItems.length) {
         const { item } = focusableItems[focusedIndex];
-        close(true, true);
+        if (!item.keepOpen) close(true, true);
         item.onClick?.();
       }
       e.preventDefault();
@@ -215,12 +217,13 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
                 <button
                   key={i}
                   type="button"
-                  role="menuitem"
+                  role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+                  aria-checked={item.checked}
                   disabled={item.disabled}
                   tabIndex={isFocused || (focusedIndex < 0 && focusableIdx === 0) ? 0 : -1}
                   onFocus={() => setFocusedIndex(focusableIdx)}
                   onClick={() => {
-                    close(true, true);
+                    if (!item.keepOpen) close(true, true);
                     item.onClick?.();
                   }}
                   className={cn(

@@ -34,10 +34,7 @@ export function MobileBottomNav({
 
   // Determine top 4 tabs based on user role + 5th tab is always "More" (drawer)
   const getTabsForRole = (): NavTab[] => {
-    if (isCounterSalesUser(user)) return [
-      { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-      { label: "Counter sales", href: "/dashboard/pharmacy", icon: Pill },
-    ];
+    if (isCounterSalesUser(user)) return [{ label: "Counter sales", href: "/dashboard/pharmacy", icon: Pill }];
     if (isPharmacyWorkspace(user)) return [
       { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
       { label: "Pharmacy", href: "/dashboard/pharmacy", icon: Pill },
@@ -170,6 +167,7 @@ export function MobileBottomNav({
               key={tab.label}
               href={tab.href!}
               prefetch={false}
+              onClick={tab.href === "/dashboard/pharmacy" && pathname === tab.href ? event => { event.preventDefault(); onOpenMenu(); } : undefined}
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex flex-col items-center justify-center w-full py-1.5 px-1 rounded-xl transition-all duration-150 cursor-pointer min-h-[44px]",

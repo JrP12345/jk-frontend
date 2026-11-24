@@ -32,7 +32,9 @@ it("requires an actual review reference and saves against the existing location 
 it("keeps issuer administration restricted to organization managers and does not load it for branch settings staff", async () => {
   mount(); await screen.findByRole("checkbox"); expect(screen.queryByRole("button", { name: "Review issuer and licence details" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Designated billing PC" })).not.toBeInTheDocument();
-  expect(vi.mocked(api.get).mock.calls.every(([url]) => String(url).includes("/settings"))).toBe(true);
+  expect(vi.mocked(api.get).mock.calls.every(([url]) => /\/(settings|storefront)\?organizationId=org$/.test(String(url)))).toBe(true);
+  expect(screen.getByRole("heading", { name: "Public medicine list & pickup" })).toBeInTheDocument();
+  expect(api.get).toHaveBeenCalledWith("/pharmacy/locations/clinic/storefront?organizationId=org", expect.anything());
 });
 
 it("opens the existing branch PC settings for an owner without nesting forms or writing branch capability", async () => {
