@@ -17,5 +17,6 @@
   ["src/lib/pharmacyInvoice.ts", "pharmacyInvoice.js"],
   ["src/lib/pharmacyInvoiceNumberFormat.ts", "pharmacyInvoiceNumberFormat.js"],
   ["src/lib/generated/pharmacyCalculation.ts", "pharmacyCalculation.js"],
-  ["src/lib/generated/pharmacyOfflineDocument.ts", "pharmacyOfflineDocument.js"]
+  ["src/lib/generated/pharmacyOfflineDocument.ts", "pharmacyOfflineDocument.js"],
+  ["src/lib/pharmacyUnits.ts", "pharmacyUnits.js"]
 ]

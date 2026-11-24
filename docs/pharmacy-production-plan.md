@@ -1,10 +1,22 @@
 # Pharmacy implementation and release scope
 
-Guide index refreshed 18 November 2026. The project is in development with no production customers or legacy production data. No historical backfill, entitlement grandfathering or old-deployment compatibility programme is required. Current clinical, financial, security and inventory behavior remains authoritative. The T01–T31 checkpoint below is dated October; newer contracts are linked first.
+Guide index refreshed 24 November 2026. The project is in development with no production customers or legacy production data. No historical backfill, entitlement grandfathering or old-deployment compatibility programme is required. Current clinical, financial, security and inventory behavior remains authoritative. The T01–T31 checkpoint below is dated October; newer contracts are linked first.
+
+The [current implementation and acceptance plan](pharmacy-final-implementation-plan-2026-11-22.md) controls forward work for all 45 pharmacy buyer requirements, the five mandatory store demonstrations and the three daily-workflow priorities. It assigns remaining delivery, phase dependencies and acceptance gates; earlier implementation checkpoints do not close those store or provider gates.
 
 Current increments: [designated-PC final offline billing](pharmacy-offline-final-billing-2026-11-15.md), [whole-branch billing-only mode](pharmacy-billing-only-2026-11-15.md), [product catalogue](pharmacy-product-catalogue-2026-11-16.md) and [supplier ordering](pharmacy-supplier-ordering-2026-11-17.md). Offline issuance has a narrower supported scope than online billing; device, provider, catalogue-licensing and release acceptance remain explicit gates.
 
 ## Implementation status
+
+Shared LAN work now has an [internal encrypted journal foundation](pharmacy-lan-journal-foundation-2026-11-24.md). Its atomicity/recovery tests do not complete cloud authorization, LAN pairing/UI, reconciliation or installation; multi-counter offline final billing remains unavailable.
+
+Latest records and training workflow: [retained prescription-file history, reviewed retention/legal holds, original-request file removal and capability-specific staff guidance](pharmacy-file-history-and-staff-guide-2026-11-24.md). Shared LAN offline coordination remains unfinished engineering; actual store/provider acceptance remains open.
+
+Latest counter and stock workflow: [explicit packs, reviewed bulk deliveries, supplier expiry drafts and clinic prescription originals](pharmacy-packs-deliveries-and-expiry-returns-2026-11-23.md). Synthetic software checks advance these cases; shared multi-counter offline engineering and real pharmacy acceptance remain open.
+
+Latest purchasing and records work: [supplier rates, prescription registers, private outside-prescription files and stock movement analysis](pharmacy-rates-register-and-stock-analysis-2026-11-23.md). Software delivery and actual store/provider acceptance remain separately tracked.
+
+Latest owner workflow: [daily overview](pharmacy-daily-overview-2026-11-22.md), with separate sales/collections/original-credit/current-dues figures and a consistent read snapshot. Store acceptance and the remaining forward-plan phases stay explicit.
 
 The October 22 checkpoint records local implementations for T01–T25 and T27–T31. T26 remains open for exact-revision CI, configured hosting and actual professional, business, provider, device, restore and capacity acceptance. Earlier instructions to start T21 and the original copyable implementation prompt are superseded. Current verification is in [the cleanup plan](pre-production-cleanup.md); the dated pharmacy release baseline and operator procedures are in [release gates](pharmacy-release-evidence.md).
 

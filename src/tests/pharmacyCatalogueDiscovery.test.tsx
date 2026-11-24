@@ -62,6 +62,13 @@ it("captures actual printed supply evidence for billing-only branches without cr
   expect(api.post).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ billingSupply: { batchNumber: "ACTUAL-PRINTED-1", expiry: { precision: "month", value: "2099-12" }, mrpPaise: 200 } }));
   expect(vi.mocked(api.post).mock.calls[0][1]).not.toHaveProperty("stockQuantity");
 });
+it("requires and preserves an explicitly reviewed box-to-strip conversion during adoption", async () => {
+  const view = mount(); fireEvent.click(await screen.findByRole("button", { name: "Review & add" }));
+  change("Medicine form", "tablet"); change("Base unit", "tablet"); change("Pack unit", "strip"); change("Base units per pack", "10"); change("Outer pack (optional)", "box"); change("Branch selling price per base unit (INR)", "1.29");
+  fireEvent.click(screen.getByRole("checkbox")); fireEvent.submit(screen.getByRole("button", { name: "Add empty product" }).closest("form")!); await screen.findByText(/exact outer-pack conversion/); expect(api.post).not.toHaveBeenCalled();
+  change("Inner packs per outer pack", "10"); fireEvent.click(screen.getByRole("checkbox")); fireEvent.click(screen.getByRole("button", { name: "Add empty product" })); await waitFor(() => expect(view.onAdded).toHaveBeenCalled());
+  expect(api.post).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ unitDefinition: { baseUnit: "tablet", packUnit: "strip", unitsPerPack: 10, outerPackUnit: "box", packsPerOuter: 10 } }));
+});
 it("keeps source failure visible and preserves local creation fallback", async () => {
   vi.mocked(api.get).mockRejectedValue(new Error("Provider unavailable")); const view = mount();
   await screen.findByText("Provider unavailable"); fireEvent.click(screen.getByRole("button", { name: "Create local medicine instead" })); expect(view.onCreateLocal).toHaveBeenCalled(); expect(api.post).not.toHaveBeenCalled();

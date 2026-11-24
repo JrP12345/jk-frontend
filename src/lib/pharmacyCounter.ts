@@ -3,23 +3,23 @@ import { validateCollectionReceipt, type CollectionInput, type CollectionReceipt
 import type { CataloguePage, CataloguePageQuery } from "./pharmacyBranchCatalogue";
 import { recordPharmacyServerTiming } from "./pharmacySavePerformance";
 
-export interface CounterProduct { id: string; name: string; genericName: string; strength?: string; manufacturer?: string; rackLocation?: string; barcodes?: string[]; retailPricePaise?: number; stockQuantity: number; eligible: boolean; saleBlocked?: boolean; saleBlockReason?: string; unitDefinition?: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number } }
-export interface CounterCustomer { id: string; name: string; address: string; phone?: string; revision: number }
-export interface CounterIntent { locationId: string; expectedInventoryMode?: "tracked" | "billing_only"; externalPrescription?: { id: string; revision: number }; customerId?: string; invoiceDiscountPaise: number; roundOffPaise: number; lines: Array<{ lineId: string; medicineId: string; quantity: number; expectedUnitVersion: number; discountPaise: number }> }
-export interface CounterIssueInput extends CounterIntent { confirmationMode?: "current_total"; includeDocument?: true; expectedProfileRevision?: number; expectedTotalPaise: number; expectedQuoteHash?: string; expectedCustomerRevision?: number; payment?: CollectionInput; lines: Array<CounterIntent["lines"][number] & { expectedStockRevision?: number; expectedLineTotalPaise?: number }> }
+export interface CounterProduct { id: string; name: string; genericName: string; strength?: string; manufacturer?: string; rackLocation?: string; barcodes?: string[]; retailPricePaise?: number; stockQuantity: number; eligible: boolean; saleBlocked?: boolean; saleBlockReason?: string; unitDefinition?: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number; outerPackUnit?: string; packsPerOuter?: number } }
+export interface CounterCustomer { id: string; name: string; address: string; phone?: string; revision: number; memberDiscountBps?: number }
+export interface CounterIntent { locationId: string; pickup?: { id: string; revision: number }; expectedInventoryMode?: "tracked" | "billing_only"; externalPrescription?: { id: string; revision: number }; customerId?: string; invoiceDiscountPaise: number; roundOffPaise: number; lines: Array<{ lineId: string; medicineId: string; quantity: number; expectedUnitVersion: number; discountPaise: number }> }
+export interface CounterIssueInput extends CounterIntent { creditOverrideReference?: string; confirmationMode?: "current_total"; includeDocument?: true; expectedProfileRevision?: number; expectedTotalPaise: number; expectedQuoteHash?: string; expectedCustomerRevision?: number; payment?: CollectionInput; lines: Array<CounterIntent["lines"][number] & { expectedStockRevision?: number; expectedLineTotalPaise?: number }> }
 export interface CounterQuote {
   locationId: string; currency: "INR"; quoteHash: string; customer: CounterCustomer | null; issueInput: CounterIssueInput;
   calculation: { policy: string; lines: Array<{ lineId: string; quantity: number; grossAmountPaise: number; gstRateBps?: number }>; totals: { payablePaise: number; baseAmountPaise: number; cgstPaise: number; sgstPaise: number; lineDiscountPaise: number; invoiceDiscountPaise: number; roundOffPaise: number } };
   lines: Array<{ lineId: string; medicineId: string; description: string; quantity: number; unitSnapshot: { baseUnit: string }; batches: Array<{ batchNumber: string; quantity: number; expiryValue: string; mrpPaise: number; sellingPricePaise: number }> }>;
 }
-export interface CounterResult { invoiceId: string; dispenseId: string; invoiceNumber: string; totalPaise: number; status: "unpaid" | "paid"; requestKey: string; collection?: CollectionReceipt; document?: CounterInvoice }
+export interface CounterResult { invoiceId: string; dispenseId: string; invoiceNumber: string; totalPaise: number; status: "unpaid" | "paid" | "partially_paid"; requestKey: string; pickup?: { id: string; reference: string; status: "ready" }; collection?: CollectionReceipt; document?: CounterInvoice }
 async function searchPage<T>(path: string, locationId: string, query: Record<string, string | undefined>, signal?: AbortSignal) {
   const params = new URLSearchParams({ locationId }); Object.entries(query).forEach(([key, value]) => { if (value !== undefined) params.set(key, value); });
   const response = await api.get(`/pharmacy/sales/${path}?${params}`, { signal }), page = response.data?.data;
   if (!page || !Array.isArray(page.items) || page.items.length > 25 || page.nextCursor !== null && typeof page.nextCursor !== "string") throw new Error("Counter search is incomplete. Retry the lookup.");
   return page as { items: T[]; nextCursor: string | null };
 }
-export const counterProducts = (locationId: string, query: { search?: string; barcode?: string; cursor?: string }, signal?: AbortSignal) => searchPage<CounterProduct>("products", locationId, query, signal);
+export const counterProducts = (locationId: string, query: { search?: string; barcode?: string; cursor?: string; medicineIds?: string }, signal?: AbortSignal) => searchPage<CounterProduct>("products", locationId, query, signal);
 export async function counterCataloguePage(locationId: string, query: CataloguePageQuery, signal: AbortSignal): Promise<CataloguePage> {
   const params = new URLSearchParams({ locationId, ...query });
   return (await api.get(`/pharmacy/sales/catalogue?${params}`, { signal })).data?.data;
@@ -41,10 +41,12 @@ export async function quoteCounter(intent: CounterIntent, signal?: AbortSignal):
 }
 function result(value: unknown, locationId: string, key: string): CounterResult {
   const row = value as CounterResult;
-  if (!locationId || !row || typeof row.invoiceId !== "string" || !row.invoiceId || typeof row.dispenseId !== "string" || !row.dispenseId || typeof row.invoiceNumber !== "string" || !row.invoiceNumber || !Number.isSafeInteger(row.totalPaise) || row.totalPaise < 0 || !["paid", "unpaid"].includes(row.status) || row.requestKey !== key) throw new Error("Sale result could not be confirmed. Keep the same reference.");
+  if (!locationId || !row || typeof row.invoiceId !== "string" || !row.invoiceId || typeof row.dispenseId !== "string" || !row.dispenseId || typeof row.invoiceNumber !== "string" || !row.invoiceNumber || !Number.isSafeInteger(row.totalPaise) || row.totalPaise < 0 || !["paid", "unpaid", "partially_paid"].includes(row.status) || row.requestKey !== key) throw new Error("Sale result could not be confirmed. Keep the same reference.");
+  if (row.pickup && (row.pickup.status !== "ready" || !row.pickup.id || !row.pickup.reference || !(row.status === "unpaid" || row.totalPaise === 0 && row.status === "paid"))) throw Error("Pickup bill result needs review. Keep the same reference.");
+  if (row.status === "partially_paid" && !row.collection) throw Error("Partial payment receipt could not be confirmed. Keep the same reference.");
   if (row.collection !== undefined) {
     const receipt = validateCollectionReceipt(row.collection);
-    if (row.status !== "paid" || receipt.status !== "paid" || receipt.invoiceId !== row.invoiceId || receipt.invoiceNumber !== row.invoiceNumber || receipt.locationId !== locationId || receipt.requestKey !== key || receipt.paidPaise !== row.totalPaise || receipt.collectedPaise !== row.totalPaise || receipt.revision !== 1 || receipt.creditedPaise !== 0) throw new Error("Saved payment does not match this bill. Keep the same reference.");
+    if (receipt.status !== row.status || receipt.invoiceId !== row.invoiceId || receipt.invoiceNumber !== row.invoiceNumber || receipt.locationId !== locationId || receipt.requestKey !== key || receipt.paidPaise + receipt.balancePaise !== row.totalPaise || receipt.paidPaise !== receipt.collectedPaise || receipt.revision !== 1 || receipt.creditedPaise !== 0) throw new Error("Saved payment does not match this bill. Keep the same reference.");
   }
   return row;
 }
@@ -54,6 +56,7 @@ export async function issueCounter(input: CounterIssueInput, key: string) {
   catch (failure) { recordPharmacyServerTiming((failure as { response?: { headers?: Record<string, unknown> } }).response?.headers?.["server-timing"]); throw failure; }
   recordPharmacyServerTiming(response.headers?.["server-timing"]);
   const saved = result(response.data?.data, input.locationId, key);
+  if (input.pickup && saved.pickup?.id !== input.pickup.id) throw Error("Saved pickup link could not be confirmed. Keep the same reference.");
   if (saved.totalPaise !== input.expectedTotalPaise) throw new Error("Saved total differs from the confirmed bill. Keep the same reference.");
   if (input.payment && (!saved.collection || saved.collection.entries.length !== input.payment.entries.length || saved.collection.entries.some(entry => !input.payment!.entries.some(wanted => wanted.componentId === entry.componentId && wanted.amountPaise === entry.amountPaise && wanted.paymentMethod === entry.paymentMethod && wanted.referenceNumber === entry.referenceNumber)) || saved.collection.cashTenderedPaise !== input.payment.cashTenderedPaise)) throw new Error("Saved payment could not be confirmed. Keep the same reference.");
   return saved;

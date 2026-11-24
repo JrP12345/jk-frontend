@@ -169,6 +169,19 @@ export async function startFinalPharmacyCounter() {
             if (product)
                 controls.append(button(`+1 ${product.unitDefinition.packUnit} (${product.unitDefinition.unitsPerPack})`, () => { if (busy || stopped || frozen)
                     return; row.quantity = String(Number(row.quantity || 0) + product.unitDefinition.unitsPerPack); renderCart(); changed(); }));
+            if (product?.unitDefinition.outerPackUnit)
+                controls.append(button(`+1 ${product.unitDefinition.outerPackUnit} (${product.unitDefinition.unitsPerPack * product.unitDefinition.packsPerOuter})`, () => { if (busy || stopped || frozen)
+                    return; try {
+                    const next = BigInt(row.quantity || "0") + BigInt(product.unitDefinition.unitsPerPack) * BigInt(product.unitDefinition.packsPerOuter);
+                    if (next > BigInt(Number.MAX_SAFE_INTEGER))
+                        throw Error("Quantity exceeds supported precision");
+                    row.quantity = String(next);
+                    renderCart();
+                    changed();
+                }
+                catch (failure) {
+                    fail(failure);
+                } }));
             body.append(controls);
             const amount = quote?.invoice.items[index];
             block.append(body, text("strong", amount ? money(amount.grossAmountPaise / 100) : "—"), button("Remove", () => { if (busy || stopped || frozen)

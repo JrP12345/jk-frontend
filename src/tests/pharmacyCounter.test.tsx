@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PharmacyCounter } from "@/components/pharmacy/PharmacyCounter";
 import { ToastProvider } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
-import { quoteCounter } from "@/lib/pharmacyCounter";
+import { quoteCounter, issueCounter } from "@/lib/pharmacyCounter";
 import { referenceOwnerKey } from "@/lib/authScope";
 import * as catalogueModule from "@/lib/pharmacyCatalogue";
 import * as journalModule from "@/lib/pharmacyCommandJournal";
@@ -213,6 +213,14 @@ it("opens pack and discount editing in a dialog and keeps it out of the bill row
   expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(11);
   expect(api.post.mock.calls.every(([url]) => url.endsWith("/quote"))).toBe(true);
 });
+it("bills explicit boxes, strips and loose tablets using one base-unit quantity", async () => {
+  const get = api.get.getMockImplementation()!;
+  api.get.mockImplementation(async (url: string, ...args: unknown[]) => url.includes("/sales/products?") ? response({ items: [{ ...product, stockQuantity: 1000, unitDefinition: { ...product.unitDefinition, outerPackUnit: "box", packsPerOuter: 10 } }], nextCursor: null }) : get(url, ...args));
+  mount(false); await scan(); fireEvent.click(screen.getByRole("button", { name: "+1 box (100)" })); expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(101);
+  fireEvent.click(screen.getByRole("button", { name: "Edit item Ordinary product" })); const dialog = screen.getByRole("dialog", { name: "Edit item" });
+  fireEvent.change(within(dialog).getByLabelText("Full packs (box)"), { target: { value: "2" } }); fireEvent.change(within(dialog).getByLabelText("Full packs (strip)"), { target: { value: "3" } }); fireEvent.change(within(dialog).getByLabelText("Loose units Ordinary product"), { target: { value: "4" } }); fireEvent.click(within(dialog).getByRole("button", { name: "Done", exact: true }));
+  expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(234); expect(api.post.mock.calls.every(([url]) => url.endsWith("/quote"))).toBe(true);
+});
 it("closes a held bill only after confirmation and preserves the active bill", async () => {
   mount(false); await scan(); fireEvent.keyDown(window, { key: "F2" });
   await scan(); change("Quantity Ordinary product", "4");
@@ -357,6 +365,8 @@ beforeEach(() => {
   sessionStorage.clear();
   api.put.mockReset();
   api.get.mockReset().mockImplementation(async (url: string) => url === "/pharmacy/till" ? response({ active: drawerFixture }) : url.includes("/sales/products?") ? response({ items: [product], nextCursor: null }) : url.includes("/sales/customers?") ? response({ items: [{ id: "customer", name: "Actual customer", address: "Actual address", revision: 0 }], nextCursor: null }) : url.includes("/invoices/invoice?") ? response(invoice) : response({ items: [], nextCursor: null }));
+  const get = api.get.getMockImplementation()!;
+  api.get.mockImplementation(async (url: string, config: unknown) => url.endsWith("/counter-availability") ? response({ locationId: url.split("/")[3], mode: "cloud", checkedAt: new Date().toISOString(), offline: null }) : get(url, config));
   api.post.mockReset().mockImplementation(async (url: string, body: any, config: any) => {
     if (url.endsWith("/quote")) return response(quote(body));
     if (url === "/pharmacy/sales") {
@@ -368,6 +378,16 @@ beforeEach(() => {
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
 afterEach(() => { vi.restoreAllMocks(); });
+it("keeps a priced cart while another PC holds offline authority and blocks new Save and keyboard issuance", async () => {
+  const get = api.get.getMockImplementation()!;
+  api.get.mockImplementation(async (url: string, config: unknown) => url.endsWith("/counter-availability") ? response({ locationId: "branch", mode: "offline_active", checkedAt: new Date().toISOString(), offline: { deviceName: "Main pharmacy PC", currentOperator: false, validUntil: new Date(Date.now() + 60_000).toISOString() } }) : get(url, config));
+  mount(); await scan(); await review(); await screen.findByText("Branch reserved for the designated offline PC");
+  expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1); expect(screen.getByRole("button", { name: "Save counter bill" })).toBeDisabled();
+  fireEvent.keyDown(window, { key: "F10" }); expect(api.post.mock.calls.filter(([url]) => url === "/pharmacy/sales")).toHaveLength(0);
+  api.get.mockImplementation(get); fireEvent.click(screen.getByRole("button", { name: "Refresh counter availability" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save counter bill" })).toBeEnabled());
+  expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1);
+});
 it("keeps one loading surface until draft, catalogue and sale journal have all restored", async () => {
   device.ready = false;
   let finishCatalogue!: () => void;
@@ -812,4 +832,35 @@ it("keeps a later-page pick available in Frequent after returning to the first q
   fireEvent.click(screen.getByRole("button", { name: "Frequent", exact: true }));
   expect(await screen.findByRole("button", { name: "Add Later medicine" })).toBeEnabled();
   expect(screen.queryByRole("button", { name: "Next product page" })).not.toBeInTheDocument();
+});
+
+it("saves a named customer's split part-payment and immediately frees the counter with a visible remaining due", async () => {
+  mount(); await scan(); await review();
+  fireEvent.click(screen.getByRole("tab", { name: "Recorded", exact: true })); change("Find recorded customer", "Actual"); fireEvent.click(screen.getByRole("button", { name: "Search customers" })); fireEvent.click(await screen.findByRole("button", { name: "Select customer Actual customer" })); await review();
+  fireEvent.click(screen.getByRole("button", { name: "Split / part payment" }));
+  change("Payment 1 amount (INR)", "5"); change("Split cash received (INR)", "10"); fireEvent.click(screen.getByRole("button", { name: "Add payment method" }));
+  change("Payment 2 amount (INR)", "7"); change("Payment 2 verified reference", "VERIFIED-UPI-001"); fireEvent.click(screen.getByRole("button", { name: "Use these payments" }));
+  const original = api.post.getMockImplementation()!;
+  api.post.mockImplementation(async (url, body, config) => url === "/pharmacy/sales" ? response({ ...bill, requestKey: config.headers["Idempotency-Key"], status: "partially_paid", collection: { ...receipt(body.payment, config.headers["Idempotency-Key"]), status: "partially_paid", balancePaise: 800 } }) : original(url, body, config));
+  fireEvent.click(screen.getByRole("button", { name: "Save counter bill" })); await screen.findByText("Your cart is empty");
+  expect(api.post.mock.calls.find(([url]) => url === "/pharmacy/sales")![1]).toMatchObject({ customerId: "customer", payment: { entries: [expect.objectContaining({ amountPaise: 500 }), expect.objectContaining({ amountPaise: 700 })] } });
+  expect(api.post.mock.calls.filter(([url]) => url === "/pharmacy/sales")).toHaveLength(1); expect(screen.queryByRole("dialog", { name: "Collect payment" })).not.toBeInTheDocument();
+});
+it("prepares a pickup's exact items with no payment entry and returns to the pickup queue after one committed result", async () => {
+  const id = "a".repeat(24), prepared = vi.fn();
+  const pickup = { id, reference: "PICKUP-001", locationId: "branch", status: "requested" as const, revision: 0, customerName: "Actual pickup customer", phone: "9876543210", createdAt: "2026-11-01T10:00:00Z", expiresAt: "2099-12-31T10:00:00Z", items: [{ medicineId: product.id, name: product.name, strength: "", baseUnit: "tablet", unitVersion: 1, quantity: 2 }] };
+  render(<ToastProvider><PharmacyCounter locationId="branch" canCollect initialPickup={pickup} onPickupPrepared={prepared} /></ToastProvider>);
+  const quantity = await screen.findByLabelText("Quantity Ordinary product"); expect(quantity).toHaveValue(2); expect(quantity).toBeDisabled(); expect(screen.getByRole("tab", { name: "Recorded" })).toBeDisabled();
+  await review(); const original = api.post.getMockImplementation()!;
+  api.post.mockImplementation(async (url, body, config) => url === "/pharmacy/sales" ? response({ ...bill, requestKey: config.headers["Idempotency-Key"], pickup: { id, reference: "PICKUP-001", status: "ready" } }) : original(url, body, config));
+  fireEvent.click(screen.getByRole("button", { name: "Save counter bill" })); await waitFor(() => expect(prepared).toHaveBeenCalledOnce());
+  const input = api.post.mock.calls.find(([url]) => url === "/pharmacy/sales")![1]; expect(input.pickup).toEqual({ id, revision: 0 }); expect(input.payment).toBeUndefined(); expect(input.customerId).toBeUndefined();
+});
+
+it("accepts a free pickup's paid-zero result and rejects an unproven partial-payment result", async () => {
+  const id = "a".repeat(24), input = { ...quote({ locationId: "branch", invoiceDiscountPaise: 0, roundOffPaise: 0, lines: [{ lineId: "line-001", medicineId: "medicine", quantity: 1, expectedUnitVersion: 1, discountPaise: 0 }] }).issueInput, pickup: { id, revision: 0 }, expectedTotalPaise: 0 };
+  api.post.mockResolvedValueOnce(response({ ...bill, totalPaise: 0, status: "paid", requestKey: "original-key", pickup: { id, reference: "PICKUP-001", status: "ready" } }));
+  expect(await issueCounter(input, "original-key")).toMatchObject({ totalPaise: 0, status: "paid" });
+  api.post.mockResolvedValueOnce(response({ ...bill, status: "partially_paid", requestKey: "original-key" }));
+  await expect(issueCounter({ ...input, pickup: undefined, expectedTotalPaise: 2000 }, "original-key")).rejects.toThrow(/Partial payment receipt/);
 });

@@ -18,6 +18,19 @@ beforeEach(() => {
   vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:reviewed-report"), revokeObjectURL: vi.fn() })); vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {}); Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+it("opens a permitted source report for the overview day without automatically reading financial rows", async () => {
+  render(<ToastProvider><PharmacyReports locationId="branch" initial={{ kind: "movements", date: "2026-11-21" }} /></ToastProvider>);
+  await screen.findByLabelText("Operational report");
+  await waitFor(() => expect(api.get).toHaveBeenCalledOnce());
+  const start = datePickerInput(screen.getByLabelText("Report start date")), end = datePickerInput(screen.getByLabelText("Report end date"));
+  expect(start).toHaveValue("2026-11-21"); expect(end).toHaveValue("2026-11-21");
+  fireEvent.click(screen.getByRole("button", { name: "Load report" })); await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+  expect(api.get.mock.calls[1][0]).toBe("/pharmacy/reports/movements"); expect(api.get.mock.calls[1][1].params).toMatchObject({ startDate: "2026-11-21", endDate: "2026-11-21" });
+});
+it("loads current stock velocity using the selected observation window without period-date fields", async () => {
+  api.get.mockImplementation(async (url: string, config: any) => url === "/pharmacy/reports" ? response({ locationId: "branch", items: [{ kind: "stock_velocity", label: "Stock movement and slow-moving analysis" }] }) : response(reportFixture("stock_velocity", "branch", [{ ...stockReportRow, dispensedUnits: 2, estimatedCoverDays: 360, activity: "Slow: at least 90 days estimated cover" }], { ...config.params, cursor: null })));
+  mount(); await screen.findByLabelText("Report elapsed-day window"); expect(screen.queryByLabelText("Report start date")).not.toBeInTheDocument(); select("Report elapsed-day window", "180"); await load(); expect(api.get.mock.calls[1][0]).toBe("/pharmacy/reports/stock_velocity"); expect(api.get.mock.calls[1][1].params).toMatchObject({ days: 180 }); expect(api.get.mock.calls[1][1].params.startDate).toBeUndefined();
+});
 it("loads only allowed report choices and clearly labels source page scope and unknown cells", async () => {
   mount(); expect(await screen.findByLabelText("Operational report")).toBeInTheDocument(); expect(api.get).toHaveBeenCalledOnce(); const region = await load(); expect(within(region).getByText("Sample medicine")).toBeInTheDocument(); expect(within(region).getByText(/Amount subtotals cover this page only/)).toBeInTheDocument(); expect(screen.queryByText("Captured stock cost")).not.toBeInTheDocument();
 });
@@ -51,4 +64,14 @@ it("rejects mismatched scope, malformed columns and inconsistent monetary subtot
 it("renders large exact paise and unknown costs without a floating-point cent loss or invented zero", async () => {
   api.get.mockImplementation(async (url: string) => url === "/pharmacy/reports" ? response({ locationId: "branch", items: [{ kind: "valuation", label: "Captured stock cost" }] }) : response(reportFixture("valuation", "branch", [{ id: "known", amountPaise: Number.MAX_SAFE_INTEGER }, { id: "unknown", amountPaise: null }], { columns: [{ key: "amountPaise", label: "Remaining cost (INR)", format: "paise" }], totals: { amountPaise: null } })));
   mount(); await load(); expect(screen.getByText("₹9,00,71,99,25,47,409.91")).toBeInTheDocument(); expect(screen.getAllByText("Needs review")).toHaveLength(2);
+});
+
+it("loads a complete result through its distinct endpoint and refuses a partial response labelled complete", async () => {
+  mount(); await screen.findByRole("button", { name: "Load complete report" });
+  api.get.mockResolvedValueOnce(response(reportFixture("stock", "branch", [stockReportRow], { totalScope: "complete", nextCursor: null })));
+  fireEvent.click(screen.getByRole("button", { name: "Load complete report" }));
+  await screen.findByText(/Complete result and totals from one snapshot/);
+  expect(api.get.mock.calls.at(-1)?.[0]).toBe("/pharmacy/reports/stock/complete"); expect(screen.getByRole("button", { name: "Export complete reviewed CSV" })).toBeInTheDocument();
+  api.get.mockResolvedValueOnce(response(reportFixture("stock", "branch", [stockReportRow], { totalScope: "complete", nextCursor: "b".repeat(24) })));
+  await expect(readPharmacyReport("stock", filters, undefined, true)).rejects.toThrow(/unreviewed source/);
 });

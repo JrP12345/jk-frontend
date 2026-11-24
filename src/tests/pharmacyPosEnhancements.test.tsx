@@ -1,0 +1,73 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { PharmacyAccountingExport } from "@/components/pharmacy/PharmacyAccountingExport";
+import { PharmacyCustomerReminders } from "@/components/pharmacy/PharmacyCustomerReminders";
+import { PharmacyInvoiceExtraction } from "@/components/pharmacy/PharmacyInvoiceExtraction";
+import { PharmacyAlternatives } from "@/components/pharmacy/PharmacyAlternatives";
+import { PharmacyReportExport } from "@/components/pharmacy/PharmacyReportExport";
+import { useAuthStore } from "@/store/authStore";
+import { ToastProvider } from "@/components/ui";
+import { reportFixture } from "./fixtures/pharmacyReport";
+import { datePickerInput } from "./datePickerTestUtils";
+const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
+vi.mock("@/lib/api", () => ({ default: api }));
+const response = (data: unknown) => ({ data: { data } }), locationId = "b".repeat(24), partyId = "c".repeat(24);
+const mount = (node: React.ReactNode) => render(<ToastProvider>{node}</ToastProvider>);
+beforeEach(() => {
+  sessionStorage.clear(); api.get.mockReset(); api.post.mockReset();
+  useAuthStore.setState({ user: { id: "owner", name: "Owner", role: "owner", email: "owner@example.test", organization_id: "org", permissions: ["MANAGE_ORGANIZATION"] } });
+  Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
+});
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+it("exports only reviewed complete accounting sources and rejects mismatched download evidence", async () => {
+  const page = reportFixture("tax", locationId, [{ id: "source", product: "Invoice", units: 1 }], { totalScope: "complete" });
+  const objectUrl = vi.fn(() => "blob:accounting"), click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: objectUrl, revokeObjectURL: vi.fn() }));
+  api.post.mockResolvedValueOnce({ data: new Blob(["<xml />"]), headers: { "content-type": "application/xml", "x-report-digest": "wrong" } }).mockResolvedValueOnce({ data: new Blob(["<xml />"]), headers: { "content-type": "application/xml", "x-report-digest": page.digest } });
+  mount(<PharmacyAccountingExport page={page} filters={{ locationId, limit: 25, days: 90 }} />);
+  fireEvent.click(screen.getByText("Tally accounting export")); fireEvent.click(screen.getByRole("button", { name: "Download reviewed Tally XML" }));
+  expect(await screen.findByText(/does not match the reviewed report/)).toBeInTheDocument(); expect(click).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Download reviewed Tally XML" })); await waitFor(() => expect(click).toHaveBeenCalledOnce()); expect(api.post.mock.calls[1][1].filters.expectedDigest).toBe(page.digest);
+});
+it("keeps the same consent-bound reminder after a lost response and locks edits until resolution", async () => {
+  api.get.mockResolvedValue(response({ locationId, partyId, customerName: "Customer", email: "customer@example.test", archived: false, emailConfigured: true, items: [], nextCursor: null }));
+  api.post.mockRejectedValueOnce(new Error("Synthetic lost response")).mockImplementationOnce(async (_url: string, body: any, config: any) => response({ id: "reminder", partyId, locationId, requestKey: config.headers["Idempotency-Key"] }));
+  mount(<PharmacyCustomerReminders locationId={locationId} partyId={partyId} onClose={() => {}} />);
+  await screen.findByText("Customer");
+  const tomorrow = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+  fireEvent.change(datePickerInput(screen.getByLabelText("Follow-up date (09:00 India time)")), { target: { value: tomorrow } });
+  fireEvent.change(screen.getByLabelText("Customer consent reference"), { target: { value: "Customer explicitly requested this" } });
+  fireEvent.click(screen.getByLabelText("The customer agreed to this email follow-up at their recorded address"));
+  fireEvent.click(screen.getByRole("button", { name: "Schedule email follow-up" })); expect(await screen.findByText("Synthetic lost response")).toBeInTheDocument();
+  expect(screen.getByLabelText("Customer consent reference")).toBeDisabled(); fireEvent.click(screen.getByRole("button", { name: "Retry same reminder" }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2)); expect(api.post.mock.calls[1][1]).toEqual(api.post.mock.calls[0][1]); expect(api.post.mock.calls[1][2]).toEqual(api.post.mock.calls[0][2]);
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Retry same reminder" })).not.toBeInTheDocument());
+});
+it("requires OCR upload consent and explicit review before using raw extracted quantities", async () => {
+  api.post.mockImplementation(async (_url: string, _body: any, config: any) => response({ id: "extraction", supplierId: partyId, locationId, requestKey: config.headers["Idempotency-Key"] }));
+  api.get.mockImplementation(async (url: string) => response({ id: "extraction", supplierId: partyId, locationId, requestKey: url.split("/").at(-1), status: "succeeded", extracted: { supplier: "Supplier", invoiceNumber: "INV-1", invoiceDate: "22/11/2026", invoiceTotal: "₹100", rows: [{ line: 1, description: "Medicine", productCode: "001", quantity: "2", unit: "strips", unitPrice: "₹50", amount: "₹100", taxRate: "", confidencePercent: 80 }] } }));
+  const onCsv = vi.fn(); mount(<PharmacyInvoiceExtraction locationId={locationId} supplierId={partyId} onCsv={onCsv} />); fireEvent.click(screen.getByText("Extract a supplier invoice PDF or photo")); await screen.findByLabelText("Invoice PDF or photo");
+  const file = new File(["%PDF-1.4"], "invoice.pdf", { type: "application/pdf" }); Object.defineProperty(file, "arrayBuffer", { value: async () => new TextEncoder().encode("%PDF-1.4").buffer });
+  fireEvent.change(screen.getByLabelText("Invoice PDF or photo"), { target: { files: [file] } }); expect(screen.getByRole("button", { name: "Extract invoice text" })).toBeDisabled();
+  fireEvent.click(screen.getByLabelText("I authorize sending this supplier invoice to the configured OCR provider")); fireEvent.click(screen.getByRole("button", { name: "Extract invoice text" }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledOnce()); fireEvent.click(await screen.findByRole("button", { name: "Check extraction status" }));
+  const apply = await screen.findByRole("button", { name: "Use reviewed text in CSV mapping" }); expect(apply).toBeDisabled(); expect(onCsv).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByLabelText("I checked the extracted text against the original invoice; I will map units and review prices and tax next")); fireEvent.click(apply);
+  expect(onCsv).toHaveBeenCalledOnce(); expect(onCsv.mock.calls[0][0]).toContain('"ocrQuantity","ocrUnit"'); expect(onCsv.mock.calls[0][0]).toContain('"2","strips"'); expect(onCsv.mock.calls[0][0]).not.toContain('"packs"');
+});
+it("discards a comparison response after the branch component is unmounted", async () => {
+  let resolve!: (value: unknown) => void; api.get.mockImplementation(() => new Promise(done => { resolve = done; }));
+  const view = mount(<PharmacyAlternatives medicineId="medicine" locationId={locationId} onClose={() => {}} />); expect(screen.getByText("Checking matching medicines...")).toBeInTheDocument(); view.unmount();
+  await act(async () => { resolve(response({ locationId, source: { id: "medicine" }, items: [{ id: "other", name: "Private brand", genericName: "Generic", strength: "10mg", dosageForm: "tablet", stockQuantity: 1 }], nextCursor: null, basis: "Requires pharmacist review" })); });
+  expect(screen.queryByText("Private brand")).not.toBeInTheDocument();
+});
+it("recovers a background export request and binds its download to the reviewed prepared snapshot", async () => {
+  api.post.mockImplementation(async (_url: string, _body: unknown, config: any) => response({ id: "export", locationId, requestKey: config.headers["Idempotency-Key"] }));
+  const digest = "d".repeat(64), clicked = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:prepared"), revokeObjectURL: vi.fn() }));
+  api.get.mockImplementation(async (url: string) => url.endsWith("/download") ? { data: new Blob(["prepared,csv"]), headers: { "content-type": "text/csv", "x-report-digest": digest } } : response({ id: "export", locationId, requestKey: url.split("/").at(-1), kind: "stock", state: "ready", digest, expiresAt: "2099-12-31T00:00:00.000Z", summary: { label: "Prepared stock", timezone: "Asia/Kolkata", asOf: "2026-11-22T09:00:00.000Z", startDate: "2026-11-22", endDate: "2026-11-22", rows: 2500, scanned: 2500, totals: {}, amountColumns: [], basis: "One source snapshot", totalScope: "complete" } }));
+  mount(<PharmacyReportExport kind="stock" filters={{ locationId, limit: 25, days: 90 }} />); fireEvent.click(screen.getByText("Prepare a larger report in the background")); fireEvent.click(screen.getByRole("button", { name: "Prepare background CSV export" }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledOnce()); fireEvent.click(await screen.findByRole("button", { name: "Check background export" }));
+  expect(await screen.findByText(/2500 rows from 2500 source records/)).toBeInTheDocument(); fireEvent.click(screen.getByRole("button", { name: "Download prepared reviewed CSV" }));
+  await waitFor(() => expect(clicked).toHaveBeenCalledOnce()); expect(api.get.mock.calls.at(-1)![1].params.expectedDigest).toBe(digest);
+});

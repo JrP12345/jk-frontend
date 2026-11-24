@@ -2,6 +2,8 @@
 
 ## Scope and conclusion
 
+**22 November follow-up:** The stock/archive, customer/payment, mixed-prescription, pickup, credit, reporting and recall workflow changes are documented in [the pilot validation checklist](pharmacy-pilot-validation.md). Earlier findings below are dated observations. Real-store hardware acceptance and actual GST/licence/professional evidence remain unverified; the pending CDCI application does not authorize an import.
+
 Reviewed the existing pharmacy workspace, its 15 capability-controlled sections, pharmacy components and their API/service/model boundaries, public medicine discovery, settings and supplier portal. This builds on the earlier [whole-flow audit](pharmacy-whole-flow-audit.md) and [implementation status](pharmacy-audit-implementation-status-2026-11-15.md); historical findings are not automatically current defects.
 
 The product already has substantial stock, procurement, financial and offline functionality. The useful next increment is to remove friction around those workflows, rather than add another stock, catalogue, checkout or supplier system. This increment fixes confirmed search/navigation problems and reduces unnecessary test setup. It does not certify an actual pharmacy installation or claim that source review proves every interaction works on real hardware.
@@ -91,13 +93,14 @@ The broad frontend run identified three stale test expectations outside the new 
 
 ### Remaining product refinements
 
-These source-visible gaps are distinct from external operating prerequisites. They were not silently declared complete by the earlier feature inventory:
+Status reconciled on 22 November against the implementation and the [daily-workflow pilot checklist](pharmacy-pilot-validation.md). Completed follow-ups remain listed here so they are not repeatedly mistaken for missing work:
 
 | Priority | Gap | Existing building block / safe next increment |
 | --- | --- | --- |
-| P1 | Inventory has Add batch and product/batch sale holds, but no dedicated read-only batch, stock movement and daily count workspace in the product action menu. | Reuse existing permission-scoped batch/movement reads and recorded adjustment commands. Add bounded paging to the older batch-list endpoint before exposing a long-lot-history UI; movement history already uses a bounded revision cursor. Keep counts/reasons/revisions/recovery explicit. The whole-branch reconciliation tool currently serves mode conversion; it is not a substitute for an everyday product-count UI. |
-| P2 | Recorded customer creation remains in party management under Purchases; counter-only staff cannot simply create a customer. | Add a narrowly authorized retail-customer entry if owners need this policy. Do not grant patient-management or supplier-write permissions to cashiers as a shortcut. Existing recorded customer selection/history works. |
-| P2 | Sales history now searches the branch, but has no date-range control or owner-configured cashier-private history policy. | Date-filtered reports already exist. Add history-specific filters/own-sales policy only with corresponding detail/receipt/recovery authority, not a browser-only restriction. |
+| P1 completed | Daily batch, stock movement, count and quarantine tools now open from product actions. | Bounded reads, independent cost permission, stale-count rejection, durable recovery and controlled disposal reuse existing inventory commands. See pilot steps 9–11. |
+| P2 completed | Narrow retail customer creation is available from the counter. | Explicit customer-management permission, duplicate review and same-reference retry; no patient or supplier permission shortcut. |
+| P2 completed | Sales history supports an optional date range alongside server search, payment filters and pagination. | Full branch-local days, strict paired-date validation, explicit Apply/Clear, stale-read protection and confirmed response period. Existing invoice date index reused; no database changes or billing writes. |
+| Optional P2 | Owner-configured cashier-private history policy. | Existing branch-scoped history remains available to authorized sales readers. A future own-sales policy must also govern detail, receipts and recovery on the server; do not add a browser-only restriction. |
 | P2 | Much of the workspace statically imports occasional tools into its client graph. | Measure built bundle and actual old-PC navigation before introducing lazy boundaries. Preserve scoped drafts and recovery while changing mount/loading behavior. No speculative global caching or component rewrite in this increment. |
 
 These are scoped follow-ups, not evidence that financial/stock invariants should be weakened to simplify forms.

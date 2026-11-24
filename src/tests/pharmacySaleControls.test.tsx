@@ -43,3 +43,12 @@ it("denies mismatched branch read results and provides no write action to a cash
   await screen.findByText("An organization administrator must change sale holds.");
   expect(screen.queryByRole("button", { name: "Stop selling selection" })).not.toBeInTheDocument(); expect(api.put).not.toHaveBeenCalled();
 });
+
+it("loads recall impact without automatically applying a hold and opens the existing review form for another branch", async () => {
+  const linked = "d".repeat(24), branch = "e".repeat(24), original = vi.mocked(api.get).getMockImplementation()!;
+  vi.mocked(api.get).mockImplementation(async (url, config) => String(url).endsWith("recall-impact") ? response({ medicineId, locationId, batchNumber: null, canTraceBills: true, coverage: "Barcode candidates need manual review", products: [{ medicineId: linked, locationId: branch, branch: "Other pharmacy", name: "Candidate product", match: "barcode candidate: verify identity", physicalUnits: 10, blocked: false, batchCount: 1 }], nextCursor: null, supplies: [], nextSupplyCursor: null }) : String(url).includes(linked) ? response({ ...row, medicineId: linked, locationId: branch, name: "Candidate product" }) : original(url, config));
+  render(<PharmacySaleControls medicineId={medicineId} locationId={locationId} onClose={vi.fn()} onChanged={vi.fn()} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Review recall impact across branches" })); await screen.findByText("Other pharmacy | Candidate product");
+  expect(api.put).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole("button", { name: "Review exact product / batch holds" }));
+  await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining(linked + "/sale-controls?locationId=" + branch), expect.any(Object))); expect(api.put).not.toHaveBeenCalled();
+});

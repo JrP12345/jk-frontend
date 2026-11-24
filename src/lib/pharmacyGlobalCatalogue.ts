@@ -18,7 +18,7 @@ export async function searchGlobalProducts(locationId: string, search: string, c
   return page;
 }
 export interface CatalogueAdoption { locationId: string; expectedRevision: number; sellingPricePaise?: number; category?: string;
-  unitDefinition?: { baseUnit: string; packUnit: string; unitsPerPack: number }; genericName?: string; confirmedIdentity: true;
+  unitDefinition?: { baseUnit: string; packUnit: string; unitsPerPack: number; outerPackUnit?: string; packsPerOuter?: number }; genericName?: string; confirmedIdentity: true;
   billingSupply?: { batchNumber: string; expiry: { precision: "month"; value: string }; mrpPaise: number } }
 export async function adoptCatalogueProduct(id: string, input: CatalogueAdoption): Promise<PurchaseProduct> {
   const { data } = await api.post(`/pharmacy/catalogue/global/${id}/adopt`, input);

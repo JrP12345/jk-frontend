@@ -3,7 +3,7 @@ import { createPharmacyLocalClient } from "./pharmacyDrafts";
 import type { PharmacyParty, PurchaseDraft } from "@/services/pharmacyPurchase.service";
 import type { ShortbookDraftSeed } from "./pharmacyShortbook";
 import { purchaseReceivingPlan } from "./pharmacyReceiving";
-export type OrderUnit = { version: number; baseUnit: string; packUnit: string; unitsPerPack: number };
+export type OrderUnit = { version: number; baseUnit: string; packUnit: string; unitsPerPack: number; outerPackUnit?: string; packsPerOuter?: number };
 export type OrderLine = { lineId: string; medicineId: string; medicineSnapshot: { name: string; genericName?: string; strength?: string; manufacturer?: string }; unitSnapshot: OrderUnit; packs: number; looseUnits: number; quantity: number };
 export type OrderSummary = { id: string; reference: string; supplierId: string; supplierSnapshot: Pick<PharmacyParty, "name">; state: string; status: string; revision: number; invoiceCount: number; createdAt: string };
 export type OrderResponseLine = { lineId: string; acceptedQuantity: number; quotedUnitPricePaise?: number; note: string };

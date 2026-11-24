@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, Card, EmptyState, Input } from "@/components/ui";
+import { Alert, Badge, Button, Card, DatePicker, EmptyState, Input } from "@/components/ui";
 import { ReceiptText, Search } from "lucide-react";
 import { PharmacyCollectionForm, type CounterPaymentPreference } from "./PharmacyCollectionForm";
 export { PharmacyCollectionForm } from "./PharmacyCollectionForm";
@@ -43,8 +43,10 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
   const [items, setItems] = useState<InvoiceSummary[]>([]), [cursor, setCursor] = useState<string | undefined>(), [next, setNext] = useState<string | null>(null), [loading, setLoading] = useState(true), [listError, setListError] = useState("");
   const [invoice, setInvoice] = useState<CounterInvoice | null>(null), [refresh, setRefresh] = useState(0);
   const [search, setSearch] = useState(""), [query, setQuery] = useState(""), [status, setStatus] = useState("all");
+  const [startDate, setStartDate] = useState(""), [endDate, setEndDate] = useState(""), [dateError, setDateError] = useState("");
+  const [period, setPeriod] = useState<{ startDate: string; endDate: string } | null>(null), [timezone, setTimezone] = useState("");
   useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setCursor(undefined); }, 250); return () => clearTimeout(timer); }, [search]);
-  const listKey = JSON.stringify([query, status, cursor]);
+  const listKey = JSON.stringify([query, status, cursor, period]);
   const [loadedListKey, setLoadedListKey] = useState("");
   const showList = !focusOnly && !checkoutOnly;
   const listBusy = loading || query !== search.trim() || loadedListKey !== listKey;
@@ -52,10 +54,16 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
   const beginRead = useLatestRead(), beginDetail = useLatestRead();
   const load = useCallback(async () => {
     const request = beginRead(); setLoading(true); setListError(""); setItems([]);
-    try { const page = await collectionInvoicePage(locationId, cursor, request.signal, { search: query, status }); if (request.isCurrent()) { setItems(page.items); setNext(page.nextCursor); } }
+    try { const page = await collectionInvoicePage(locationId, cursor, request.signal, { search: query, status, ...period }); if (request.isCurrent()) { setItems(page.items); setNext(page.nextCursor); setTimezone(page.period?.timezone || ""); } }
     catch (failure) { if (request.isCurrent()) setListError(errorMessage(failure)); }
     finally { if (request.isCurrent()) { setLoadedListKey(listKey); setLoading(false); } }
-  }, [beginRead, locationId, cursor, query, status, listKey]);
+  }, [beginRead, locationId, cursor, query, status, period, listKey]);
+  function applyDates() {
+    if (!startDate || !endDate) { setDateError("Choose both sale dates, or clear the date filter."); return; }
+    const valid = (value: string) => { const date = new Date(`${value}T12:00:00Z`); return /^\d{4}-\d{2}-\d{2}$/.test(value) && value >= "2000-01-01" && value <= "2199-12-31" && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; };
+    if (!valid(startDate) || !valid(endDate) || startDate > endDate) { setDateError("Choose valid dates with the start on or before the end."); return; }
+    beginRead(); setCursor(undefined); setDateError(""); setPeriod({ startDate, endDate });
+  }
   useEffect(() => { if (!focusOnly && !checkoutOnly) void Promise.resolve().then(load); }, [load, refresh, focusOnly, checkoutOnly]);
   useEffect(() => {
     if (!initialInvoiceId || checkoutPayment && issuedTotalPaise !== undefined && !detailNeeded) return;
@@ -112,7 +120,7 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
     if (input) automaticSend.current(initialInvoiceId, input);
     else void Promise.resolve().then(() => { setDetailNeeded(true); setError("The saved bill balance differs from the confirmed payment. Review payment below; no money has been recorded."); });
   }, [checkoutPayment, invoice, journalReady, canCollect, pending, receipt, initialInvoiceId, issuedTotalPaise, locationId]);
-  const invoiceForm = invoice && !(checkoutPayment && !error && (!pending || pending.invoiceId === invoice.id)) && <PharmacyCollectionForm embedded={embeddedCheckout} key={`${invoice.id}:${invoice.paymentRevision}`} invoice={invoice} preference={invoice.id === initialInvoiceId ? preference : undefined} canOpenTill={canOpenTill} canCollect={journalReady && canCollect && !receipt && (!pending || pending.invoiceId === invoice.id) && !submitted} busy={busy} onClose={() => { setInvoice(null); onInvoiceClose?.(); }} onSubmit={input => { void send(invoice.id, input); }} />;
+  const invoiceForm = invoice && !(checkoutPayment && !error && (!pending || pending.invoiceId === invoice.id)) && <PharmacyCollectionForm embedded={embeddedCheckout} key={`${invoice.id}:${invoice.paymentRevision}`} invoice={invoice} preference={invoice.id === initialInvoiceId ? preference : undefined} canOpenTill={canOpenTill} canCollect={journalReady && canCollect && !receipt && (!pending || pending.invoiceId === invoice.id) && !submitted} busy={busy} onClose={() => { setInvoice(null); onInvoiceClose?.(); }} onProviderCollected={!pending && canCollect ? result => { if (!current() || result.invoiceId !== invoice.id) return; onCollected?.(result); setRefresh(value => value + 1); void open(invoice.id); } : undefined} onSubmit={input => { void send(invoice.id, input); }} />;
   if (focusOnly) return <section aria-label="Saved bill">{error && <Alert variant="error" title="Bill unavailable">{error}<Button onClick={onInvoiceClose}>Close</Button></Alert>}{invoiceForm}</section>;
   return <section className={styles.list} aria-label="Pharmacy sales and collections">
     {embeddedCheckout && !error && !receipt && <p role="status" className="text-sm text-text-secondary">{busy ? "Saving payment..." : "Checking saved bill..."}</p>}
@@ -126,13 +134,22 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
     </Alert>}
     {showList && <div aria-busy={listBusy}><Card contentClassName="gap-4">
       <Input type="search" aria-label="Search sales" icon={<Search size={17} aria-hidden="true" />} size="lg" placeholder="Find a sale by bill number or customer" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} />
+      <details className="rounded-xl border border-border px-3"><summary className="cursor-pointer py-3 text-sm">Sale dates{period ? `: ${period.startDate} to ${period.endDate}` : ": All dates"}</summary>
+        <form aria-label="Sales date filter" className="grid items-end gap-3 pb-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]" onSubmit={event => { event.preventDefault(); applyDates(); }}>
+          <DatePicker label="Sale start date" value={startDate} minDate="2000-01-01" maxDate="2199-12-31" onChange={setStartDate} />
+          <DatePicker label="Sale end date" value={endDate} minDate="2000-01-01" maxDate="2199-12-31" onChange={setEndDate} />
+          <div className="flex flex-wrap gap-2"><Button size="sm" type="submit">Apply dates</Button><Button size="sm" variant="outline" onClick={() => { beginRead(); setStartDate(""); setEndDate(""); setPeriod(null); setCursor(undefined); setDateError(""); setRefresh(value => value + 1); }}>Clear dates</Button></div>
+          <p className="text-xs text-text-secondary sm:col-span-2 lg:col-span-3">Both dates include the full day at this branch{!listBusy && timezone ? ` (${timezone})` : ""}. Search and payment filters still apply.</p>
+          {dateError && <p role="alert" className="text-sm text-error sm:col-span-2 lg:col-span-3">{dateError}</p>}
+        </form>
+      </details>
       <div className="flex flex-wrap items-center justify-between gap-2"><div role="group" aria-label="Payment status" className="flex gap-2">{[{ id: "all", label: "All" }, { id: "unpaid", label: "Unpaid" }, { id: "paid", label: "Paid" }].map(filter => <Button key={filter.id} size="sm" variant={status === filter.id ? "primary" : "outline"} className="rounded-full" aria-pressed={status === filter.id} onClick={() => { setStatus(filter.id); setCursor(undefined); }}>{filter.label}</Button>)}</div><p className="text-xs text-text-secondary">Newest first · This branch</p></div>
       {listBusy && <p role="status">Loading counter invoices...</p>}{listError && <Alert variant="error" title="Sales unavailable">{listError}<Button size="sm" onClick={() => setRefresh(value => value + 1)}>Retry sales</Button></Alert>}
       <div className="divide-y divide-border">{visibleItems.map(row => <article className="flex min-w-0 flex-wrap items-center gap-3 py-4" key={row.id}>
         <div className="min-w-0 flex-1 break-words"><strong className="text-sm font-semibold">{row.invoiceNumber}</strong><p className="mt-1 text-xs text-text-secondary">{row.customerSnapshot?.name || "Walk-in customer"}</p></div>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-3"><div className="space-y-1 text-right"><p className="text-sm font-semibold tabular-nums">{money(row.totalAmount)}</p><Badge variant={row.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(row.status) ? "warning" : "neutral"}>{row.status.replaceAll("_", " ")}</Badge></div><Button size="sm" variant={canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "primary" : "outline"} disabled={busy} aria-label={`${row.documentVersion === 3 ? "Open opening balance" : "Open sale"} ${row.invoiceNumber}`} onClick={() => { void open(row.id); }}>{row.documentVersion === 3 ? "Open balance" : canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "Collect" : "View bill"}</Button></div>
       </article>)}</div>
-      {!listBusy && !listError && !visibleItems.length && <EmptyState icon={<ReceiptText aria-hidden="true" />} title={query || status !== "all" ? "No matching sales" : "No sales yet"} description={query || status !== "all" ? "Try another bill number, customer or payment filter." : "Saved invoices and their payment records will appear here."} className="py-5" />}
+      {!listBusy && !listError && !visibleItems.length && <EmptyState icon={<ReceiptText aria-hidden="true" />} title={query || status !== "all" || period ? "No matching sales" : "No sales yet"} description={query || status !== "all" || period ? "Try another bill number, customer, date or payment filter." : "Saved invoices and their payment records will appear here."} className="py-5" />}
     </Card></div>}
     {showList && <div className={styles.actions}>{cursor && <Button size="sm" variant="outline" disabled={listBusy} onClick={() => setCursor(undefined)}>First sales page</Button>}{next && <Button size="sm" variant="outline" disabled={listBusy} onClick={() => setCursor(next)}>Next sales page</Button>}</div>}
     {invoiceForm}

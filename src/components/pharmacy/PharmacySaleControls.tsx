@@ -7,7 +7,7 @@ import { useAuthStore } from "@/store/authStore";
 import { authScopeKey } from "@/lib/authScope";
 import { hasAnyPermission } from "@/lib/permissions";
 import { apiErrorMessage } from "@/lib/apiError";
-import { readPharmacySaleControls, savePharmacySaleControl, type PharmacySaleControls as Controls } from "@/lib/pharmacySaleControls";
+import { readPharmacySaleControls, savePharmacySaleControl, readRecallImpact, type RecallImpact, type PharmacySaleControls as Controls } from "@/lib/pharmacySaleControls";
 
 interface Props { medicineId: string; locationId: string; onClose: () => void; onChanged: () => void }
 export function PharmacySaleControls(props: Props) {
@@ -17,6 +17,9 @@ export function PharmacySaleControls(props: Props) {
 function ControlSession({ medicineId, locationId, onClose, onChanged }: Props) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user), canManage = hasAnyPermission(user, "MANAGE_ORGANIZATION");
   const [data, setData] = useState<Controls | null>(null), [cursor, setCursor] = useState<string>(), [reload, setReload] = useState(0), [loading, setLoading] = useState(true);
+  const [impact, setImpact] = useState<RecallImpact | null>(null), [impactBusy, setImpactBusy] = useState(false), [impactError, setImpactError] = useState(""), [impactCursor, setImpactCursor] = useState<string>();
+  const [followUp, setFollowUp] = useState<{ medicineId: string; locationId: string } | null>(null);
+  const impactRead = useLatestRead();
   const [target, setTarget] = useState("product"), [reason, setReason] = useState(""), [reference, setReference] = useState(""), [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
   const beginRead = useLatestRead(), lock = useRef(false), alive = useRef(true);
@@ -42,6 +45,13 @@ function ControlSession({ medicineId, locationId, onClose, onChanged }: Props) {
     } catch (failure) { if (current()) { setData(null); setConfirmed(false); setError(`${apiErrorMessage(failure, "Sale control could not be confirmed.")} Reload its current result before retrying.`); } }
     finally { lock.current = false; if (current()) setBusy(false); }
   }
+  async function trace(cursor?: string, supplyCursor?: string) {
+    if (!current() || !canManage) return; const request = impactRead(); setImpactBusy(true); setImpactError("");
+    try { const result = await readRecallImpact(medicineId, locationId, { ...(target !== "product" ? { batchId: target } : {}), ...(cursor ? { cursor } : {}), ...(supplyCursor ? { supplyCursor } : {}) }, request.signal); if (request.isCurrent() && current()) { setImpact(result); setImpactCursor(cursor); } }
+    catch (e) { if (request.isCurrent() && current()) { setImpact(null); setImpactError(apiErrorMessage(e, "Recall impact could not be confirmed")); } }
+    finally { if (request.isCurrent() && current()) setImpactBusy(false); }
+  }
+  if (followUp) return <PharmacySaleControls {...followUp} onClose={() => { setFollowUp(null); setImpact(null); }} onChanged={onChanged} />;
   return <Modal open title="Product and batch sale holds" description={data?.name} onClose={onClose} busy={busy} size="lg">
     <div className="space-y-4">
       <p className="text-sm">Block the exact product or batch after reviewing your source. These controls do not change stock counts, classify a medicine as legally banned, or replace physical quarantine.</p>
@@ -50,7 +60,7 @@ function ControlSession({ medicineId, locationId, onClose, onChanged }: Props) {
       <Button size="sm" variant="outline" disabled={busy || loading} onClick={() => { setLoading(true); setData(null); setConfirmed(false); setError(""); setReload(value => value + 1); }}>Reload sale controls</Button>
       {loading && <p role="status">Loading sale controls…</p>}
       {data && <form onSubmit={save} className="space-y-3"><fieldset disabled={busy || !canManage} className="space-y-3">
-        <Select label="Apply to" value={target} options={[{ value: "product", label: "Whole product — all batches" }, ...data.batches.map(lot => ({ value: lot.id, label: `${lot.batchNumber} · ${lot.status}${lot.saleControl?.blocked ? " · On hold" : ""}` }))]} onChange={event => { setTarget(event.target.value); setConfirmed(false); }} />
+        <Select label="Apply to" value={target} options={[{ value: "product", label: "Whole product — all batches" }, ...data.batches.map(lot => ({ value: lot.id, label: `${lot.batchNumber} · ${lot.status}${lot.saleControl?.blocked ? " · On hold" : ""}` }))]} onChange={event => { impactRead(); setImpact(null); setImpactError(""); setImpactBusy(false); setTarget(event.target.value); setConfirmed(false); }} />
         <Badge variant={blocked ? "warning" : "neutral"}>{blocked ? "Sale hold active" : "No sale hold on this selection"}</Badge>
         {selected && <p className="text-sm">{selected.reason} · Reference: {selected.reviewReference} · {new Date(selected.changedAt).toLocaleString()}</p>}
         {target !== "product" && data.saleControl?.blocked && <p className="text-sm">The whole product is also blocked. Releasing this batch hold will not release the product hold.</p>}
@@ -60,6 +70,7 @@ function ControlSession({ medicineId, locationId, onClose, onChanged }: Props) {
           <Button type="submit" disabled={!confirmed || loading} loading={busy}>{blocked ? "Release sale hold" : "Stop selling selection"}</Button></>}
       </fieldset></form>}
       {data && <div className="flex gap-2">{cursor && <Button size="sm" variant="outline" disabled={busy} onClick={() => { setTarget("product"); setConfirmed(false); setData(null); setLoading(true); setCursor(undefined); }}>First batch page</Button>}{data.nextCursor && <Button size="sm" variant="outline" disabled={busy} onClick={() => { setTarget("product"); setConfirmed(false); setLoading(true); setCursor(data.nextCursor!); setData(null); }}>More batches</Button>}</div>}
+      {canManage && <section className="space-y-3 border-t border-border pt-3"><Button size="sm" variant="outline" disabled={busy || loading || impactBusy} onClick={() => { void trace(); }}>Review recall impact across branches</Button>{impactError && <p role="alert">{impactError}</p>}{impactBusy && <p role="status">Loading recall impact...</p>}{impact && <><p className="text-sm">{impact.coverage}</p>{impact.batchNumber && <p>Printed batch: {impact.batchNumber}. Verify the same manufacturer/product before taking action.</p>}{impact.products.map(row => <article key={row.medicineId} className="rounded-lg border border-border p-3 text-sm"><strong>{row.branch} | {row.name}</strong><p>{row.match} | {row.physicalUnits} physical units in matching lots | {row.archived ? "Archived: history retained" : row.blocked ? "Product hold active" : "Review hold status"}</p><Button size="sm" variant="outline" disabled={row.archived || row.medicineId === medicineId && row.locationId === locationId} onClick={() => setFollowUp({ medicineId: row.medicineId, locationId: row.locationId })}>Review exact product / batch holds</Button></article>)}{impact.nextCursor && <Button size="sm" disabled={impactBusy} onClick={() => { void trace(impact.nextCursor!); }}>More matching products</Button>}<h3 className="font-semibold">Retained retail supply trace</h3>{!impact.canTraceBills ? <p>Sales-read permission is required to trace saved bills.</p> : !impact.supplies.length ? <p>No matching retained retail supplies on this page.</p> : impact.supplies.map(row => <p className="break-all text-sm" key={row.id}>Invoice {row.invoiceId} | {new Date(row.suppliedAt).toLocaleString()} | {row.lines.reduce((sum, line) => sum + line.quantity, 0)} matched supplied units</p>)}{impact.nextSupplyCursor && <Button size="sm" disabled={impactBusy} onClick={() => { void trace(impactCursor, impact.nextSupplyCursor!); }}>Next affected bills</Button>}<p className="text-xs">Review each exact branch product/batch with the existing hold form. Nothing is blocked, returned or refunded automatically.</p></>}</section>}
       {!canManage && <p className="text-sm">An organization administrator must change sale holds.</p>}
       <p className="text-xs text-text-secondary">A disconnected billing PC cannot receive a new hold until it reconnects. Contact its operator immediately. Hold release requires closing any original offline session.</p>
     </div>

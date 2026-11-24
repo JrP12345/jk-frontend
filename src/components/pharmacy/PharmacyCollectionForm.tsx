@@ -12,10 +12,11 @@ import { PharmacyDocumentButton } from "./PharmacyDocumentButton";
 import { CollectionReceiptSummary } from "./PharmacyCollectionReceipt";
 import { money } from "./pharmacyWorkspace";
 import styles from "./PharmacyWorkspace.module.css";
+import { PharmacyOnlinePayment } from "./PharmacyOnlinePayment";
 
 /** A checkout preference only pre-fills fields; saved invoice amounts and explicit receipt confirmation still govern submission. */
 export type CounterPaymentPreference = { method: CollectionMethod; cashTendered?: string };
-export function PharmacyCollectionForm({ invoice, canCollect, canOpenTill = false, busy, onClose, onSubmit, preference, embedded = false }: { invoice: CounterInvoice; canCollect: boolean; canOpenTill?: boolean; busy: boolean; onClose: () => void; onSubmit: (input: CollectionInput) => void; preference?: CounterPaymentPreference; embedded?: boolean }) {
+export function PharmacyCollectionForm({ invoice, canCollect, canOpenTill = false, busy, onClose, onSubmit, onProviderCollected, preference, embedded = false }: { invoice: CounterInvoice; canCollect: boolean; canOpenTill?: boolean; busy: boolean; onClose: () => void; onSubmit: (input: CollectionInput) => void; onProviderCollected?: (receipt: CollectionReceipt) => void; preference?: CounterPaymentPreference; embedded?: boolean }) {
   const formId = useId();
   const [drawerReady, setDrawerReady] = useState(false), [split, setSplit] = useState(false), [full, setFull] = useState(true);
   const [entries, setEntries] = useState<PaymentPart[]>(() => [{ componentId: crypto.randomUUID(), amount: String(invoice.balanceDue), paymentMethod: preference?.method || "cash", referenceNumber: "" }]);
@@ -52,6 +53,7 @@ export function PharmacyCollectionForm({ invoice, canCollect, canOpenTill = fals
       {error && <Alert variant="error" title="Check collection details">{error}</Alert>}
       {editable && <>
         <PharmacyDrawerGate compact locationId={invoice.locationId} canOpen={canOpenTill} onReady={setDrawerReady} />
+        {onProviderCollected && <PharmacyOnlinePayment invoice={invoice} disabled={busy || !drawerReady} onCollected={onProviderCollected} />}
         <form id={formId} onSubmit={submit} noValidate><fieldset disabled={busy} className={styles.form}>
           <div className="grid grid-cols-4 gap-2" role="group" aria-label="Payment method">{(["cash", "upi", "card"] as const).map(method => <Button key={method} variant={!split && entries[0].paymentMethod === method ? "primary" : "outline"} aria-pressed={!split && entries[0].paymentMethod === method} onClick={() => selectMethod(method)}>{method === "cash" ? "Cash" : method === "upi" ? "UPI" : "Card"}</Button>)}<Button variant={split ? "primary" : "outline"} aria-pressed={split} aria-label={split ? "Split payment selected" : "Add split payment"} onClick={() => { if (!split) addPayment(); }}>Split</Button></div>
           {!invoice.customerSnapshot?.anonymous && <div className="flex gap-2" role="group" aria-label="Settlement amount"><Button size="sm" variant={full ? "primary" : "outline"} aria-pressed={full} onClick={() => settlement(true)}>Full payment</Button><Button size="sm" variant={!full ? "primary" : "outline"} aria-pressed={!full} onClick={() => settlement(false)}>Partial payment</Button></div>}

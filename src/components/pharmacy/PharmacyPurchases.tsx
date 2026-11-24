@@ -1,7 +1,10 @@
 "use client";
+import { PharmacyPackQuantity } from "./PharmacyPackQuantity";
+import { packDescription } from "@/lib/pharmacyUnits";
+import { hasAnyPermission } from "@/lib/permissions";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select, Tabs, DatePicker } from "@/components/ui";
+import { Alert, Button, Checkbox, Input, Select, Tabs, DatePicker } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
@@ -17,6 +20,7 @@ import { purchaseReceivingPlan } from "@/lib/pharmacyReceiving";
 import { PharmacyShortbook } from "./PharmacyShortbook";
 import { PharmacyPurchaseOrders } from "./PharmacyPurchaseOrders";
 import { PharmacySupplierWorkspace } from "./PharmacySupplierWorkspace";
+import { PharmacySupplierRates } from "./PharmacySupplierRates";
 import type { ShortbookDraftSeed } from "@/lib/pharmacyShortbook";
 
 const errorMessage = (error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message || (error instanceof Error ? error.message : "Reload the record before retrying.");
@@ -34,12 +38,12 @@ function useSave(onSaved: () => void) {
   }
   return { busy, error, save, setError };
 }
-interface PurchaseProps { locationId: string; canManage: boolean; canReceive?: boolean; initialShortbookProduct?: PurchaseProduct }
+interface PurchaseProps { locationId: string; canManage: boolean; canReceive?: boolean; canViewCost?: boolean; initialShortbookProduct?: PurchaseProduct }
 export function PharmacyPurchases(props: PurchaseProps) {
   const scope = authScopeKey(useAuthStore(state => state.user));
   return <PurchaseSession key={`${scope}:${props.locationId}:${props.initialShortbookProduct?.id || ""}`} {...props} />;
 }
-function PurchaseSession({ locationId, canManage, canReceive = false, initialShortbookProduct }: PurchaseProps) {
+function PurchaseSession({ locationId, canManage, canReceive = false, canViewCost = false, initialShortbookProduct }: PurchaseProps) {
   const [tab, setTab] = useState(initialShortbookProduct ? "shortbook" : "purchases"), [search, setSearch] = useState(""), [query, setQuery] = useState(""), [archived, setArchived] = useState(false);
   const [draftSeed, setDraftSeed] = useState<ShortbookDraftSeed>();
   const [orderSeed, setOrderSeed] = useState<ShortbookDraftSeed>();
@@ -53,7 +57,7 @@ function PurchaseSession({ locationId, canManage, canReceive = false, initialSho
   useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setCursor(undefined); setPrevious([]); }, 250); return () => clearTimeout(timer); }, [search]);
   const load = useCallback(async () => {
     const request = beginRead(); setBusy(true); setError("");
-    if (tab === "shortbook" || tab === "orders") { setItems([]); setNext(null); setBusy(false); return; }
+    if (tab === "shortbook" || tab === "orders" || tab === "rates") { setItems([]); setNext(null); setBusy(false); return; }
     try {
       const page = await purchasePage<PharmacyParty | PurchaseDraft>(tab as "parties" | "purchases", locationId, { cursor, search: query, archived: tab === "parties" && archived }, request.signal);
       if (request.isCurrent()) { setItems(page.items); setNext(page.nextCursor); setLoaded(readKey); }
@@ -71,8 +75,8 @@ function PurchaseSession({ locationId, canManage, canReceive = false, initialSho
   return <section className={styles.list} aria-label="Purchases and business parties">
     <header className={styles.alertHeader}><h2>Purchases & parties</h2>{canManage && <div className={styles.actions}><Button size="sm" variant="outline" onClick={() => setParty("new")}>Add supplier / customer</Button><Button size="sm" onClick={() => { setDraftSeed(undefined); setDraft("new"); }}>New purchase draft</Button></div>}</header>
     <p className={styles.summary}>Drafts record supplier invoices. Saving a draft does not receive stock or create a supplier balance.</p>
-    <Tabs variant="pills" activeTab={tab} onChange={value => { setTab(value); setCursor(undefined); setPrevious([]); setSearch(""); setQuery(""); }} tabs={[{ id: "purchases", label: "Supplier invoices" }, { id: "orders", label: "Purchase orders" }, { id: "parties", label: "Suppliers & customers" }, { id: "shortbook", label: "Shortbook" }]} />
-    {tab === "orders" ? <PharmacyPurchaseOrders locationId={locationId} canManage={canManage} seed={orderSeed} initialOrderId={initialOrderId} onSeedClosed={() => setOrderSeed(undefined)} onOpenInvoice={id => { void openDraft(id); }} /> : tab === "shortbook" ? <PharmacyShortbook locationId={locationId} canManage={canManage} initialProduct={initialShortbookProduct} onDraft={seed => { setDraftSeed(seed); setDraft("new"); }} onOrder={seed => { setInitialOrderId(undefined); setOrderSeed(seed); setTab("orders"); }} /> : <>
+    <Tabs variant="pills" activeTab={tab} onChange={value => { setTab(value); setCursor(undefined); setPrevious([]); setSearch(""); setQuery(""); }} tabs={[{ id: "purchases", label: "Supplier invoices" }, { id: "orders", label: "Purchase orders" }, { id: "parties", label: "Suppliers & customers" }, { id: "shortbook", label: "Shortbook" }, ...(canViewCost ? [{ id: "rates", label: "Compare supplier rates" }] : [])]} />
+    {tab === "rates" ? canViewCost ? <PharmacySupplierRates locationId={locationId} onInvoice={id => { void openDraft(id); }} /> : <p>Acquisition-cost access is required.</p> : tab === "orders" ? <PharmacyPurchaseOrders locationId={locationId} canManage={canManage} seed={orderSeed} initialOrderId={initialOrderId} onSeedClosed={() => setOrderSeed(undefined)} onOpenInvoice={id => { void openDraft(id); }} /> : tab === "shortbook" ? <PharmacyShortbook locationId={locationId} canManage={canManage} initialProduct={initialShortbookProduct} onDraft={seed => { setDraftSeed(seed); setDraft("new"); }} onOrder={seed => { setInitialOrderId(undefined); setOrderSeed(seed); setTab("orders"); }} /> : <>
     <Input type="search" label={tab === "parties" ? "Search business parties" : "Search supplier invoices"} maxLength={100} value={search} onChange={event => setSearch(event.target.value)} />
     {tab === "parties" && <Select label="Party status" value={archived ? "archived" : "active"} onChange={event => { setArchived(event.target.value === "archived"); setCursor(undefined); setPrevious([]); }} options={[{ value: "active", label: "Active" }, { value: "archived", label: "Archived" }]} />}
     {error && <Alert variant="error" title="Purchase records unavailable" action={<Button size="sm" onClick={() => setRetry(value => value + 1)}>Retry purchase records</Button>}>{error}</Alert>}
@@ -90,13 +94,20 @@ function PurchaseSession({ locationId, canManage, canReceive = false, initialSho
 }
 function PartyForm({ current, locationId, onClose, onSaved }: { current?: PharmacyParty; locationId: string; onClose: () => void; onSaved: () => void }) {
   const [key] = useState(() => crypto.randomUUID()), state = useSave(onSaved);
+  const owner = hasAnyPermission(useAuthStore(state => state.user), "MANAGE_ORGANIZATION");
+  const [memberDiscount, setMemberDiscount] = useState(String((current?.memberDiscountBps || 0) / 100)), [memberEdited, setMemberEdited] = useState(false);
+  const [creditLimit, setCreditLimit] = useState(current?.creditPolicy?.limitPaise === undefined ? "" : String(current.creditPolicy.limitPaise / 100)), [creditDays, setCreditDays] = useState(current?.creditPolicy?.termsDays === undefined ? "" : String(current.creditPolicy.termsDays)), [blockOverdue, setBlockOverdue] = useState(current?.creditPolicy?.blockOverdue || false), [creditEdited, setCreditEdited] = useState(false);
   const [form, setForm] = useState({ name: current?.name || "", kind: current?.kinds.length === 2 ? "both" : current?.kinds[0] || "supplier", address: current?.address || "", phone: current?.phone || "", email: current?.email || "", gstRegistration: current?.gstRegistration || "unregistered", gstin: current?.gstin || "", licence: current?.licence?.number || "", validUntil: current?.licence?.validUntil || "", archived: current?.archived || false });
   const edit = (field: keyof typeof form, value: string | boolean) => setForm(previous => ({ ...previous, [field]: value }));
   function submit(event: React.FormEvent) {
     event.preventDefault(); const supplier = form.kind !== "customer";
     if (!form.name.trim() || !form.address.trim() || supplier && !form.licence.trim()) { state.setError("Enter the business name, address and actual supplier licence details where applicable."); return; }
+    const limit = creditLimit.trim() ? parseReceiptPaise(creditLimit) : undefined;
+    const memberBps = parseReceiptPaise(memberDiscount);
+    if (memberEdited && (memberBps === null || memberBps > 10000)) { state.setError("Enter a member discount from 0 to 100 percent, with at most two decimal places."); return; }
+    if (creditEdited && (limit === null || creditDays && (!/^\d+$/.test(creditDays) || Number(creditDays) < 1 || Number(creditDays) > 365) || blockOverdue && !creditDays)) { state.setError("Enter a valid credit limit and actual terms from 1 to 365 days for an overdue rule."); return; }
     void state.save(() => saveParty({ locationId, locationIds: current?.locationIds || [locationId], name: form.name, kinds: form.kind === "both" ? ["customer", "supplier"] : [form.kind], address: form.address, phone: form.phone, email: form.email,
-      gstRegistration: form.gstRegistration as "registered" | "unregistered", ...(form.gstRegistration === "registered" ? { gstin: form.gstin } : {}), ...(supplier ? { licence: { number: form.licence, ...(form.validUntil ? { validUntil: form.validUntil } : {}) } } : {}), archived: form.archived }, key, current));
+      gstRegistration: form.gstRegistration as "registered" | "unregistered", ...(form.gstRegistration === "registered" ? { gstin: form.gstin } : {}), ...(supplier ? { licence: { number: form.licence, ...(form.validUntil ? { validUntil: form.validUntil } : {}) } } : {}), archived: form.archived, ...(owner && memberEdited && form.kind !== "supplier" && memberBps !== null ? { memberDiscountBps: memberBps } : {}), ...(owner && creditEdited && form.kind !== "supplier" ? { creditPolicy: creditLimit || creditDays || blockOverdue ? { ...(limit !== undefined && limit !== null ? { limitPaise: limit } : {}), ...(creditDays ? { termsDays: Number(creditDays) } : {}), blockOverdue } : null } : {}) }, key, current));
   }
   return <Modal open title={current ? "Edit business party" : "Add supplier / customer"} onClose={onClose} busy={state.busy} size="md" bodyClassName={styles.dialog} footer={<><Button variant="outline" size="sm" disabled={state.busy} onClick={onClose}>Cancel</Button><Button size="sm" type="submit" form="pharmacy-party-form" loading={state.busy}>Save business party</Button></>}>
     <form id="pharmacy-party-form" className={styles.form} onSubmit={submit} noValidate>{state.error && <Alert variant="error" title="Party was not confirmed">{state.error}</Alert>}<fieldset className={styles.form} disabled={state.busy}>
@@ -104,7 +115,9 @@ function PartyForm({ current, locationId, onClose, onSaved }: { current?: Pharma
       <Input label="Business address *" value={form.address} maxLength={500} onChange={event => edit("address", event.target.value)} /><div className={styles.fieldGrid}><Input label="Business phone" value={form.phone} onChange={event => edit("phone", event.target.value)} /><Input label="Business email" type="email" value={form.email} onChange={event => edit("email", event.target.value)} /></div>
       <Select label="GST registration" value={form.gstRegistration} onChange={event => edit("gstRegistration", event.target.value)} options={[{ value: "unregistered", label: "Unregistered" }, { value: "registered", label: "Registered" }]} />{form.gstRegistration === "registered" && <Input label="GSTIN *" value={form.gstin} maxLength={15} onChange={event => edit("gstin", event.target.value)} />}
       {form.kind !== "customer" && <div className={styles.fieldGrid}><Input label="Supplier licence number *" value={form.licence} maxLength={80} onChange={event => edit("licence", event.target.value)} /><DatePicker label="Supplier licence valid until (if recorded)" value={form.validUntil} onChange={value => edit("validUntil", value)} /></div>}
+      {form.kind !== "supplier" && <details><summary>Optional customer credit rules</summary><p>Shared across this customer's visible branches. Leave empty for no limit. Existing invoices keep their recorded due dates; rules apply to new credit.</p><fieldset disabled={!owner} className={styles.form}><Input label="Customer credit limit (INR, optional)" type="number" min="0" step="0.01" value={creditLimit} onChange={e => { setCreditLimit(e.target.value); setCreditEdited(true); }} /><Input label="Customer credit terms (days, optional)" type="number" min="1" max="365" step="1" value={creditDays} onChange={e => { setCreditDays(e.target.value); setCreditEdited(true); }} /><Checkbox label="Block new credit while an invoice is overdue" checked={blockOverdue} onChange={e => { setBlockOverdue(e.target.checked); setCreditEdited(true); }} /></fieldset>{!owner && <p>Only the organization owner may change these rules.</p>}</details>}
       {current && <Select label="Business party status" value={form.archived ? "archived" : "active"} onChange={event => edit("archived", event.target.value === "archived")} options={[{ value: "active", label: "Active" }, { value: "archived", label: "Archived; retain history" }]} />}
+      {form.kind !== "supplier" && <Input label="Member discount (%)" type="number" min="0" max="100" step="0.01" value={memberDiscount} disabled={!owner} hint="Owner-set suggested invoice discount. The cashier reviews and applies it to a priced bill." onChange={event => { setMemberDiscount(event.target.value); setMemberEdited(true); }} />}
     </fieldset></form>
   </Modal>;
 }
@@ -190,8 +203,8 @@ function DraftForm({ current, locationId, canManage, onClose, onSaved, onContinu
         {importNotice && <p role="status">{importNotice}</p>}
         <Input label="Search purchase products" maxLength={100} value={productSearch} onChange={event => { setProductSearch(event.target.value); setSearchError(""); }} /><Select label="Purchase product" value={productId} onChange={event => setProductId(event.target.value)} options={[{ value: "", label: "Choose product with recorded units" }, ...products.map(product => ({ value: product.id, label: product.name }))]} /><Button size="sm" variant="outline" disabled={!productId || lines.length >= 100} onClick={addProduct}>Add purchase line</Button>
         {lines.map((line, index) => { const edit = (field: keyof FormLine, value: string) => setLines(previous => previous.map(row => row.lineId === line.lineId ? { ...row, [field]: value } : row)); return <fieldset className={styles.rx} key={line.lineId} aria-label={`Purchase line ${index + 1}: ${line.product.name}`}>
-          <div className={styles.rowHeading}><strong>{line.product.name}</strong><Button size="sm" variant="ghost" aria-label={`Remove purchase line ${index + 1}`} onClick={() => setLines(previous => previous.filter(row => row.lineId !== line.lineId))}>Remove</Button></div><p>1 {line.product.unitDefinition.packUnit} = {line.product.unitDefinition.unitsPerPack} {line.product.unitDefinition.baseUnit}</p>
-          <div className={styles.fieldGrid}>{numberFields.map((field, count) => <Input key={field} label={["Billed packs", "Billed loose units", "Free packs", "Free loose units"][count]} type="number" min="0" step="1" value={line[field]} onChange={event => edit(field, event.target.value)} />)}</div>
+          <div className={styles.rowHeading}><strong>{line.product.name}</strong><Button size="sm" variant="ghost" aria-label={`Remove purchase line ${index + 1}`} onClick={() => setLines(previous => previous.filter(row => row.lineId !== line.lineId))}>Remove</Button></div><p>{packDescription(line.product.unitDefinition)}</p>
+          <div className={styles.fieldGrid}>{numberFields.map((field, count) => field === "packs" || field === "freePacks" ? <PharmacyPackQuantity key={field} unit={line.product.unitDefinition} label={field === "packs" ? "Billed packs" : "Free packs"} value={line[field]} onChange={value => edit(field, value)} onError={state.setError} /> : <Input key={field} label={["Billed packs", "Billed loose units", "Free packs", "Free loose units"][count]} type="number" min="0" step="1" value={line[field]} onChange={event => edit(field, event.target.value)} />)}</div>
           <div className={styles.fieldGrid}><Input label="Base amount before discount/tax (INR)" type="number" min="0" step="0.01" value={line.baseAmount} onChange={event => edit("baseAmount", event.target.value)} /><Input label="Line discount (INR)" type="number" min="0" step="0.01" value={line.discount} onChange={event => edit("discount", event.target.value)} /></div>
           <div className={styles.fieldGrid}><Input label="Invoice HSN" value={line.hsn} onChange={event => edit("hsn", event.target.value)} /><Input label="Invoice GST (%)" type="number" min="0" max="100" step="0.01" value={line.gst} onChange={event => edit("gst", event.target.value)} /></div>
           <div className={styles.fieldGrid}><Input label={`Selling price per ${line.product.unitDefinition.baseUnit} (INR)`} type="number" min="0" step="0.01" value={line.sellingPrice} onChange={event => edit("sellingPrice", event.target.value)} /><Input label={`MRP per ${line.product.unitDefinition.baseUnit} (INR)`} type="number" min="0" step="0.01" value={line.mrp} onChange={event => edit("mrp", event.target.value)} /></div>

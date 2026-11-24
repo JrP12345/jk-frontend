@@ -50,6 +50,7 @@ it("keeps a counter-only home free of owner setup links without requests or writ
   expect(screen.getByRole("link", { name: "Open counter sales" })).toHaveAttribute("href", "/dashboard/pharmacy");
   expect(screen.getAllByRole("link")).toHaveLength(1); expect(api.get).not.toHaveBeenCalled(); expect(api.post).not.toHaveBeenCalled();
   expect(isCounterSalesUser({ role: "root", permissions })).toBe(false);
+  expect(isCounterSalesUser({ role: "custom", permissions: [...permissions, "PHARMACY_MANAGE_CUSTOMERS"] })).toBe(true);
   expect(isCounterSalesUser({ role: "custom", permissions: [...permissions, "PHARMACY_VIEW_COST"] })).toBe(false);
 });
 

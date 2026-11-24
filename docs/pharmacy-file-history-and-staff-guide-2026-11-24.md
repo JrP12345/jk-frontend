@@ -1,0 +1,36 @@
+# Prescription file history, custody and first-day staff guidance
+
+Implemented 24 November 2026. This advances R33, R41 and the records part of R45 in the [controlling pharmacy plan](pharmacy-final-implementation-plan-2026-11-22.md). It does not complete shared LAN offline billing or actual-store demonstrations.
+
+## Delivered behavior
+
+The pharmacy's **Prescription files** tab provides explicitly loaded, branch-scoped history, including originals whose clinic prescription has since been superseded or archived. Current prescription uploads remain separate. Historical files cannot authorize a new medicine supply. Pages contain at most 25 records; private filenames and source metadata are disclosed only after a required read audit succeeds. Original bytes use an audited, 60-second private download. Pending uploads and files with removal reserved or completed cannot be downloaded.
+
+`PHARMACY_READ_PRESCRIPTION_FILES` permits retained-history access; existing organization-wide medicine/EHR grants also cover that read. Custody management additionally requires `PHARMACY_MANAGE_RECORDS` or organization management. Current prescription queue access alone grants neither historical access nor removal. Branch/account/permission changes clear previous screen evidence and pending reads.
+
+Files start with indefinite retention and no automatic deletion. An authorized records operator explicitly reviews the actual policy reference, exact UTC retention date/time or indefinite retention, legal-hold status, hold reason and review reference. Revision checks serialize conflicting reviews, uploads, holds and removal. Policy/review references, hold reasons and original recovery input are encrypted. Hold changes preserve their reason in audit history.
+
+Removal requires an attached original, elapsed reviewed retention, no legal hold, no unresolved upload, the current revision and explicit irreversible-removal confirmation. The original key, input and actor are reserved and audited in a database transaction before storage deletion. The original actor can recover that request from the server. An uncertain storage response or failed completion audit leaves removal pending and access blocked; retries retain the original request. Completion retains an immutable tombstone, attachment/source metadata and audit evidence. Completed retries do not call storage again. Financial, stock and prescription-authorization records are unaffected.
+
+Each upload attempt acquires its own durable lease before storage access. Successful acknowledgements close only that attempt's lease. A timed-out request may remain unresolved after another attempt attaches the file. Removal stays blocked until an operator verifies every original request has finished at the provider and records its actual review reference. Requests younger than 60 seconds cannot be manually cleared. Elapsed time alone never clears leases or establishes provider completion. An uncompleted upload must first be recovered with its original file/reference.
+
+Removal deletes bytes at the configured active private object key. It does not erase separately retained backups or necessary audit/source metadata. There is no automatic retention schedule or hard-coded legal retention period. Approved policy, provider request-review procedures, private storage, key custody and recovery remain operating responsibilities.
+
+The **First-day and daily staff guide** is available inside the pharmacy workspace. Expand the task being learned. Current capabilities select cashier/drawer, purchasing, stock-only expiry review, authorized supplier-return preparation and owner closing guidance. Links open existing permitted screens without issuing transactions. A compact downloadable text checklist contains no patient, supplier, account or branch identifiers. Instructions cover the five demonstrations, scanner/pack checks, actual payments, print/uncertain-save recovery, posting versus receiving, supplier packing versus credit, gross contribution versus net profit and original offline reconciliation. Billing-only guidance avoids stock/expiry tracking and final offline-billing claims. Practice uses a designated training branch because transaction buttons remain real writes.
+
+## Verification
+
+Highest risk: Level 4, patient files, permissions and irreversible object-byte removal. Integration storage calls are mocked; no live object was uploaded or deleted.
+
+- Backend attachment/capability selection: 40 cases passed. Final attachment rerun: 18 passed after custody immutability and exact-read-audit refinements. These overlap; they are not 58 distinct cases.
+- Frontend records/attachment/capability/workspace selection: 79 passed. Final records cases: seven passed. Guide/workspace selection: 72 passed, including six guide cases; final guide rerun passed those six. Do not add overlapping runs into a distinct total.
+- Chrome: 44 records combinations and 12 additional guide combinations passed at 360/390/768/1440 px. Coverage includes read-only history, held/pending/removed states, permitted guide links, billing-only scope, actual checklist download, no page errors and no horizontal overflow. Mobile history and guide screenshots were inspected. Browser fixtures and database integration tests are separate; neither is a deployed store trial.
+- Both package type checks and backend API/four-worker bundles passed. Changed-file frontend lint has no errors; the workspace retains its existing effect warning. Tenant scanning completed with 142 repository-wide advisory warnings; explicit endpoint scope/role tests supply isolation evidence for this increment. Both diff whitespace checks passed.
+
+Probe: `scripts/performance/check-pharmacy-records.mjs`. Set `PHARMACY_RECORD_MODES=guide_owner,guide_cashier,guide_billing_only` for only the new guide checks. Ignored evidence: frontend `.next/pharmacy-file-records-*`, `.next/pharmacy-staff-guide-*`, `.next/pharmacy-records-acceptance/` and backend `build/pharmacy-file-records-*`. No deployment, production index preparation, provider activation, live migration or restore drill was performed. Full CI/release gates remain a release checkpoint.
+
+## Remaining engineering and owner input
+
+Shared LAN offline checkout remains engineering work: a durable local coordinator, authenticated cashier/counter pairing, separate drawers, atomic stock/number issuance, original receipt import, restart recovery, terminal reconciliation, trusted local HTTPS and installation/update/backup procedures. Existing prepared offline checkout remains one original PC/operator in its supported cash-only scope. Online counters are supported separately. Copying a browser key or attributing another cashier's sale to the manager is not a substitute.
+
+The owner supplies approved records policies and staff grants, private-storage/provider credentials, authorized actual distributor/Marg files and medicine conversions/catalogue rights, target PC/printer/scanner access, support/training/commercial decisions and staff/owner acceptance of all five demonstrations. Arbitrary provider formats/adapters cannot be promised without actual files or documented contracts. Engineering owns the coordinator and any confirmed adapter changes; these are not tasks for pharmacy staff to code.

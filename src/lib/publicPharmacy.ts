@@ -2,7 +2,7 @@ import api from "./api";
 
 export interface PublicPharmacyFlags { catalogueEnabled: boolean; pickupEnabled: boolean }
 export interface PublicMedicine { id: string; name: string; genericName: string; strength: string; baseUnit: string; unitVersion: number; available: boolean; availabilityKnown?: boolean }
-export interface PickupItem { medicineId: string; name: string; strength: string; baseUnit: string; quantity: number }
+export interface PickupItem { unitVersion?: number; medicineId: string; name: string; strength: string; baseUnit: string; quantity: number }
 export interface PickupTicket { id: string; reference: string; locationId: string; status: "requested" | "ready" | "collected" | "cancelled" | "expired"; revision: number; createdAt: string; expiresAt: string; readyAt?: string; collectedAt?: string; invoiceNumber?: string; items: PickupItem[]; location?: { name: string; city: string; phone: string } | null }
 export interface StaffPickup extends PickupTicket { customerName: string; phone: string; invoiceId?: string }
 export interface PickupRequest { name: string; phone: string; ticketSecret: string; items: Array<{ medicineId: string; unitVersion: number; quantity: number }> }

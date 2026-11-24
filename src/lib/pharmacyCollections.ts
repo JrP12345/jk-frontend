@@ -25,7 +25,8 @@ export interface CollectionReceipt {
   receiptId: string; invoiceId: string; invoiceNumber: string; locationId: string; currency: "INR";
   actorId: string; shiftId: string; drawerCode: string; paidAt: string; collectedPaise: number; paidPaise: number; balancePaise: number; creditedPaise: number;
   revision: number; cashTenderedPaise: number; cashChangePaise: number;
-  status: "paid" | "partially_paid"; evidenceMode: "staff_confirmed_manual"; entries: CollectionEntry[];
+  status: "paid" | "partially_paid"; evidenceMode: "staff_confirmed_manual" | "provider_verified"; entries: CollectionEntry[];
+  providerEvidence?: { intentId: string; paymentId: string; capturedAt: string };
   requestKey?: string;
 }
 export interface InvoiceSummary { id: string; invoiceNumber: string; status: string; totalAmount: number; currency: string; documentVersion?: number; customerSnapshot?: { anonymous: boolean; name?: string } }
@@ -44,7 +45,7 @@ export function validateCollectionReceipt(value: unknown): CollectionReceipt {
   const result = value as CollectionReceipt | null;
   if (!result || [result.receiptId, result.invoiceId, result.invoiceNumber, result.locationId, result.actorId].some(value => typeof value !== "string" || !value) || result.currency !== "INR" ||
       !/^[a-f\d]{24}$/i.test(result.shiftId || "") || !/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(result.drawerCode || "") ||
-      !["paid", "partially_paid"].includes(result.status) || result.evidenceMode !== "staff_confirmed_manual" || typeof result.paidAt !== "string" || !Number.isFinite(new Date(result.paidAt).getTime()) ||
+      !["paid", "partially_paid"].includes(result.status) || !["staff_confirmed_manual", "provider_verified"].includes(result.evidenceMode) || result.evidenceMode === "provider_verified" && (!result.providerEvidence || !/^pay_[a-zA-Z0-9]+$/.test(result.providerEvidence.paymentId) || !Number.isFinite(Date.parse(result.providerEvidence.capturedAt))) || typeof result.paidAt !== "string" || !Number.isFinite(new Date(result.paidAt).getTime()) ||
       [result.collectedPaise, result.paidPaise, result.balancePaise, result.creditedPaise, result.revision, result.cashTenderedPaise, result.cashChangePaise].some(value => !Number.isSafeInteger(value) || value < 0) ||
       result.collectedPaise <= 0 || result.collectedPaise > result.paidPaise || !Array.isArray(result.entries) || !result.entries.length || result.entries.length > 10 ||
       result.entries.some(entry => !entry.componentId || !["cash", "upi", "card"].includes(entry.paymentMethod) || !Number.isSafeInteger(entry.amountPaise) || entry.amountPaise <= 0 || entry.paymentMethod !== "cash" && !entry.referenceNumber) ||
@@ -52,6 +53,7 @@ export function validateCollectionReceipt(value: unknown): CollectionReceipt {
       result.entries.reduce((sum, entry) => sum + entry.amountPaise, 0) !== result.collectedPaise ||
       result.cashTenderedPaise - result.entries.filter(entry => entry.paymentMethod === "cash").reduce((sum, entry) => sum + entry.amountPaise, 0) !== result.cashChangePaise ||
       (result.status === "paid") !== (result.balancePaise === 0)) throw new Error("Collection receipt could not be confirmed. Keep the same reference.");
+  if (result.evidenceMode === "provider_verified" && (!/^[a-f\d]{24}$/i.test(result.providerEvidence!.intentId) || result.entries.length !== 1 || result.entries[0].paymentMethod === "cash" || result.entries[0].referenceNumber !== result.providerEvidence!.paymentId) || result.evidenceMode === "staff_confirmed_manual" && result.providerEvidence !== undefined) throw new Error("Collection provider evidence does not match its receipt");
   return result;
 }
 export async function readCounterInvoice(id: string, locationId: string, signal?: AbortSignal) {
@@ -61,13 +63,16 @@ export async function readCounterInvoice(id: string, locationId: string, signal?
       [invoice.balanceDue, invoice.amountPaid, invoice.totalAmount].some(value => !Number.isFinite(value) || value < 0)) throw new Error("Counter invoice could not be loaded completely");
   return invoice;
 }
-export async function collectionInvoicePage(locationId: string, cursor?: string, signal?: AbortSignal, filters: { search?: string; status?: string } = {}): Promise<{ items: InvoiceSummary[]; nextCursor: string | null }> {
+export async function collectionInvoicePage(locationId: string, cursor?: string, signal?: AbortSignal, filters: { search?: string; status?: string; startDate?: string; endDate?: string } = {}): Promise<{ items: InvoiceSummary[]; nextCursor: string | null; period?: { startDate: string; endDate: string; timezone: string } }> {
   const query = new URLSearchParams({ locationId });
   if (cursor) query.set("cursor", cursor);
   if (filters.search?.trim()) query.set("search", filters.search.trim());
   if (filters.status && filters.status !== "all") query.set("status", filters.status);
+  if (filters.startDate) query.set("startDate", filters.startDate);
+  if (filters.endDate) query.set("endDate", filters.endDate);
   const response = await api.get(`/pharmacy/invoices?${query}`, { signal }), page = response.data?.data;
   if (!page || !Array.isArray(page.items) || page.items.length > 25 || page.nextCursor !== null && typeof page.nextCursor !== "string") throw new Error("Counter invoice page could not be loaded completely");
+  if ((filters.startDate || filters.endDate) && (page.period?.startDate !== filters.startDate || page.period?.endDate !== filters.endDate || typeof page.period?.timezone !== "string" || !page.period.timezone)) throw new Error("Sales dates could not be confirmed. Retry the date filter.");
   return page;
 }
 export async function collectionReceiptPage(invoiceId: string, locationId: string, cursor?: string, signal?: AbortSignal): Promise<{ items: CollectionReceipt[]; nextCursor: string | null }> {

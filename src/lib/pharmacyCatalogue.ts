@@ -1,3 +1,4 @@
+import { validatePharmacyUnits } from "./pharmacyUnits";
 import type { CounterIntent, CounterProduct, CounterQuote } from "./pharmacyCounter";
 import { createPharmacyLocalClient } from "./pharmacyDrafts";
 
@@ -20,7 +21,7 @@ export function cleanCatalogueProduct(p: CounterProduct): CounterProduct {
     ...(typeof p.rackLocation === "string" && p.rackLocation.length <= 60 ? { rackLocation: p.rackLocation } : {}),
     ...(safe(p.retailPricePaise) ? { retailPricePaise: p.retailPricePaise } : {}),
     barcodes: (p.barcodes || []).filter(code => typeof code === "string" && code.length > 0 && code.length <= 100).slice(0, 20),
-    ...(unit ? { unitDefinition: { version: unit.version, baseUnit: unit.baseUnit, packUnit: unit.packUnit, unitsPerPack: unit.unitsPerPack } } : {}) };
+    ...(unit ? { unitDefinition: validatePharmacyUnits(unit) } : {}) };
 }
 function cleanSnapshot(input: unknown): Snapshot {
   const data = input as Snapshot;

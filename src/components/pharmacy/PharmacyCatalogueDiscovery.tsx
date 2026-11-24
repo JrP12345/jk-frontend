@@ -7,6 +7,7 @@ import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { adoptCatalogueProduct, searchGlobalProducts, type GlobalCataloguePage, type GlobalCatalogueProduct } from "@/lib/pharmacyGlobalCatalogue";
 import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
+import { validatePharmacyUnits } from "@/lib/pharmacyUnits";
 import type { PurchaseProduct } from "@/services/pharmacyPurchase.service";
 import styles from "./PharmacyWorkspace.module.css";
 
@@ -20,7 +21,7 @@ function CatalogueSession({ locationId, inventoryMode = "tracked", initialSearch
   const [search, setSearch] = useState(initialSearch.slice(0, 100)), [cursor, setCursor] = useState<string>();
   const [page, setPage] = useState<GlobalCataloguePage | null>(null), [selected, setSelected] = useState<GlobalCatalogueProduct | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(""), [attempt, setAttempt] = useState(0), [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ genericName: "", category: "", baseUnit: "", packUnit: "", unitsPerPack: "", price: "", batchNumber: "", expiry: "", mrp: "" }), [confirmed, setConfirmed] = useState(false);
+  const [form, setForm] = useState({ genericName: "", category: "", baseUnit: "", packUnit: "", unitsPerPack: "", outerPackUnit: "", packsPerOuter: "", price: "", batchNumber: "", expiry: "", mrp: "" }), [confirmed, setConfirmed] = useState(false);
   const beginRead = useLatestRead(), lock = useRef(false), alive = useRef(true);
   const scope = authScopeKey(useAuthStore(state => state.user));
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -44,8 +45,9 @@ function CatalogueSession({ locationId, inventoryMode = "tracked", initialSearch
     if (!selected.alreadyAdded && inventoryMode === "billing_only" && (mrpPaise === null || mrpPaise < sellingPricePaise || !form.batchNumber.trim() || !/^\d{4}-(0[1-9]|1[0-2])$/.test(form.expiry))) { setError("Enter the actual printed batch, expiry month and MRP. Selling price cannot exceed MRP."); return; }
     lock.current = true; setBusy(true); setError("");
     try {
+      const unitDefinition = selected.alreadyAdded ? undefined : validatePharmacyUnits({ version: 1, baseUnit: form.baseUnit, packUnit: form.packUnit, unitsPerPack: Number(form.unitsPerPack), ...(form.outerPackUnit || form.packsPerOuter ? { outerPackUnit: form.outerPackUnit, packsPerOuter: Number(form.packsPerOuter) } : {}) });
       const product = await adoptCatalogueProduct(selected.id, { locationId, expectedRevision: selected.revision, ...(!selected.alreadyAdded ? { sellingPricePaise, category: form.category,
-        unitDefinition: { baseUnit: form.baseUnit, packUnit: form.packUnit, unitsPerPack: Number(form.unitsPerPack) },
+        unitDefinition: { baseUnit: unitDefinition!.baseUnit, packUnit: unitDefinition!.packUnit, unitsPerPack: unitDefinition!.unitsPerPack, ...(unitDefinition!.outerPackUnit ? { outerPackUnit: unitDefinition!.outerPackUnit, packsPerOuter: unitDefinition!.packsPerOuter } : {}) },
         ...(inventoryMode === "billing_only" ? { billingSupply: { batchNumber: form.batchNumber.trim(), expiry: { precision: "month" as const, value: form.expiry }, mrpPaise: mrpPaise! } } : {}),
         ...(!selected.genericName && !selected.composition ? { genericName: form.genericName } : {}) } : {}), confirmedIdentity: true });
       if (alive.current && scope === authScopeKey(useAuthStore.getState().user)) onAdded(product);
@@ -78,6 +80,8 @@ function CatalogueSession({ locationId, inventoryMode = "tracked", initialSearch
           <Select label="Base unit" required value={form.baseUnit} options={options(["tablet", "capsule", "ml", "g", "piece", "dose"])} onChange={event => change("baseUnit", event.target.value)} />
           <Select label="Pack unit" required value={form.packUnit} options={options(["strip", "box", "bottle", "vial", "tube", "ampoule", "sachet", "pack", "piece"])} onChange={event => change("packUnit", event.target.value)} />
           <Input label="Base units per pack" required type="number" min={1} max={1000000} step={1} value={form.unitsPerPack} onChange={event => change("unitsPerPack", event.target.value)} />
+          <Select label="Outer pack (optional)" value={form.outerPackUnit} options={[{ value: "", label: "No outer pack recorded" }, ...["strip", "box", "bottle", "vial", "tube", "ampoule", "sachet", "pack", "piece"].filter(value => value !== form.packUnit && value !== form.baseUnit).map(value => ({ value, label: value }))]} onChange={event => { change("outerPackUnit", event.target.value); if (!event.target.value) change("packsPerOuter", ""); }} />
+          {form.outerPackUnit && <Input label="Inner packs per outer pack" required type="number" min={2} max={1000000} step={1} value={form.packsPerOuter} onChange={event => change("packsPerOuter", event.target.value)} />}
           <Input label="Branch selling price per base unit (INR)" required inputMode="decimal" value={form.price} onChange={event => change("price", event.target.value)} /></div>
         {inventoryMode === "billing_only" && <div className={styles.fieldGrid}>
           <p className="text-sm">Stock is not tracked here. Copy these supply details from the actual pack for billing; no stock will be created.</p>

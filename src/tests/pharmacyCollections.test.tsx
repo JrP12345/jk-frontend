@@ -4,7 +4,8 @@ import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { PharmacyCollections } from "@/components/pharmacy/PharmacyCollections";
 import { ToastProvider } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
-import { validateCollectionReceipt } from "@/lib/pharmacyCollections";
+import { collectionInvoicePage, validateCollectionReceipt } from "@/lib/pharmacyCollections";
+import { datePickerInput } from "./datePickerTestUtils";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 vi.mock("@/lib/api", () => ({ default: api }));
@@ -145,6 +146,72 @@ it("searches branch sales and payment status on the server without writing", asy
   expect(screen.queryByRole("button", { name: "Open sale " + summary.invoiceNumber })).not.toBeInTheDocument();
   expect(api.get.mock.calls.some(([url]) => String(url).includes("search=PAID-002"))).toBe(true);
   expect(api.get.mock.calls.some(([url]) => String(url).includes("status=unpaid"))).toBe(true);
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+function saleDate(label: string, value: string) { fireEvent.change(datePickerInput(screen.getByLabelText(label)), { target: { value } }); }
+it("applies sale dates explicitly, retains other filters and dates across pages, and clears them", async () => {
+  api.get.mockImplementation(async (url: string) => {
+    const params = new URL(url, "https://test.invalid").searchParams;
+    return response({ items: [summary], nextCursor: params.has("cursor") ? null : "older-sale", ...(params.has("startDate") ? { period: { startDate: params.get("startDate"), endDate: params.get("endDate"), timezone: "Asia/Kolkata" } } : {}) });
+  });
+  mount(); await screen.findByRole("button", { name: "Next sales page" });
+  fireEvent.click(screen.getByRole("button", { name: "Next sales page" }));
+  await screen.findByRole("button", { name: "First sales page" });
+  fireEvent.click(screen.getByText("Sale dates: All dates"));
+  const calls = api.get.mock.calls.length;
+  saleDate("Sale start date", "2026-10-20");
+  fireEvent.click(screen.getByRole("button", { name: "Apply dates" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("Choose both sale dates"); expect(api.get).toHaveBeenCalledTimes(calls);
+  saleDate("Sale end date", "2026-10-19");
+  fireEvent.click(screen.getByRole("button", { name: "Apply dates" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("start on or before"); expect(api.get).toHaveBeenCalledTimes(calls);
+  saleDate("Sale end date", "2026-10-21");
+  fireEvent.click(screen.getByRole("button", { name: "Apply dates" }));
+  await screen.findByText(/Both dates include.*Asia\/Kolkata/);
+  expect(new URL(api.get.mock.lastCall![0], "https://test.invalid").searchParams.has("cursor")).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Unpaid", exact: true }));
+  change("Search sales", "Dated");
+  await waitFor(() => expect(api.get.mock.lastCall![0]).toContain("search=Dated"));
+  await screen.findByRole("button", { name: "Next sales page" });
+  fireEvent.click(screen.getByRole("button", { name: "Next sales page" }));
+  await screen.findByRole("button", { name: "First sales page" });
+  const params = new URL(api.get.mock.lastCall![0], "https://test.invalid").searchParams;
+  expect(Object.fromEntries(params)).toMatchObject({ locationId: "branch", cursor: "older-sale", search: "Dated", status: "unpaid", startDate: "2026-10-20", endDate: "2026-10-21" });
+  fireEvent.click(screen.getByRole("button", { name: "Clear dates" }));
+  await waitFor(() => expect(api.get.mock.lastCall![0]).not.toContain("startDate"));
+  expect(api.get.mock.lastCall![0]).toContain("status=unpaid");
+  expect(screen.getByText("Sale dates: All dates")).toBeInTheDocument(); expect(api.post).not.toHaveBeenCalled();
+});
+it("ignores a late previous date result and reports an unconfirmed server date filter", async () => {
+  let finish!: (value: unknown) => void;
+  api.get.mockImplementation(async (url: string) => {
+    if (url.includes("startDate=2026-10-20")) return new Promise(resolve => { finish = resolve; });
+    if (url.includes("startDate=2026-10-21")) return response({ items: [], nextCursor: null });
+    return response({ items: [summary], nextCursor: null });
+  });
+  mount(); await screen.findByRole("button", { name: "Open sale " + summary.invoiceNumber });
+  fireEvent.click(screen.getByText("Sale dates: All dates"));
+  saleDate("Sale start date", "2026-10-20"); saleDate("Sale end date", "2026-10-20");
+  fireEvent.click(screen.getByRole("button", { name: "Apply dates" }));
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  saleDate("Sale start date", "2026-10-21"); saleDate("Sale end date", "2026-10-21");
+  fireEvent.click(screen.getByRole("button", { name: "Apply dates" }));
+  await screen.findByText("Sales unavailable");
+  expect(screen.getByText(/Sales dates could not be confirmed/)).toBeInTheDocument();
+  await act(async () => { finish(response({ items: [summary], nextCursor: null, period: { startDate: "2026-10-20", endDate: "2026-10-20", timezone: "Asia/Kolkata" } })); });
+  expect(screen.queryByRole("button", { name: "Open sale " + summary.invoiceNumber })).not.toBeInTheDocument();
+  expect(api.post).not.toHaveBeenCalled();
+});
+it("refuses a server response that confirms different sale dates", async () => {
+  api.get.mockResolvedValue(response({ items: [], nextCursor: null, period: { startDate: "2026-10-19", endDate: "2026-10-20", timezone: "Asia/Kolkata" } }));
+  await expect(collectionInvoicePage("branch", undefined, undefined, { startDate: "2026-10-20", endDate: "2026-10-20" })).rejects.toThrow("Sales dates could not be confirmed");
+});
+it("does not load sales history or show date filters during checkout", async () => {
+  render(<ToastProvider><PharmacyCollections locationId="branch" canCollect checkoutOnly initialInvoiceId="invoice" /></ToastProvider>);
+  await screen.findByRole("dialog", { name: /Collect payment/ });
+  expect(screen.queryByText("Sale dates: All dates")).not.toBeInTheDocument();
+  expect(api.get.mock.calls.some(([url]) => String(url).startsWith("/pharmacy/invoices?"))).toBe(false);
   expect(api.post).not.toHaveBeenCalled();
 });
 

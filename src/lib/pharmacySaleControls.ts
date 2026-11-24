@@ -20,3 +20,10 @@ export async function savePharmacySaleControl(kind: "product" | "batch", id: str
   if (saved?.id !== id || saved.locationId !== locationId || !validControl(saved.saleControl) || saved.saleControl?.revision !== input.expectedRevision + 1 || saved.saleControl.blocked !== input.blocked) throw new Error("Sale-control save is uncertain. Reload to check its current result.");
   return saved as { offlineNotice: string | null };
 }
+
+export interface RecallImpact { medicineId: string; locationId: string; batchNumber: string | null; coverage: string; canTraceBills: boolean; products: Array<{ medicineId: string; locationId: string; branch: string; name: string; match: string; physicalUnits: number; archived?: boolean; blocked: boolean; batchCount: number }>; nextCursor: string | null; supplies: Array<{ id: string; invoiceId: string; locationId: string; suppliedAt: string; lines: Array<{ medicineId: string; quantity: number; batchNumber: string | null }> }>; nextSupplyCursor: string | null }
+export async function readRecallImpact(medicineId: string, locationId: string, query: { cursor?: string; supplyCursor?: string; batchId?: string } = {}, signal?: AbortSignal): Promise<RecallImpact> {
+  const row = (await api.get("/pharmacy/medicines/" + encodeURIComponent(medicineId) + "/recall-impact", { params: { locationId, ...query }, signal })).data?.data as RecallImpact;
+  if (!row || row.medicineId !== medicineId || row.locationId !== locationId || typeof row.coverage !== "string" || !Array.isArray(row.products) || row.products.length > 25 || !Array.isArray(row.supplies) || row.supplies.length > 25 || row.products.some(item => !item.medicineId || !item.locationId || !Number.isSafeInteger(item.physicalUnits) || item.physicalUnits < 0)) throw Error("Recall impact scope could not be confirmed");
+  return row;
+}

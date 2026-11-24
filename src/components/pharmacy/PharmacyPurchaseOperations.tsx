@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/authStore";
 import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
 import { readPurchase, type PharmacyParty, type PurchaseDraft } from "@/services/pharmacyPurchase.service";
 import { purchaseDeliveryPayload, purchaseReceivingPlan, remainingDeliveryLines, type PurchaseDeliveryLine as DeliveryLine } from "@/lib/pharmacyReceiving";
+import { PharmacyDeliveryManifest } from "./PharmacyDeliveryManifest";
 import { money } from "./pharmacyWorkspace";
 import styles from "./PharmacyWorkspace.module.css";
 import { orderSeedFromPurchase } from "@/lib/pharmacyPurchaseOrders";
@@ -30,6 +31,7 @@ export function PharmacyPurchaseOperations({ purchase: initialPurchase, canManag
   const [pending, setPending] = useState(initial.pending), [error, setError] = useState(initial.error), [busy, setBusy] = useState(false), [confirmed, setConfirmed] = useState<{ requestKey: string; receiptId?: string; payablePaise?: number } | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [canCorrect, setCanCorrect] = useState(false);
+  const [readingManifest, setReadingManifest] = useState(false);
   const alive = useRef(true), lock = useRef(false), frozen = useRef<{ ref: Pending; payload: object } | null>(null);
   const current = () => alive.current && authScopeKey(useAuthStore.getState().user) === scope;
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -121,10 +123,11 @@ export function PharmacyPurchaseOperations({ purchase: initialPurchase, canManag
   }
   function receive(event: React.FormEvent) {
     event.preventDefault();
+    if (readingManifest) return;
     try { const payload = purchaseDeliveryPayload(purchase, deliveryReference, lines); void send("receipt", payload); }
     catch (failure) { setError(message(failure)); }
   }
-  const postingMode = purchase.status === "draft", disabled = busy || Boolean(confirmed) || Boolean(hasSubmitted && pending), allowed = canManage && (postingMode || canReceive);
+  const postingMode = purchase.status === "draft", disabled = busy || readingManifest || Boolean(confirmed) || Boolean(hasSubmitted && pending), allowed = canManage && (postingMode || canReceive);
   return <Modal open title={postingMode ? "Post saved supplier invoice" : "Receive purchase delivery"} onClose={onClose} busy={busy} size="lg" bodyClassName={styles.dialog} footer={<Button size="sm" variant="outline" disabled={busy} onClick={onClose}>Close purchase</Button>}>
     <p>{purchase.supplierInvoiceNumber} · {purchase.supplierSnapshot.name}. Supplier stated total: {money(purchase.statedTotalPaise / 100)}.</p>
     {purchase.posting && <p>Posted payable: {money(purchase.posting.payablePaise / 100)}. Delivery receipts do not create another payable.</p>}
@@ -142,18 +145,19 @@ export function PharmacyPurchaseOperations({ purchase: initialPurchase, canManag
       <Select label="Reviewed acquisition cost treatment" value={posting.cost} onChange={event => setPosting({ ...posting, cost: event.target.value })} options={[{ value: "", label: "Choose reviewed cost treatment" }, { value: "exclude_tax", label: "Exclude supplier GST from stock cost" }, { value: "include_tax", label: "Include supplier GST in stock cost" }]} />
       <Input label="Reviewed invoice round-off (INR)" value={posting.round} onChange={event => setPosting({ ...posting, round: event.target.value })} /><Input label="Supplier eligibility and tax review reference" maxLength={200} value={posting.review} onChange={event => setPosting({ ...posting, review: event.target.value })} />
       <Button size="sm" type="submit" disabled={!party || Boolean(lookupError)} loading={busy}>Post saved supplier invoice</Button>
-    </fieldset></form> : <form onSubmit={receive} className={styles.form} noValidate><fieldset className={styles.form} disabled={disabled}>
+    </fieldset></form> : <form onSubmit={receive} className={styles.form} noValidate>{!pending && <PharmacyDeliveryManifest key={`${scope}:${purchase.id}:${purchase.revision}`} purchase={purchase} disabled={busy} onReading={setReadingManifest} onReview={rows => { setLines(rows); setError(""); }} />}<fieldset className={styles.form} disabled={disabled}>
       <p>Remaining invoice quantities are prefilled. Adjust to the actual delivery for partial receipts, or split a product into separate batch lots. Record each printed batch and expiry.</p>
       <Input label="Actual delivery reference" maxLength={100} value={deliveryReference} onChange={event => setDeliveryReference(event.target.value)} />
       {lines.map((line, index) => {
         const remaining = plan.rows.find(row => row.source.lineId === line.purchaseLineId)!;
         const edit = (field: keyof DeliveryLine, value: string) => setLines(previous => previous.map(row => row.lineId === line.lineId ? { ...row, [field]: value } : row));
-        return <fieldset className={styles.rx} key={line.lineId} aria-label={`Delivery line ${index + 1}`}><Select label={`Source purchase line ${index + 1}`} value={line.purchaseLineId} onChange={event => edit("purchaseLineId", event.target.value)} options={outstanding.map((row, number) => ({ value: row.source.lineId, label: `${number + 1}. ${row.source.medicineSnapshot.name}` }))} />
+        const fields = <fieldset className={styles.rx} aria-label={`Delivery line ${index + 1}`}><Select label={`Source purchase line ${index + 1}`} value={line.purchaseLineId} onChange={event => edit("purchaseLineId", event.target.value)} options={outstanding.map((row, number) => ({ value: row.source.lineId, label: `${number + 1}. ${row.source.medicineSnapshot.name}` }))} />
           <p>Remaining: {remaining.billed} billed, {remaining.free} free {remaining.source.unitSnapshot.baseUnit}.</p>
           <div className={styles.fieldGrid}><Input label={`Received billed base units ${index + 1}`} type="number" min="0" step="1" value={line.billed} onChange={event => edit("billed", event.target.value)} /><Input label={`Received free base units ${index + 1}`} type="number" min="0" step="1" value={line.free} onChange={event => edit("free", event.target.value)} /></div>
           <Input label={`Printed batch ${index + 1}`} value={line.batch} maxLength={100} onChange={event => edit("batch", event.target.value)} /><Select label={`Expiry precision ${index + 1}`} value={line.precision} onChange={event => { edit("precision", event.target.value); edit("expiry", ""); }} options={[{ value: "month", label: "Printed month" }, { value: "day", label: "Printed day" }]} /><DatePicker label={`Printed expiry ${index + 1}`} mode={line.precision === "month" ? "month" : "date"} value={line.expiry} onChange={value => edit("expiry", value)} />
           <Button size="sm" variant="ghost" onClick={() => setLines(previous => previous.filter(row => row.lineId !== line.lineId))}>Remove delivery line {index + 1}</Button>
         </fieldset>;
+        return lines.length > 5 ? <details key={line.lineId}><summary>{index + 1}. {remaining.source.medicineSnapshot.name} ? {line.billed} billed + {line.free} free ? Batch {line.batch || "required"} ? Expiry {line.expiry || "required"}</summary>{fields}</details> : <div key={line.lineId}>{fields}</div>;
       })}
       <Button size="sm" variant="outline" disabled={lines.length >= 100} onClick={() => setLines(previous => [...previous, addLine()])}>Add delivery lot</Button><Button size="sm" type="submit" loading={busy}>Record purchase delivery</Button>
     </fieldset></form>)}

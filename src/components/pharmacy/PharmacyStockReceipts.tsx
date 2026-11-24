@@ -1,4 +1,6 @@
 "use client";
+import { PharmacyPackQuantity } from "./PharmacyPackQuantity";
+import { packDescription } from "@/lib/pharmacyUnits";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Alert, Button, Input, Select, DatePicker } from "@/components/ui";
@@ -56,6 +58,7 @@ export function PharmacyStockReceipts({ medicine, locationId, canReceive, canRec
 }
 function ReceiptForm({ medicine, resuming, disabled, busy, error, onClose, onSubmit }: { medicine: Medicine; resuming: boolean; disabled: boolean; busy: boolean; error: string; onClose: () => void; onSubmit: (payload: StockReceiptPayload) => void }) {
   const unit = medicine.unitDefinition!;
+  const counterStock = !medicine.scheduleType || medicine.scheduleType === "general";
   const [form, setForm] = useState({ kind: "receipt", batchNumber: "", precision: "month", expiry: "", packs: "0", looseUnits: "0", purchaseTotal: "", sellingPrice: String(medicine.price), mrp: "", source: "" });
   const [validation, setValidation] = useState("");
   const edit = (field: keyof typeof form, value: string) => setForm(previous => ({ ...previous, [field]: value }));
@@ -65,24 +68,26 @@ function ReceiptForm({ medicine, resuming, disabled, busy, error, onClose, onSub
     const purchaseTotalPaise = parseReceiptPaise(form.purchaseTotal), sellingPricePaise = parseReceiptPaise(form.sellingPrice), mrpPaise = form.mrp.trim() ? parseReceiptPaise(form.mrp) : undefined;
     if (!form.batchNumber.trim() || form.batchNumber.trim().length > 100 || !form.expiry || !form.packs.trim() || !form.looseUnits.trim() || !Number.isSafeInteger(packs) || packs < 0 || !Number.isSafeInteger(looseUnits) || looseUnits < 0 || looseUnits >= unit.unitsPerPack || !Number.isSafeInteger(quantity) || quantity <= 0 ||
         purchaseTotalPaise === null || sellingPricePaise === null || mrpPaise === null || mrpPaise !== undefined && sellingPricePaise > mrpPaise || form.kind === "opening" && form.source.trim().length < 3) { setValidation("Enter a batch, printed expiry, positive whole base-unit quantity, exact prices and an opening source when applicable."); return; }
+    if (counterStock && mrpPaise === undefined) { setValidation("Record the printed MRP per base unit so this stock can be billed at the counter. Do not guess the MRP."); return; }
     onSubmit({ medicineId: medicine.id, locationId: medicine.locationId, receiptLineId: "reserved-before-post", kind: form.kind as "opening" | "receipt", expectedUnitVersion: unit.version, packs, looseUnits,
       batchNumber: form.batchNumber.trim(), expiry: { precision: form.precision as "day" | "month", value: form.expiry }, purchaseTotalPaise, sellingPricePaise,
       ...(mrpPaise !== undefined ? { mrpPaise } : {}), ...(form.kind === "opening" ? { openingSourceReference: form.source.trim() } : {}) });
   }
   return <Modal open onClose={onClose} busy={busy} title="Receive stock" description={medicine.name} size="md" bodyClassName={styles.dialog} footer={<><Button size="sm" variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button size="sm" type="submit" form="stock-receipt-form" loading={busy} disabled={disabled}>Record stock receipt</Button></>}>
+    <p className="mb-3 text-sm text-text-secondary">Before the first counter sale, review the sale classification of this medicine and HSN/tax details in Inventory. Record the printed MRP below. Receiving stock does not approve a medicine for sale.</p>
     <form id="stock-receipt-form" className={styles.form} onSubmit={save} noValidate>
       {(validation || error) && <Alert variant="error" title="Check stock receipt">{validation || error}</Alert>}
       {resuming && <p role="status">Re-enter the original receipt details. This uses the stored reference to prevent duplicate stock; conflicting committed details require review.</p>}
-      <p className={styles.summary}>1 {unit.packUnit} = {unit.unitsPerPack} {unit.baseUnit}. Prices below are in INR; acquisition cost is the total for all received units.</p>
+      <p className={styles.summary}>{packDescription(unit)}. Prices below are in INR; acquisition cost is the total for all received units.</p>
       <fieldset disabled={disabled} className={styles.form}>
         <Select label="Receipt kind" value={form.kind} onChange={event => edit("kind", event.target.value)} options={[{ value: "receipt", label: "Stock receipt" }, { value: "opening", label: "Opening physical count" }]} />
         {form.kind === "opening" && <Input label="Opening source reference *" maxLength={120} value={form.source} onChange={event => edit("source", event.target.value)} />}
         <Input label="Printed batch number *" maxLength={100} value={form.batchNumber} onChange={event => edit("batchNumber", event.target.value)} />
         <div className={styles.fieldGrid}><Select label="Printed expiry precision" value={form.precision} onChange={event => setForm(previous => ({ ...previous, precision: event.target.value, expiry: "" }))} options={[{ value: "month", label: "Month and year" }, { value: "day", label: "Exact day" }]} />
           <DatePicker label="Printed expiry *" mode={form.precision === "month" ? "month" : "date"} value={form.expiry} onChange={value => edit("expiry", value)} /></div>
-        <div className={styles.fieldGrid}><Input label={`Full packs (${unit.packUnit}) *`} type="number" min="0" step="1" value={form.packs} onChange={event => edit("packs", event.target.value)} /><Input label={`Loose units (${unit.baseUnit}) *`} type="number" min="0" max={unit.unitsPerPack - 1} step="1" value={form.looseUnits} onChange={event => edit("looseUnits", event.target.value)} /></div>
+        <div className={styles.fieldGrid}><PharmacyPackQuantity unit={unit} label={`Full packs (${unit.packUnit}) *`} value={form.packs} onChange={value => edit("packs", value)} onError={setValidation} /><Input label={`Loose units (${unit.baseUnit}) *`} type="number" min="0" max={unit.unitsPerPack - 1} step="1" value={form.looseUnits} onChange={event => edit("looseUnits", event.target.value)} /></div>
         <Input label="Total acquisition cost (INR) *" type="number" min="0" step="0.01" value={form.purchaseTotal} onChange={event => edit("purchaseTotal", event.target.value)} />
-        <div className={styles.fieldGrid}><Input label={`Selling price per ${unit.baseUnit} (INR) *`} type="number" min="0" step="0.01" value={form.sellingPrice} onChange={event => edit("sellingPrice", event.target.value)} /><Input label={`MRP per ${unit.baseUnit} (INR)`} type="number" min="0" step="0.01" value={form.mrp} onChange={event => edit("mrp", event.target.value)} /></div>
+        <div className={styles.fieldGrid}><Input label={`Selling price per ${unit.baseUnit} (INR) *`} type="number" min="0" step="0.01" value={form.sellingPrice} onChange={event => edit("sellingPrice", event.target.value)} /><Input label={`MRP per ${unit.baseUnit} (INR)`} required={counterStock} hint={counterStock ? "Required for counter billing. Enter the printed pack MRP divided by its units." : "Missing MRP prevents ordinary counter billing."} type="number" min="0" step="0.01" value={form.mrp} onChange={event => edit("mrp", event.target.value)} /></div>
       </fieldset>
     </form>
   </Modal>;

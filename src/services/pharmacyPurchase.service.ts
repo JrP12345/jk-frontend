@@ -1,7 +1,9 @@
 import api from "@/lib/api";
 
 export interface PharmacyParty {
+  memberDiscountBps?: number;
   id: string; locationIds: string[]; name: string; kinds: string[]; address: string; phone: string; email: string;
+  creditPolicy?: { limitPaise?: number; termsDays?: number; blockOverdue: boolean } | null;
   gstRegistration: "registered" | "unregistered"; gstin?: string; licence?: { number: string; validUntil?: string }; archived: boolean; revision: number;
 }
 export interface PurchaseLine {
@@ -10,13 +12,13 @@ export interface PurchaseLine {
 }
 export interface PurchaseProduct {
   id: string; name: string; genericName?: string; strength?: string; manufacturer?: string; price: number; hsnCode?: string;
-  unitDefinition: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number };
+  unitDefinition: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number; outerPackUnit?: string; packsPerOuter?: number };
   identityHash?: string;
 }
 export interface PurchaseDraft {
   id: string; locationId: string; supplierId: string; supplierSnapshot: { name: string; revision: number; address: string; gstin?: string };
   supplierInvoiceNumber: string; invoiceDate: string; invoiceFY: string; statedTotalPaise: number; revision: number; status: "draft" | "posted"; notes: string;
-  lines: Array<PurchaseLine & { billedBaseUnits: number; freeBaseUnits: number; unitSnapshot: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number }; medicineSnapshot: { name: string; genericName: string; strength?: string } }>;
+  lines: Array<PurchaseLine & { billedBaseUnits: number; freeBaseUnits: number; unitSnapshot: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number; outerPackUnit?: string; packsPerOuter?: number }; medicineSnapshot: { name: string; genericName: string; strength?: string } }>;
   calculation?: PurchaseCalculation;
   posting?: { payablePaise: number; postedAt: string; reviewReference: string; costTreatment: "include_tax" | "exclude_tax" };
   receiptCount?: number;

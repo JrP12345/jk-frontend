@@ -1,3 +1,4 @@
+import { validatePharmacyUnits } from "./pharmacyUnits";
 import type { PurchaseDraft } from "@/services/pharmacyPurchase.service";
 
 export interface PurchaseDeliveryLine { lineId: string; purchaseLineId: string; billed: string; free: string; batch: string; precision: string; expiry: string }
@@ -10,7 +11,8 @@ export function purchaseReceivingPlan(purchase: PurchaseDraft) {
   const progress = purchase.receiptProgress;
   if (purchase.status === "posted" && (!Array.isArray(progress) || progress.length !== purchase.lines.length || new Set(progress.map(row => row.lineId)).size !== purchase.lines.length)) invalid();
   return purchase.lines.map(source => {
-    const unit = source.unitSnapshot;
+    let unit: ReturnType<typeof validatePharmacyUnits>;
+    try { unit = validatePharmacyUnits(source.unitSnapshot); } catch { return invalid(); }
     if (!source.lineId || !source.medicineSnapshot?.name || !unit?.baseUnit || !unit.packUnit || !whole(unit.version) || unit.version < 1 || !whole(unit.unitsPerPack) || unit.unitsPerPack < 1 || unit.unitsPerPack > 1_000_000 ||
         ![source.packs, source.looseUnits, source.freePacks, source.freeLooseUnits, source.billedBaseUnits, source.freeBaseUnits].every(whole) ||
         source.looseUnits >= unit.unitsPerPack || source.freeLooseUnits >= unit.unitsPerPack || source.packs * unit.unitsPerPack + source.looseUnits !== source.billedBaseUnits ||

@@ -12,6 +12,7 @@ import styles from "./PharmacyWorkspace.module.css";
 import { PharmacyCatalogueDiscovery } from "./PharmacyCatalogueDiscovery";
 import { hasAnyPermission } from "@/lib/permissions";
 import { readPharmacyImportFile } from "@/lib/pharmacyImportFile";
+import { PharmacyInvoiceExtraction } from "./PharmacyInvoiceExtraction";
 
 interface Props { locationId: string; supplierId: string; remaining: number; onApply: (rows: PurchaseCsvRow[]) => void; onCancel: () => void }
 const message = (error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message || (error instanceof Error ? error.message : "CSV could not be checked. Retry the preview.");
@@ -20,7 +21,7 @@ const label = (product: PurchaseProduct) => [product.name, product.strength, pro
 export function PharmacyPurchaseCsv({ locationId, supplierId, remaining, onApply, onCancel }: Props) {
   const [csv, setCsv] = useState(""), [fileName, setFileName] = useState(""), [inspection, setInspection] = useState<PurchaseCsvInspection | null>(null);
   const [mapping, setMapping] = useState<Partial<Record<PurchaseCsvField, string>>>({}), [matches, setMatches] = useState<Map<string, PurchaseProduct>>(new Map());
-  const [priceBasis, setPriceBasis] = useState<"base_unit" | "pack">("base_unit");
+  const [priceBasis, setPriceBasis] = useState<"base_unit" | "pack" | "outer_pack">("base_unit");
   const [active, setActive] = useState(""), [search, setSearch] = useState(""), [products, setProducts] = useState<PurchaseProduct[]>([]), [productId, setProductId] = useState("");
   const [cursor, setCursor] = useState<string | undefined>(), [next, setNext] = useState<string | null>(null), [loadedSearch, setLoadedSearch] = useState(""), [searchError, setSearchError] = useState("");
   const [preview, setPreview] = useState<PurchaseCsvPreview | null>(null), [confirmed, setConfirmed] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
@@ -94,6 +95,7 @@ export function PharmacyPurchaseCsv({ locationId, supplierId, remaining, onApply
     <div className={styles.rowHeading}><h3>Import purchase lines</h3><Button size="sm" variant="ghost" onClick={onCancel}>Close CSV import</Button></div>
     <p className={styles.summary}>One supplier invoice, up to {remaining} additional lines. Amounts are INR; quantities are the selected medicine’s packs or loose base units. Stock is received later with printed batch and expiry.</p>
     <Input label="Supplier invoice CSV or values-only Excel" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={busy} onChange={event => { void choose(event.target.files?.[0]); event.target.value = ""; }} />
+    <PharmacyInvoiceExtraction locationId={locationId} supplierId={supplierId} onCsv={text => { if (!busy) void choose(new File([text], "reviewed-invoice-ocr.csv", { type: "text/csv" })); }} />
     {error && <Alert variant="error" title="CSV needs attention">{error}</Alert>}
     {busy && <p role="status">{remembering ? "Saving supplier mappings…" : "Checking purchase CSV…"}</p>}
     {inspection && <>
@@ -105,7 +107,7 @@ export function PharmacyPurchaseCsv({ locationId, supplierId, remaining, onApply
         setMapping(previous => { const updated = { ...previous }; if (column) updated[field] = column; else delete updated[field]; return updated; });
         if (field === "source") { setMatches(new Map()); setSavedIssues(new Map()); setActive(""); }
       }} options={[{ value: "", label: "Not mapped" }, ...inspection.headers.map(header => ({ value: header, label: header }))]} />)}</div>
-      <Select label="CSV selling price / MRP basis" disabled={busy} value={priceBasis} onChange={event => { invalidate(); setPriceBasis(event.target.value as "base_unit" | "pack"); }} options={[{ value: "base_unit", label: "Per base unit (tablet, piece, etc.)" }, { value: "pack", label: "Per selected full pack (strip, box, etc.)" }]} />
+      <Select label="CSV selling price / MRP basis" disabled={busy} value={priceBasis} onChange={event => { invalidate(); setPriceBasis(event.target.value as "base_unit" | "pack" | "outer_pack"); }} options={[{ value: "base_unit", label: "Per base unit (tablet, piece, etc.)" }, { value: "pack", label: "Per selected full pack (strip, box, etc.)" }, { value: "outer_pack", label: "Per recorded outer pack (box of strips, etc.)" }]} />
       <p className={styles.summary}>Map line amounts, not unit purchase rates. Pack selling prices/MRP convert using the matched medicine’s pack size; fractional paise need review. Unmapped quantity/discount columns mean zero; mapped blank numbers need correction. GST and HSN are explicit source values.</p>
       {sources.length > 0 && <section aria-label="Match CSV medicines" className={styles.form}><h3>Match source items</h3>
         <p className={styles.summary}>Use an item code or description that uniquely identifies the medicine, strength, manufacturer and pack. Repeated source items share your selection.</p>

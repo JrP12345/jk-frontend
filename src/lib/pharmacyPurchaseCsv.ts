@@ -2,12 +2,13 @@ import api from "@/lib/api";
 import type { PurchaseLine, PurchaseProduct } from "@/services/pharmacyPurchase.service";
 
 export const purchaseCsvLabels = {
+  outerPacks: "Billed outer packs", freeOuterPacks: "Free outer packs",
   source: "Source item code or unique description *", packs: "Billed packs", looseUnits: "Billed loose units", freePacks: "Free packs", freeLooseUnits: "Free loose units",
   baseAmount: "Line base amount before discount/tax (INR) *", discount: "Line discount amount (INR)", gst: "Invoice GST (%) *", hsn: "Invoice HSN *",
   sellingPrice: "Selling price (INR) *", mrp: "MRP (INR)",
 } as const;
 export type PurchaseCsvField = keyof typeof purchaseCsvLabels;
-export interface PurchaseCsvProfile { revision: number; mapping: Partial<Record<PurchaseCsvField, string>>; priceBasis: "base_unit" | "pack"; matches: Array<{ sourceValue: string; product: PurchaseProduct | null; error: string | null }> }
+export interface PurchaseCsvProfile { revision: number; mapping: Partial<Record<PurchaseCsvField, string>>; priceBasis: "base_unit" | "pack" | "outer_pack"; matches: Array<{ sourceValue: string; product: PurchaseProduct | null; error: string | null }> }
 export interface PurchaseCsvInspection { locationId: string; supplierId: string; formatKey: string; profile: PurchaseCsvProfile | null; headers: string[]; records: Array<{ sourceLine: number; cells: Record<string, string> }>; fields: PurchaseCsvField[] }
 export interface PurchaseCsvRow { sourceLine: number; sourceValue: string; error: string | null; line: PurchaseLine | null; product: PurchaseProduct | null }
 export interface PurchaseCsvPreview { rows: PurchaseCsvRow[]; ignoredColumns: string[] }
@@ -22,7 +23,7 @@ export async function inspectPurchaseCsv(locationId: string, supplierId: string,
       new Set(data.fields).size !== data.fields.length || data.fields.some(field => !Object.hasOwn(purchaseCsvLabels, field))) throw new Error("CSV columns could not be checked. Choose the file again.");
   const profile = data.profile;
   if (profile !== null) {
-    if (!profile || !whole(profile.revision) || profile.revision < 1 || !["base_unit", "pack"].includes(profile.priceBasis) || !profile.mapping || typeof profile.mapping !== "object" ||
+    if (!profile || !whole(profile.revision) || profile.revision < 1 || !["base_unit", "pack", "outer_pack"].includes(profile.priceBasis) || !profile.mapping || typeof profile.mapping !== "object" ||
         Object.keys(profile.mapping).some(field => !Object.hasOwn(purchaseCsvLabels, field)) || Object.values(profile.mapping).some(column => typeof column !== "string" || !data.headers.includes(column)) ||
         new Set(Object.values(profile.mapping)).size !== Object.values(profile.mapping).length || !profile.mapping.source || !Array.isArray(profile.matches) || profile.matches.length > 100 ||
         new Set(profile.matches.map(match => match.sourceValue)).size !== profile.matches.length) throw new Error("Saved supplier mappings are incomplete. Check the file again.");
@@ -39,7 +40,7 @@ export async function inspectPurchaseCsv(locationId: string, supplierId: string,
   }
   return data;
 }
-export interface PurchaseCsvPreviewInput { locationId: string; supplierId: string; csv: string; priceBasis: "base_unit" | "pack"; mapping: Partial<Record<PurchaseCsvField, string>>; matches: Array<{ sourceValue: string; medicineId: string; expectedUnitVersion: number; expectedIdentityHash?: string }> }
+export interface PurchaseCsvPreviewInput { locationId: string; supplierId: string; csv: string; priceBasis: "base_unit" | "pack" | "outer_pack"; mapping: Partial<Record<PurchaseCsvField, string>>; matches: Array<{ sourceValue: string; medicineId: string; expectedUnitVersion: number; expectedIdentityHash?: string }> }
 export async function previewPurchaseCsv(input: PurchaseCsvPreviewInput, signal: AbortSignal): Promise<PurchaseCsvPreview> {
   const response = await api.post("/pharmacy/purchase-csv/preview", input, { signal }), data = response.data?.data as PurchaseCsvPreview;
   if (!data || !Array.isArray(data.rows) || !data.rows.length || data.rows.length > 100 || !Array.isArray(data.ignoredColumns) || data.ignoredColumns.some(column => typeof column !== "string") ||

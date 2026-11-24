@@ -9,6 +9,7 @@ import { listOrders, orderSeedFromPurchase, validatePurchaseOrder } from "@/lib/
 import type { PurchaseDraft } from "@/services/pharmacyPurchase.service";
 import { orderFixture, orderId, orderInvoiceId, orderLocationId, orderProduct, orderProductId, orderSupplier, orderSupplierId } from "./fixtures/pharmacyPurchaseOrder";
 import api from "@/lib/api";
+import { supplierResponseTemplate } from "@/lib/pharmacySupplierExchange";
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }));
 const print = vi.hoisted(() => ({ element: vi.fn() }));
 vi.mock("@/lib/printBrand", () => ({ printElement: print.element, getPrintErrorMessage: () => "Print failed" }));
@@ -74,6 +75,31 @@ it("records a supplier response only after confirmation and shows actual respons
   expect(within(dialog).getByRole("button", { name: "Record order action" })).toBeDisabled();
   fireEvent.click(screen.getByRole("checkbox", { name: /verified this order action/ })); fireEvent.click(screen.getByRole("button", { name: "Record order action" }));
   await waitFor(() => expect(api.post).toHaveBeenCalledOnce()); expect(vi.mocked(api.post).mock.calls[0]).toEqual([`/pharmacy/purchase-orders/${orderId}/actions`, expect.objectContaining({ action: "respond", expectedRevision: 1, confirmed: true, lines: [{ lineId: "order-line-0001", acceptedQuantity: 7, quotedUnitPricePaise: 150, note: "Seven available; remaining unavailable" }] }), expect.any(Object)]);
+});
+
+it("reviews a supplier response file in the existing form and records it only after actual communication confirmation", async () => {
+  current = orderFixture({ state: "submitted", status: "submitted", revision: 1 }); mount(); await open();
+  fireEvent.click(screen.getByText("Supplier response CSV"));
+  fireEvent.click(screen.getByRole("checkbox", { name: /verified this order action/ }));
+  const csv = supplierResponseTemplate(current).replace(/"21","","",""$/, '"21","7","1.05","Only seven available"');
+  const file = new File([csv], "supplier-response.csv", { type: "text/csv" }); Object.defineProperty(file, "text", { value: async () => csv });
+  fireEvent.change(screen.getByLabelText("Returned supplier response CSV"), { target: { files: [file] } });
+  await screen.findByText("Supplier file ready for review");
+  expect(screen.getByLabelText(`Accepted base units ${orderProduct.name}`)).toHaveValue(7);
+  expect(screen.getByLabelText("Supplier price per base unit 1 (INR, optional)")).toHaveValue("1.05");
+  expect(screen.getByRole("checkbox", { name: /verified this order action/ })).not.toBeChecked(); expect(api.post).not.toHaveBeenCalled();
+  change("Actual communication / review reference", "Supplier returned CSV by email"); fireEvent.click(screen.getByRole("checkbox", { name: /verified this order action/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Record order action" }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledOnce());
+  expect(vi.mocked(api.post).mock.calls[0][1]).toMatchObject({ action: "respond", expectedRevision: 1, lines: [{ lineId: "order-line-0001", acceptedQuantity: 7, quotedUnitPricePaise: 105, note: "Only seven available" }] });
+});
+
+it("keeps all existing fields when a returned response file belongs to an earlier order revision", async () => {
+  current = orderFixture({ state: "submitted", status: "submitted", revision: 2 }); mount(); await open();
+  change(`Accepted base units ${orderProduct.name}`, "3"); fireEvent.click(screen.getByText("Supplier response CSV"));
+  const csv = supplierResponseTemplate({ ...current, revision: 1 }), file = new File([csv], "old.csv"); Object.defineProperty(file, "text", { value: async () => csv });
+  fireEvent.change(screen.getByLabelText("Returned supplier response CSV"), { target: { files: [file] } });
+  await screen.findByText(/differs from this order, revision/); expect(screen.getByLabelText(`Accepted base units ${orderProduct.name}`)).toHaveValue(3); expect(api.post).not.toHaveBeenCalled();
 });
 
 it("limits invoice lookup to posted, unlinked invoices from this supplier and opens the existing receiver", async () => {

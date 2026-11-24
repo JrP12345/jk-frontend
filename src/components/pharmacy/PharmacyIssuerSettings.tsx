@@ -6,13 +6,14 @@ import { authScopeKey } from "@/lib/authScope";
 import { hasAnyPermission } from "@/lib/permissions";
 import { readPharmacyIssuer, savePharmacyIssuer, type PharmacyIssuerFields } from "@/lib/pharmacyIssuer";
 import { useAuthStore } from "@/store/authStore";
+import { PharmacyGatewaySettings } from "./PharmacyGatewaySettings";
 
 const empty = (): PharmacyIssuerFields => ({ registration: "", legalName: "", address: "", stateCode: "", gstin: "", drugLicenceNumbers: [], authorisedSignatory: "", reviewReference: "", pricesIncludeTax: false, electronicReportingRequired: false, minimumHsnDigits: 4 });
 interface Props { locationId: string; organizationId: string; disabled?: boolean; onBusyChange: (busy: boolean) => void }
 export function PharmacyIssuerSettings(props: Props) {
   const user = useAuthStore(state => state.user);
   const [loadVersion, setLoadVersion] = useState(0);
-  return <IssuerForm key={`${authScopeKey(user)}:${props.organizationId}:${props.locationId}:${loadVersion}`} {...props} onReload={() => setLoadVersion(value => value + 1)} />;
+  return <><IssuerForm key={`${authScopeKey(user)}:${props.organizationId}:${props.locationId}:${loadVersion}`} {...props} onReload={() => setLoadVersion(value => value + 1)} />{hasAnyPermission(user, "MANAGE_ORGANIZATION") && <PharmacyGatewaySettings key={`${authScopeKey(user)}:${props.locationId}`} locationId={props.locationId} />}</>;
 }
 function IssuerForm({ locationId, organizationId, disabled, onBusyChange, onReload }: Props & { onReload: () => void }) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user);

@@ -1,12 +1,12 @@
 import { PHARMACY_CALCULATION_ENGINE_SHA256 } from "./generated/pharmacyCalculation";
 import { PHARMACY_OFFLINE_DOCUMENT_SHA256 } from "./generated/pharmacyOfflineDocument";
 
-export const PHARMACY_OFFLINE_CACHE = "ekavyu-cache-v25";
+export const PHARMACY_OFFLINE_CACHE = "ekavyu-cache-v26";
 /** Static public resources only. This list is also consumed by the build script
  * and checked against the service worker; no authenticated page/API is allowed.
  */
 export const PHARMACY_OFFLINE_FILES = [
-  "/pharmacy-offline.html", "/pharmacy-offline.css", "/pharmacy-offline/entry.js", "/pharmacy-offline/pharmacyFinal.js",
+  "/pharmacy-offline.html", "/pharmacy-offline.css", "/pharmacy-offline/entry.js", "/pharmacy-offline/pharmacyFinal.js", "/pharmacy-offline/pharmacyUnits.js",
   "/pharmacy-offline/pharmacyDrafts.js", "/pharmacy-offline/pharmacyCatalogue.js", "/pharmacy-offline/pharmacyBranchCatalogue.js", "/pharmacy-offline/pharmacyBackgroundWork.js", "/pharmacy-offline/authScope.js",
   "/pharmacy-offline/pharmacyOfflineLedger.js", "/pharmacy-offline/pharmacyOfflineCrypto.js", "/pharmacy-offline/pharmacyOfflineGrant.js", "/pharmacy-offline/pharmacyOfflineSession.js", "/pharmacy-offline/pharmacyOfflineIdentity.js",
   "/pharmacy-offline/pharmacyInvoice.js", "/pharmacy-offline/pharmacyInvoiceNumberFormat.js", "/pharmacy-offline/pharmacyOfflinePricing.js", "/pharmacy-offline/pharmacyOfflinePrint.js",

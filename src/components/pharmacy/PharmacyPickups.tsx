@@ -9,12 +9,12 @@ import { pickupStatusLabels, pickupTokenFromScan, type StaffPickup } from "@/lib
 import { changePickup, pickupError, readPickupQueue, scanPickupTicket, type PickupTransition } from "@/lib/pharmacyPickup";
 import { PharmacyCollections } from "./PharmacyCollections";
 
-interface Props { locationId: string; canPrepare: boolean; canCollect: boolean; canOpenTill: boolean }
+interface Props { onPrepare?: (pickup: StaffPickup) => void; onResolveBill?: (invoiceId: string) => void; locationId: string; canPrepare: boolean; canCollect: boolean; canOpenTill: boolean }
 export function PharmacyPickups(props: Props) {
   const scope = authScopeKey(useAuthStore(state => state.user));
   return <PickupSession key={`${scope}:${props.locationId}`} {...props} scope={scope} />;
 }
-function PickupSession({ locationId, scope, canPrepare, canCollect, canOpenTill }: Props & { scope: string }) {
+function PickupSession({ locationId, scope, onPrepare, onResolveBill, canPrepare, canCollect, canOpenTill }: Props & { scope: string }) {
   const [rows, setRows] = useState<StaffPickup[]>([]), [selected, setSelected] = useState<StaffPickup | null>(null);
   const [status, setStatus] = useState(""), [cursor, setCursor] = useState<string | undefined>(), [next, setNext] = useState<string | null>(null);
   const [scan, setScan] = useState(""), [invoiceNumber, setInvoiceNumber] = useState(""), [invoice, setInvoice] = useState("");
@@ -65,8 +65,9 @@ function PickupSession({ locationId, scope, canPrepare, canCollect, canOpenTill 
         <ul className="divide-y divide-border">{selected.items.map(item => <li key={item.medicineId} className="flex justify-between gap-3 py-3 text-sm"><span>{item.name} {item.strength}</span><strong>{item.quantity} {item.baseUnit}</strong></li>)}</ul>
         {selected.invoiceNumber && <p className="text-sm">Linked bill: {selected.invoiceNumber}</p>}
         {selected.invoiceId && <Button variant="outline" onClick={() => setInvoice(selected.invoiceId!)}>View bill / record payment</Button>}
-        {canPrepare && selected.status === "requested" && <><Input label="Saved counter bill number" placeholder="Issue the bill for these exact quantities first" value={invoiceNumber} onChange={event => setInvoiceNumber(event.target.value)} disabled={busy || pending} maxLength={100} /><Button loading={busy} disabled={pending || !invoiceNumber.trim()} onClick={() => { void transition("ready"); }}>Mark parcel ready</Button></>}
+        {canPrepare && selected.status === "requested" && <>{onPrepare && <Button disabled={busy || pending} onClick={() => onPrepare(selected)}>Prepare parcel bill</Button>}<details><summary className="cursor-pointer text-sm">Link a bill already prepared</summary><Input label="Saved counter bill number" placeholder="Issue the bill for these exact quantities first" value={invoiceNumber} onChange={event => setInvoiceNumber(event.target.value)} disabled={busy || pending} maxLength={100} /><Button loading={busy} disabled={pending || !invoiceNumber.trim()} onClick={() => { void transition("ready"); }}>Mark parcel ready</Button></details></>}
         {canPrepare && selected.status === "ready" && <><p className="text-sm text-text-secondary">Check the parcel against this list. Handover is allowed once the linked bill is fully paid.</p><Button loading={busy} disabled={pending} onClick={() => { void transition("collect"); }}>Confirm parcel handed over</Button></>}
+        {selected.invoiceId && onResolveBill && ["cancelled", "expired"].includes(selected.status) && <Button variant="outline" disabled={busy || pending} onClick={() => onResolveBill(selected.invoiceId!)}>Resolve parcel bill / returned goods</Button>}
         {canPrepare && ["requested", "ready", "expired"].includes(selected.status) && <><Button variant="outline" disabled={busy || pending} onClick={() => { void transition("cancel"); }}>Cancel pickup request</Button><p className="text-xs text-text-secondary">Cancelling a request does not cancel its bill or return stock. Handle a billed return through the existing Returns flow.</p></>}
       </Card> : <Card><p className="text-sm text-text-secondary">Open a request or scan a ticket to see its parcel.</p></Card>}
     </div>

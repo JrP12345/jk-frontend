@@ -1,7 +1,8 @@
+import { validatePharmacyUnits } from "./pharmacyUnits";
 import type { CounterProduct } from "./pharmacyCounter";
 
 export type DraftLine = { lineId: string; product: CounterProduct; packs: string; loose: string; discount: string };
-export type DraftCart = { lines: DraftLine[]; customerId: string | null; discount: string; billNumber?: number };
+export type DraftCart = { pickup?: { id: string; revision: number }; lines: DraftLine[]; customerId: string | null; discount: string; billNumber?: number };
 export type CounterDraft = { cart: DraftCart; held: DraftCart[] };
 const DATABASE = "ekavyu-pharmacy-drafts", STORE = "drafts", SECRET = "ekavyu-pharmacy-draft-key";
 const LIFETIME = 12 * 60 * 60 * 1000;
@@ -34,11 +35,12 @@ export function cleanCounterDraft(input: unknown): CounterDraft {
       const p = line?.product, unit = p?.unitDefinition;
       if (!line || !text(line.lineId, 100) || !text(p?.id, 100) || typeof p?.name !== "string" || typeof p?.genericName !== "string" || !unit || !text(unit.baseUnit, 40) || !text(unit.packUnit, 40) || !Number.isSafeInteger(unit.version) || unit.version < 1 || !Number.isSafeInteger(unit.unitsPerPack) || unit.unitsPerPack < 1 || !amount(line.packs) || !amount(line.loose) || !amount(line.discount)) throw Error("Saved product quantities or units need review");
       return { lineId: line.lineId, packs: line.packs, loose: line.loose, discount: line.discount,
-        product: { id: p.id, name: p.name, genericName: p.genericName, ...(typeof p.strength === "string" ? { strength: p.strength } : {}), eligible: true, stockQuantity: 0, unitDefinition: { version: unit.version, baseUnit: unit.baseUnit, packUnit: unit.packUnit, unitsPerPack: unit.unitsPerPack } } };
+        product: { id: p.id, name: p.name, genericName: p.genericName, ...(typeof p.strength === "string" ? { strength: p.strength } : {}), eligible: true, stockQuantity: 0, unitDefinition: validatePharmacyUnits(unit) } };
     });
     if (new Set(lines.map(line => line.lineId)).size !== lines.length || new Set(lines.map(line => line.product.id)).size !== lines.length) throw Error("Saved cart contains duplicate products");
     if (raw.billNumber !== undefined && (!Number.isSafeInteger(raw.billNumber) || raw.billNumber < 1)) throw Error("Saved bill label needs review");
-    return { lines, customerId: raw.customerId, discount: raw.discount, ...(raw.billNumber !== undefined ? { billNumber: raw.billNumber } : {}) };
+    if (raw.pickup && (!/^[a-f\d]{24}$/i.test(raw.pickup.id) || !Number.isSafeInteger(raw.pickup.revision) || raw.pickup.revision < 0 || raw.customerId)) throw Error("Saved pickup source needs review");
+    return { ...(raw.pickup ? { pickup: raw.pickup } : {}), lines, customerId: raw.customerId, discount: raw.discount, ...(raw.billNumber !== undefined ? { billNumber: raw.billNumber } : {}) };
   }
   if (!value || !Array.isArray(value.held) || value.held.length > 3) throw Error("Saved carts need review");
   return { cart: cart(value.cart), held: value.held.map(cart) };

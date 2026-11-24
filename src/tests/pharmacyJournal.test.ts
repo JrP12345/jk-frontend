@@ -47,3 +47,16 @@ it("retains current-total confirmation, line amounts and the print request for a
   expect(() => journal.save({ key: sale.key, input: { ...input, expectedQuoteHash: "a".repeat(64) } })).toThrow(/review/);
   expect(() => journal.save({ key: sale.key, input: { ...input, lines: [{ ...input.lines[0], expectedLineTotalPaise: -1 }] } })).toThrow(/review/);
 });
+
+it("retains a named customer's exact part-payment and owner exception for an identical retry", async () => {
+  const journal = createSaleJournal("user", "branch"); await journal.load();
+  const input = { ...sale.input, customerId: "customer", expectedCustomerRevision: 0, creditOverrideReference: "Owner verified exception", payment: { ...collection.input, entries: [{ ...collection.input.entries[0], amountPaise: 500 }] } };
+  await journal.save({ key: sale.key, input });
+  expect((await createSaleJournal("user", "branch").load()).value?.input).toEqual(input);
+  expect(() => journal.save({ key: sale.key, input: { ...input, customerId: undefined, expectedCustomerRevision: undefined, creditOverrideReference: undefined } })).toThrow(/payment differs/);
+});
+it("preserves the pickup source on recovery and refuses to add a payment before handover", async () => {
+  const journal = createSaleJournal("user", "branch"); await journal.load(); const input = { ...sale.input, pickup: { id: "a".repeat(24), revision: 0 } };
+  await journal.save({ key: sale.key, input }); expect((await createSaleJournal("user", "branch").load()).value?.input.pickup).toEqual(input.pickup);
+  expect(() => journal.save({ key: sale.key, input: { ...input, payment: collection.input } })).toThrow(/pickup source/);
+});

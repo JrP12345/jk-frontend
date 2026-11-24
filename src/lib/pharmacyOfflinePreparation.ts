@@ -1,3 +1,4 @@
+import { validatePharmacyUnits, type PharmacyUnitDefinition } from "./pharmacyUnits";
 import { PHARMACY_CALCULATION_ENGINE_SHA256 } from "./generated/pharmacyCalculation";
 import { PHARMACY_OFFLINE_DOCUMENT_SHA256 } from "./generated/pharmacyOfflineDocument";
 import { validateOfflineNumberLease, type OfflineNumberLease, type OfflineLedgerLot } from "./pharmacyOfflineLedger";
@@ -7,7 +8,7 @@ import type { PharmacyTaxDocument } from "./pharmacyInvoice";
 export interface OfflinePreparationScope { organizationId: string; locationId: string; actorId: string; authorityId: string; deviceId: string; enrollmentId: string }
 export interface PreparedOfflineProduct {
   id: string; name: string; genericName: string; barcodes: string[];
-  unitDefinition: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number };
+  unitDefinition: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number; outerPackUnit?: string; packsPerOuter?: number };
   stockQuantity: number; availableQuantity: number; stockRevision: number; dispensingRevision: number; taxRevision: number;
   hsnSacCode: string; unitCode: string; gstRateBps: number; classificationGstRateBps: number; taxTreatment: string; taxReviewReference: string;
 }
@@ -82,6 +83,7 @@ export async function verifyOfflinePreparation(value: unknown, scope: OfflinePre
             !whole(value.stockQuantity) || !whole(value.availableQuantity, 1) || value.availableQuantity > value.stockQuantity || !whole(value.stockRevision) || !whole(value.dispensingRevision, 1) || !whole(value.taxRevision, 1) ||
             !/^\d{4}(\d{2})?(\d{2})?$/.test(String(value.hsnSacCode)) || !/^[A-Z]{3}$/.test(String(value.unitCode)) || !whole(value.gstRateBps, 0, 10000) || !whole(value.classificationGstRateBps, 0, 10000) || (raw.issuer.registration === "regular" ? value.gstRateBps !== value.classificationGstRateBps : value.gstRateBps !== 0) ||
             !["taxable", "exempt", "nil_rated"].includes(String(value.taxTreatment)) || !text(value.taxReviewReference) || !Array.isArray(value.barcodes) || value.barcodes.length > 100 || value.barcodes.some(code => !text(code, 100))) return fail();
+        validatePharmacyUnits(unit as unknown as PharmacyUnitDefinition);
         productIds.add(value.id); const product = { ...value }; delete product.kind; products.push(product as unknown as PreparedOfflineProduct);
       } else if (value.kind === "lot") {
         if (lotIds.has(value.id) || !objectId(value.medicineId) || !whole(value.quantity, 1) || value.revision !== 0 || !text(value.batchNumber, 100) ||
