@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, Card, DatePicker, EmptyState, Input } from "@/components/ui";
+import { Alert, Badge, Button, Card, DatePicker, EmptyState, Input, Modal } from "@/components/ui";
 import { ReceiptText, Search } from "lucide-react";
 import { PharmacyCollectionForm, type CounterPaymentPreference } from "./PharmacyCollectionForm";
 export { PharmacyCollectionForm } from "./PharmacyCollectionForm";
@@ -121,7 +121,8 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
     else void Promise.resolve().then(() => { setDetailNeeded(true); setError("The saved bill balance differs from the confirmed payment. Review payment below; no money has been recorded."); });
   }, [checkoutPayment, invoice, journalReady, canCollect, pending, receipt, initialInvoiceId, issuedTotalPaise, locationId]);
   const invoiceForm = invoice && !(checkoutPayment && !error && (!pending || pending.invoiceId === invoice.id)) && <PharmacyCollectionForm embedded={embeddedCheckout} key={`${invoice.id}:${invoice.paymentRevision}`} invoice={invoice} preference={invoice.id === initialInvoiceId ? preference : undefined} canOpenTill={canOpenTill} canCollect={journalReady && canCollect && !receipt && (!pending || pending.invoiceId === invoice.id) && !submitted} busy={busy} onClose={() => { setInvoice(null); onInvoiceClose?.(); }} onProviderCollected={!pending && canCollect ? result => { if (!current() || result.invoiceId !== invoice.id) return; onCollected?.(result); setRefresh(value => value + 1); void open(invoice.id); } : undefined} onSubmit={input => { void send(invoice.id, input); }} />;
-  if (focusOnly) return <section aria-label="Saved bill">{error && <Alert variant="error" title="Bill unavailable">{error}<Button onClick={onInvoiceClose}>Close</Button></Alert>}{invoiceForm}</section>;
+  // Dialog-only callers must not add a grid/flex item to the counter behind the portal.
+  if (focusOnly) return <>{error && <Modal open title="Bill unavailable" onClose={() => { setError(""); onInvoiceClose?.(); }}><Alert variant="error" title="Could not open bill">{error}</Alert></Modal>}{invoiceForm}</>;
   return <section className={styles.list} aria-label="Pharmacy sales and collections">
     {embeddedCheckout && !error && !receipt && <p role="status" className="text-sm text-text-secondary">{busy ? "Saving payment..." : "Checking saved bill..."}</p>}
     {!checkoutOnly && <header><h2>Sales & collections</h2><p>Open a saved bill to record payment or view its receipts. Confirm money received before recording a payment.</p></header>}

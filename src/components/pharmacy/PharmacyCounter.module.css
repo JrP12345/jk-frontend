@@ -40,7 +40,8 @@
 .lookupMode button { width: 100%; font-size: .6875rem; min-height: 24px; padding-block: 2px; }
 .filters > * { flex-shrink: 0; }
 .saveActions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.saveActions button { min-width: 0; min-height: 44px; padding-inline: 8px; }
+.saveActions button { min-width: 0; min-height: 44px; padding-inline: 8px; font-size: .8125rem; white-space: nowrap; }
+.saveActions button span { white-space: nowrap; overflow-wrap: normal; }
 .saveStatus { min-height: 30px; font-size: .6875rem; line-height: 1.4; color: var(--text-secondary); }
 .settlement { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 10px; overflow-y: auto; overscroll-behavior-y: contain; }
 .filters [data-active=true] { background: var(--selected); color: var(--accent); }
@@ -126,6 +127,14 @@
 .draftStatus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .customerFields { display: flex; flex: 1; flex-direction: column; gap: 8px; }
 .customerScroll { display: grid; min-height: 0; align-content: start; gap: 6px; }
+.customerLookup { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.customerLookupInput { flex: 1; min-width: 0; }
+.customerLookup > button { flex: 0 0 44px; width: 44px; min-width: 44px; min-height: 44px; height: 44px; padding: 0; border-radius: 8px; }
+.customerLookup input { height: 44px; min-height: 44px; border-radius: 8px; }
+@media (min-width: 768px) and (pointer: fine) {
+  .customerLookup > button { flex-basis: 36px; width: 36px; min-width: 36px; min-height: 36px; height: 36px; }
+  .customerLookup input { height: 36px; min-height: 36px; font-size: .8125rem; }
+}
 .customerScroll > p { font-size: .6875rem; }
 .sectionLabel { color: var(--text-secondary); font-size: .625rem !important; text-transform: uppercase; letter-spacing: .06em; }
 .inlineMoney { display: grid; grid-template-columns: minmax(0,1fr) 105px; align-items: center; gap: 8px; }
@@ -150,7 +159,7 @@
 .checkout [aria-label="Trusted counter quote"] > div { border: 0; padding: 0; background: transparent; box-shadow: none; }
 .checkout [aria-label="Trusted counter quote"] summary { font-size: .75rem; }
 .mobileNav { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 6px; position: fixed; inset-inline: 8px; bottom: calc(4.5rem + env(safe-area-inset-bottom)); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; z-index: 20; }
-.mobileNav button { font-size: .8125rem; padding-inline: 6px; }
+.mobileNav button { font-size: .8125rem; padding-inline: 6px; min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
 .paymentPreview { display: grid; gap: 4px; padding-top: 6px; }
 .paymentPreview > p { font-size: .6875rem; line-height: 1.5; color: var(--text-secondary); }
 .accountNote { padding: 8px; border-radius: 6px; background: var(--selected); }
@@ -184,8 +193,13 @@
   .panels[data-mobile-panel=pay] .checkout .panel { overflow: hidden; }
   .panels[data-mobile-panel=pay] .checkout .panelContent { min-height: 0; }
   .panels[data-mobile-panel=pay] .customerFields { min-height: 0; }
-  .panels[data-mobile-panel=pay] .customerScroll { flex: 1; overflow-y: auto; overscroll-behavior-y: contain; }
-  .panels[data-mobile-panel=pay] .checkoutBottom { flex-shrink: 0; }
+  .panels[data-mobile-panel=pay] .customerScroll { flex: 0 1 auto; overflow-y: auto; overscroll-behavior-y: contain; }
+  .panels[data-mobile-panel=pay] .checkoutBottom { flex-shrink: 0; margin-top: auto !important; padding-top: 10px; border-top: 1px solid var(--border); }
+  .panels[data-mobile-panel=pay] .saveActions { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+  .panels[data-mobile-panel=pay] .saveActions button { min-height: 44px; font-size: .75rem; padding: 6px 10px; }
+  .panels[data-mobile-panel=pay] .saveStatus { min-height: 0; font-size: .6875rem; }
+  .panels[data-mobile-panel=pay] .totals > :last-child { font-size: 1rem; }
+  .mobileNav button { font-size: .75rem; }
   .panels[data-mobile-panel=pay] .sectionLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .panels[data-mobile-panel=pay] .customerScroll { gap: 3px; }
   .panels[data-mobile-panel=pay] .cashCards { margin-block: 2px; }

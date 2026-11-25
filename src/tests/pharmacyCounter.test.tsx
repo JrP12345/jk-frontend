@@ -396,7 +396,9 @@ it("changes mobile panels without changing the cart and scopes destructive short
   const nav = screen.getByRole("navigation", { name: "Counter workspace panels" });
   fireEvent.click(within(nav).getByRole("button", { name: "Cart (1)", exact: true }));
   expect(within(nav).getByRole("button", { name: "Cart (1)", exact: true })).toHaveAttribute("aria-pressed", "true");
-  fireEvent.click(within(nav).getByRole("button", { name: /^Pay/ }));
+  fireEvent.click(within(nav).getByRole("button", { name: /^Pay(?: |$)/ }));
+  expect(within(nav).getByRole("button", { name: /^Pay(?: |$)/ })).toHaveAttribute("aria-pressed", "true");
+  expect(within(nav).queryByRole("button", { name: /^Review payment/ })).not.toBeInTheDocument();
   expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1);
   fireEvent.keyDown(window, { key: "Delete", ctrlKey: true });
   await screen.findByRole("dialog", { name: "Clear this cart?" });

@@ -78,22 +78,32 @@ it("previews and reprints the saved bill at A4, 80 and 58 mm without any financi
   for (const paper of ["80mm", "58mm"]) { const trigger = screen.getByLabelText("Pharmacy paper size"); fireEvent.change(document.getElementById(trigger.id.replace(/-trigger$/, ""))!, { target: { value: paper } }); fireEvent.click(screen.getByRole("button", { name: "Print pharmacy bill" })); await waitFor(() => expect(vi.mocked(printElement).mock.lastCall![1]).toMatchObject({ paper, css: expect.stringContaining(`calc(${paper} - 4mm)`) })); }
   expect(api.post).not.toHaveBeenCalled(); expect(api.get).not.toHaveBeenCalled();
 });
+it("prints a bill directly using the saved thermal paper without opening another dialog", async () => {
+  rememberPharmacyPaper("branch", "58mm");
+  render(<ToastProvider><PharmacyDocumentButton invoice={invoice} directPrint /></ToastProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Print bill" }));
+  await waitFor(() => expect(printElement).toHaveBeenCalledOnce());
+  expect(vi.mocked(printElement).mock.lastCall![1]).toMatchObject({ paper: "58mm" });
+  expect(vi.mocked(printElement).mock.lastCall![0]?.className).toMatch(/thermal/);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(api.post).not.toHaveBeenCalled();
+});
 it("retains the same document after printer failure and allows reprint without issuing again", async () => {
   vi.mocked(printElement).mockRejectedValueOnce(new PrintPreparationError("unavailable")); render(<ToastProvider><PharmacyDocumentButton invoice={invoice} /></ToastProvider>); fireEvent.click(screen.getByRole("button", { name: "Preview saved pharmacy bill" })); fireEvent.click(screen.getByRole("button", { name: "Print pharmacy bill" })); await screen.findByText("Could not prepare pharmacy bill");
   expect(screen.getByRole("article", { name: "Issued pharmacy document" })).toHaveTextContent(invoice.invoiceNumber); fireEvent.click(screen.getByRole("button", { name: "Print pharmacy bill" })); await waitFor(() => expect(printElement).toHaveBeenCalledTimes(2)); expect(vi.mocked(printElement).mock.calls[0][0]).toBe(vi.mocked(printElement).mock.calls[1][0]); expect(api.post).not.toHaveBeenCalled();
 });
-it("prints the original partial receipt after later settlement, keeping its actual cashier and cash change", async () => {
+it("prints the original partial receipt after later settlement, keeping financial details without internal database references", async () => {
   render(<ToastProvider><PharmacyDocumentButton invoice={invoice} receipt={receipt} /></ToastProvider>); fireEvent.click(screen.getByRole("button", { name: `Preview receipt ${receipt.receiptId}` })); const paper = screen.getByRole("article", { name: "Saved pharmacy collection receipt" });
-  expect(paper).toHaveTextContent("Captured Pharmacy"); expect(paper).toHaveTextContent("actual-cashier"); expect(paper).toHaveTextContent(/Remaining.*13/); expect(paper).toHaveTextContent(/Change.*3/); expect(within(paper).queryByText(/Payment status: paid/)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Print collection receipt" })); await waitFor(() => expect(printElement).toHaveBeenCalledOnce()); expect(vi.mocked(printElement).mock.lastCall![1]?.title).toBe(`Receipt ${receipt.receiptId}`); expect(api.post).not.toHaveBeenCalled();
+  expect(paper).toHaveTextContent("Captured Pharmacy"); expect(paper).not.toHaveTextContent("actual-cashier"); expect(paper).not.toHaveTextContent(receipt.receiptId); expect(paper).not.toHaveTextContent(receipt.shiftId); expect(paper).toHaveTextContent(/Remaining.*13/); expect(paper).toHaveTextContent(/Change.*3/); expect(within(paper).queryByText(/Payment status: paid/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Print collection receipt" })); await waitFor(() => expect(printElement).toHaveBeenCalledOnce()); expect(vi.mocked(printElement).mock.lastCall![1]?.title).toBe(`Receipt ${receipt.invoiceNumber}`); expect(api.post).not.toHaveBeenCalled();
 });
 it("blocks printing incomplete bills, inconsistent receipts and a receipt linked to another invoice or branch", () => {
   const view = render(<ToastProvider><PharmacyDocumentButton invoice={{ ...invoice, items: [] }} /></ToastProvider>); expect(screen.getByRole("button", { name: "Preview saved pharmacy bill" })).toBeDisabled();
   for (const patch of [{ invoiceId: "another" }, { locationId: "foreign" }, { invoiceNumber: "another" }, { cashChangePaise: 299 }, { balancePaise: 1200 }]) { view.rerender(<ToastProvider><PharmacyDocumentButton invoice={invoice} receipt={{ ...receipt, ...patch }} /></ToastProvider>); expect(screen.getByRole("button", { name: `Preview receipt ${receipt.receiptId}` })).toBeDisabled(); }
   expect(printElement).not.toHaveBeenCalled();
 });
-it("opens saved bill and receipt previews through the sales history without collection authority", async () => {
-  render(<ToastProvider><PharmacyCollections locationId="branch" canCollect={false} /></ToastProvider>); fireEvent.click(await screen.findByRole("button", { name: `Open sale ${invoice.invoiceNumber}` })); await screen.findByRole("dialog", { name: "Bill & receipts" }); fireEvent.click(await screen.findByRole("button", { name: `Preview receipt ${receipt.receiptId}` })); await screen.findByRole("article", { name: "Saved pharmacy collection receipt" }); expect(screen.queryByRole("button", { name: "Record payment" })).not.toBeInTheDocument(); expect(api.post).not.toHaveBeenCalled();
+it("prints a saved receipt directly through sales history without collection authority", async () => {
+  render(<ToastProvider><PharmacyCollections locationId="branch" canCollect={false} /></ToastProvider>); fireEvent.click(await screen.findByRole("button", { name: `Open sale ${invoice.invoiceNumber}` })); await screen.findByRole("dialog", { name: "Bill & receipts" }); fireEvent.click(await screen.findByRole("button", { name: "Print receipt" })); await waitFor(() => expect(printElement).toHaveBeenCalledOnce()); expect(screen.queryByRole("dialog", { name: "Collection receipt" })).not.toBeInTheDocument(); expect(screen.queryByRole("button", { name: "Record payment" })).not.toBeInTheDocument(); expect(api.post).not.toHaveBeenCalled();
 });
 it("recovers a saved sale under history authority, opens its real ID, and acknowledges only the opaque reference", async () => {
   sessionStorage.setItem(`pharmacy-sale:${referenceOwnerKey(useAuthStore.getState().user)}:branch`, "original-reference"); const onOpen = vi.fn(); render(<ToastProvider><PharmacySaleRecovery locationId="branch" onOpen={onOpen} /></ToastProvider>);

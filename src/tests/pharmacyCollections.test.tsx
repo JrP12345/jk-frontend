@@ -1,6 +1,7 @@
 import { drawerFixture } from "./fixtures/pharmacyDrawer";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { PharmacyCollectionForm } from "@/components/pharmacy/PharmacyCollectionForm";
 import { PharmacyCollections } from "@/components/pharmacy/PharmacyCollections";
 import { ToastProvider } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
@@ -27,6 +28,22 @@ beforeEach(() => {
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
 afterEach(() => { vi.restoreAllMocks(); });
+it("keeps recent-bill dialogs out of the counter layout while loading and after opening", async () => {
+  const onClose = vi.fn();
+  render(<ToastProvider><div data-testid="counter-dialog-host"><PharmacyCollections locationId="branch" canCollect={false} initialInvoiceId="invoice" focusOnly onInvoiceClose={onClose} /></div></ToastProvider>);
+  const host = screen.getByTestId("counter-dialog-host");
+  expect(host).toBeEmptyDOMElement();
+  await screen.findByRole("dialog", { name: "Bill & receipts" });
+  expect(host).toBeEmptyDOMElement();
+  fireEvent.click(screen.getByRole("button", { name: "Close modal" }));
+  expect(onClose).toHaveBeenCalledOnce();
+});
+it("keeps recent-bill failures in a dialog without shifting the counter layout", async () => {
+  api.get.mockRejectedValue(Error("Bill could not be loaded"));
+  render(<ToastProvider><div data-testid="counter-dialog-host"><PharmacyCollections locationId="branch" canCollect={false} initialInvoiceId="invoice" focusOnly /></div></ToastProvider>);
+  await screen.findByRole("dialog", { name: "Bill unavailable" });
+  expect(screen.getByTestId("counter-dialog-host")).toBeEmptyDOMElement();
+});
 it("requires actual receipt confirmation and records exact paise with a stable key", async () => {
   mount(); await open(); expect(screen.getByRole("button", { name: "Record payment" })).toBeDisabled(); expect(api.post).not.toHaveBeenCalled();
   change("Cash tendered (INR)", "25"); confirm(); fireEvent.click(screen.getByRole("button", { name: "Record payment" })); await screen.findByText("Collection confirmed");
@@ -99,7 +116,10 @@ it("restores the submitted payment amounts after reload and retries the identica
 });
 it("reads immutable receipt history without collection authority and pages only when requested", async () => {
   api.get.mockImplementation(async (url: string) => url.includes("/collections?") ? response({ items: [receipt], nextCursor: "next-receipt" }) : url.includes("/invoices/invoice?") ? response(invoice) : response({ items: [summary], nextCursor: null }));
-  mount(false); await open(); const history = await screen.findByRole("region", { name: "Saved collection receipts" }); await within(history).findByText(/Receipt receipt/);
+  mount(false); await open(); const history = await screen.findByRole("region", { name: "Saved collection receipts" }); await within(history).findByRole("button", { name: "Print receipt" });
+  expect(within(history).queryByText("Receipt details")).not.toBeInTheDocument();
+  expect(within(history).getByText("Cash tendered")).toBeVisible();
+  expect(within(history).queryByText(receipt.receiptId, { exact: true })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Record payment" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Next receipt page" })); await waitFor(() => expect(api.get).toHaveBeenCalledWith(expect.stringContaining("cursor=next-receipt"), expect.any(Object))); expect(api.post).not.toHaveBeenCalled();
 });
@@ -245,5 +265,26 @@ it("opens drawer setup inside collection and keeps collection blocked until the 
   fireEvent.click(within(drawer).getByRole("button", { name: "Close modal", exact: true }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Record payment" })).toBeDisabled());
   expect(screen.getByLabelText("Cash tendered (INR)")).toHaveValue(20);
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+it("leads with the bill total for a paid invoice and keeps receipt references secondary", async () => {
+  render(<ToastProvider><PharmacyCollectionForm invoice={{ ...invoice, status: "paid", amountPaid: 20, balanceDue: 0 }} canCollect busy={false} onClose={vi.fn()} onSubmit={vi.fn()} /></ToastProvider>);
+  const summary = screen.getByRole("region", { name: "Bill payment summary" });
+  expect(within(summary).getByText("Paid in full")).toBeInTheDocument();
+  expect(within(summary).getByText("Bill total").nextElementSibling).toHaveTextContent("20.00");
+  expect(screen.queryByRole("button", { name: "Record payment" })).not.toBeInTheDocument();
+  expect(await screen.findByText("No payment receipts recorded for this bill.")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Close collections" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Close modal" })).toBeInTheDocument();
+  expect(api.post).not.toHaveBeenCalled();
+});
+it("distinguishes settled credit from cash received and confirmed refunds", async () => {
+  render(<ToastProvider><PharmacyCollectionForm invoice={{ ...invoice, status: "paid", amountPaid: 15, balanceDue: 0, creditedPaise: 500, refundedPaise: 200 }} canCollect={false} busy={false} onClose={vi.fn()} onSubmit={vi.fn()} /></ToastProvider>);
+  expect(screen.getByText("Settled")).toBeInTheDocument();
+  expect(screen.getByText("Credits applied").nextElementSibling).toHaveTextContent("5.00");
+  expect(screen.getByText("Confirmed refunds").nextElementSibling).toHaveTextContent("2.00");
+  expect(screen.getByText("Received shows gross receipts before refunds.")).toBeInTheDocument();
+  await screen.findByText("No payment receipts recorded for this bill.");
   expect(api.post).not.toHaveBeenCalled();
 });

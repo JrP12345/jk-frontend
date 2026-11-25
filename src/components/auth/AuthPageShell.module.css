@@ -46,6 +46,12 @@
 .accountLinks { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; text-align: center; font-size: 14px; color: var(--text-secondary); }
 .accountLinks a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; font-weight: 500; color: var(--accent); }
 .accountLinks a:hover { text-decoration: underline; }
+.loginLayout .accountLinks .accountNote { min-height: 0; font-size: 12px; line-height: 1.5; }
+.loginLayout .accountLinks .setupLinks { display: grid; justify-content: stretch; align-items: stretch; width: 100%; gap: 0; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); text-align: left; }
+.setupLabel { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.setupLinks a { justify-content: space-between; gap: 12px; width: 100%; min-height: 44px; padding-block: 8px; font-size: 13px; }
+.setupLinks a svg { flex-shrink: 0; }
+.setupLinks a + a { border-top: 1px solid var(--border); }
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .brand { display: none; }
@@ -63,6 +69,25 @@
   .fields { grid-template-columns: minmax(0, 1fr); }
   .fields, .pairedFields { gap: 12px; }
   .main { padding-inline: 16px; }
+  .shell { background: var(--surface-alt); }
+  .top { display: grid; grid-template-columns: 44px minmax(0,1fr) 44px; gap: 12px; padding-bottom: 12px; }
+  .mobileBrand { justify-self: center; max-width: 168px; width: 100%; }
+  .mobileBrand > span { width: 100%; min-width: 0; }
+  .stage { padding-top: 20px; padding-bottom: 16px; }
+  .card { padding: 20px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+  .formHeader h1 { font-size: 24px; line-height: 1.25; letter-spacing: -.025em; }
+  .formHeader p { margin-top: 6px; font-size: 13px; line-height: 1.6; }
+  .loginLayout { gap: 20px; }
+  .loginLayout .tabs > [role=tablist] { border: 1px solid var(--border); border-radius: 10px; padding: 3px; background: var(--surface-alt); }
+  .loginLayout .tabs [role=tab] { border-radius: 7px; }
+  .loginLayout .tabs [role=tab][aria-selected=true] { border-color: color-mix(in srgb, var(--accent) 25%, var(--border)); background: var(--selected); color: var(--accent); box-shadow: none; }
+  .loginLayout .tabs > [role=tabpanel] { padding-top: 20px; }
+  .card input:not([type=checkbox]):not([type=radio]) { font-size: 16px; }
+  .card label { font-size: 13px; font-weight: 500; }
+  .loginLayout .accountLinks { padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; }
+  .loginLayout .accountLinks > div:not(.setupLinks) { column-gap: 4px; }
+  .loginLayout .accountLinks .setupLinks { margin-top: 12px; padding-top: 12px; }
+  .divider { margin-block: 16px; }
 }
 @media (max-width: 359px) {
   .pairedFields { grid-template-columns: minmax(0, 1fr); }

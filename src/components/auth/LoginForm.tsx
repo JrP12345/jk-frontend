@@ -554,9 +554,12 @@ export default function LoginForm({ onRegister, initialAudience = "patient" }: {
               {/* Patient Registration Link */}
               <div className={auth.accountLinks}>
                 {authTab === "mobile" ? <div>New to Ekavyu? {onRegister ? <Button variant="ghost" size="sm" className="text-accent" disabled={otpLoading || isNavigating} onClick={onRegister}>Create patient account</Button> : <Link href="/login?mode=register"><NavigationPending />Create patient account</Link>}</div> : <>
-                  <p className="text-xs">Use the account provided by your organization.</p>
-                  <p>Setting up a practice? <Link href="/onboarding?mode=new_org"><NavigationPending />Request clinic setup</Link></p>
-                  <Link href="/pharmacy-start">Start pharmacy onboarding</Link>
+                  <p className={auth.accountNote}>Use the account provided by your organization.</p>
+                  <div className={auth.setupLinks}>
+                    <span className={auth.setupLabel}>Set up a new workspace</span>
+                    <Link href="/onboarding?mode=new_org"><NavigationPending />Request clinic setup<ArrowRight size={15} aria-hidden="true" /></Link>
+                    <Link href="/pharmacy-start">Start pharmacy onboarding<ArrowRight size={15} aria-hidden="true" /></Link>
+                  </div>
                 </>}
               </div>
             </div>

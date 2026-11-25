@@ -1,3 +1,29 @@
+.previewDialog { height: min(92dvh, 58rem); }
+.previewBody { display: flex; overflow: hidden; padding: 0; }
+.previewContent { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.previewToolbar { flex-shrink: 0; display: grid; grid-template-columns: minmax(140px,200px) minmax(0,1fr); align-items: end; gap: 8px 16px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+.previewToolbar > p { align-self: center; }
+.previewScroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 20px; background: var(--surface-alt); scrollbar-gutter: stable; }
+.previewScroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.previewScroll .paper { background: #fff; box-shadow: 0 1px 5px #00000014; }
+.receiptDocument { padding: 24px; background: var(--surface); color: var(--text); font-size: .8125rem; line-height: 1.5; }
+.receiptDocument > header { padding-bottom: 16px; border-bottom: 2px solid var(--accent); }
+.receiptDocument > header h2 { font-size: 1.25rem; font-weight: 650; margin-bottom: 6px; }
+.receiptDocument > header strong { display: block; margin-top: 12px; font-size: .75rem; overflow-wrap: anywhere; }
+.receiptCustomer { margin-block: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.receiptNote { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: .6875rem; }
+@media (max-width: 600px) {
+  .previewToolbar { padding: 10px 12px; grid-template-columns: minmax(0,1fr); }
+  .previewToolbar > p { display: none; }
+  .previewScroll { padding: 8px; }
+  .receiptDocument { padding: 14px; }
+  .previewScroll .document { padding: 12px; font-size: 11px; }
+  .previewScroll .documentHeader, .previewScroll .recipientGrid, .previewScroll .summaryGrid { grid-template-columns: minmax(0,1fr); gap: 14px; }
+  .previewScroll .documentMeta { text-align: left; }
+  .previewScroll .items { font-size: 9px; }
+  .previewScroll .items th { font-size: 8px; padding-inline: 2px; }
+  .previewScroll .items td { padding-inline: 2px; }
+}
 .paper { width: 100%; min-width: 0; overflow-wrap: anywhere; color: var(--text); }
 .paper :global(table) { width: 100%; border-collapse: collapse; }
 .paper :global(th), .paper :global(td) { padding: 5px; text-align: left; vertical-align: top; }
@@ -87,4 +113,22 @@
   .thermal .document .documentHeader, .thermal .document .documentFooter { display: block !important; }
   .thermal .document .items td, .thermal .document .items .batchRow td { padding: 2px 0 !important; border: 0 !important; }
   .thermal .document .items thead { display: none; }
+}
+
+.previewDialog { height: auto; max-height: 94dvh; }
+.previewBody { flex: 0 1 auto; min-height: 0; }
+.previewContent { height: auto; max-height: calc(94dvh - 150px); }
+.previewScroll { flex: 0 1 auto; padding: 12px; }
+.receiptDocument { max-width: 580px; margin-inline: auto; padding: 18px; }
+.receiptDocument > header { padding-bottom: 10px; }
+.receiptDocument > header h2 { font-size: 1rem; }
+.receiptCustomer { margin-block: 10px; padding-bottom: 8px; }
+.receiptNote { margin-top: 10px; padding-top: 8px; }
+@media screen and (min-width: 768px) {
+ .previewScroll .document { padding: 16px; font-size: 11px; }
+ .previewScroll .documentHeader { padding-bottom: 12px; gap: 16px; }
+ .previewScroll .recipientGrid { padding-block: 12px; gap: 16px; }
+ .previewScroll .document .items td { padding-top: 6px; }
+ .previewScroll .documentFooter { margin-top: 16px; }
+ .previewScroll .summaryGrid { padding-top: 12px; gap: 20px; }
 }

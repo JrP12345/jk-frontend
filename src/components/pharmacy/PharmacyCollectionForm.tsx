@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import { Alert, Button, Card, Checkbox, Input, Select } from "@/components/ui";
+import { CheckCircle2, Clock3 } from "lucide-react";
+import ui from "./PharmacyCollectionDetails.module.css";
 import Modal from "@/components/ui/Modal";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { collectionReceiptPage, type CollectionInput, type CollectionMethod, type CollectionReceipt, type CounterInvoice } from "@/lib/pharmacyCollections";
@@ -22,11 +24,13 @@ export function PharmacyCollectionForm({ invoice, canCollect, canOpenTill = fals
   const [entries, setEntries] = useState<PaymentPart[]>(() => [{ componentId: crypto.randomUUID(), amount: String(invoice.balanceDue), paymentMethod: preference?.method || "cash", referenceNumber: "" }]);
   const [tender, setTender] = useState(() => preference?.method && preference.method !== "cash" ? "0" : preference?.cashTendered ?? String(invoice.balanceDue)), [confirmed, setConfirmed] = useState(false), [error, setError] = useState("");
   const [history, setHistory] = useState<CollectionReceipt[]>([]), [cursor, setCursor] = useState<string | null>(null), [historyError, setHistoryError] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(true);
   const beginRead = useLatestRead();
   const loadHistory = useCallback(async (after?: string) => {
-    const request = beginRead();
+    const request = beginRead(); setHistoryLoading(true);
     try { const page = await collectionReceiptPage(invoice.id, invoice.locationId, after, request.signal); if (request.isCurrent()) { setHistoryError(""); setHistory(page.items); setCursor(page.nextCursor); } }
     catch (failure) { if (request.isCurrent()) setHistoryError(failure instanceof Error ? failure.message : "Receipt history unavailable"); }
+    finally { if (request.isCurrent()) setHistoryLoading(false); }
   }, [beginRead, invoice.id, invoice.locationId]);
   useEffect(() => { void Promise.resolve().then(() => loadHistory()); }, [loadHistory]);
   const editable = canCollect && ["unpaid", "partially_paid"].includes(invoice.status) && invoice.balanceDue > 0;
@@ -46,10 +50,27 @@ export function PharmacyCollectionForm({ invoice, canCollect, canOpenTill = fals
     if (!confirmed || !payment.input) { setError(payment.problem || "Confirm actual receipt before recording payment."); return; }
     onSubmit(payment.input);
   }
+  const settled = invoice.status === "paid" && invoice.balanceDue === 0;
+  const statusLabel = settled ? invoice.creditedPaise ? "Settled" : "Paid in full" : invoice.status === "partially_paid" ? "Partially paid" : invoice.status === "unpaid" ? "Payment due" : invoice.status.replaceAll("_", " ");
+  const documents = <div className={ui.documents}>
+    <section aria-label="Saved collection receipts" className={ui.history} aria-busy={historyLoading}>
+      <header className={ui.historyHeading}><h3>Payments{history.length > 1 ? ` (${history.length}${cursor ? "+" : ""})` : ""}</h3><PharmacyDocumentButton directPrint invoice={invoice} /></header>
+      {historyLoading && <p role="status" className={ui.empty}>Loading receipts...</p>}
+      {historyError && <Alert variant="error" title="Receipt history unavailable">{historyError}<Button size="sm" onClick={() => { void loadHistory(); }}>Retry receipt history</Button></Alert>}
+      {!historyLoading && !historyError && !history.length && <p className={ui.empty}>No payment receipts recorded for this bill.</p>}
+      {history.map(receipt => <article key={receipt.receiptId} className={ui.receiptCard}><CollectionReceiptSummary receipt={receipt} /><div className={ui.receiptActions}><PharmacyDocumentButton directPrint invoice={invoice} receipt={receipt} /></div></article>)}
+      {cursor && <Button size="sm" variant="outline" disabled={historyLoading} onClick={() => { void loadHistory(cursor); }}>Next receipt page</Button>}
+    </section>
+  </div>;
   const content = <>
-    <div className="space-y-4">
-      <div className="rounded-xl bg-surface-alt p-4"><p className="text-xs text-text-secondary">{invoice.customerSnapshot?.anonymous ? "Walk-in customer" : invoice.customerSnapshot?.name || "Recorded customer"} · Amount due</p><p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">{money(invoice.balanceDue)}</p><p className="mt-2 text-xs text-text-secondary">Bill {money(invoice.totalAmount)} · Already paid {money(invoice.amountPaid)}</p></div>
-      {Boolean(invoice.creditedPaise || invoice.refundedPaise) && <p className="text-xs text-text-secondary">Credits {money((invoice.creditedPaise || 0) / 100)} · Confirmed refunds {money((invoice.refundedPaise || 0) / 100)}. Already paid records gross receipts.</p>}
+    <div className={ui.content}>
+      <section className={ui.overview} data-complete={settled || undefined} aria-label="Bill payment summary">
+        <header className={ui.overviewHeading}><p className={ui.customer}>{invoice.customerSnapshot?.anonymous ? "Walk-in customer" : invoice.customerSnapshot?.name || "Recorded customer"}</p><span className={ui.status} data-complete={settled || undefined}>{settled ? <CheckCircle2 size={14} aria-hidden="true" /> : <Clock3 size={14} aria-hidden="true" />}{statusLabel}</span></header>
+        <p className={ui.heroLabel}>{settled || invoice.balanceDue === 0 ? "Bill total" : "Amount due"}</p>
+        <strong className={ui.heroAmount}>{money(settled || invoice.balanceDue === 0 ? invoice.totalAmount : invoice.balanceDue)}</strong>
+        {(!settled || Boolean(invoice.creditedPaise || invoice.refundedPaise)) && <dl className={ui.overviewTotals}><div><dt>{settled || invoice.balanceDue === 0 ? "Received" : "Bill total"}</dt><dd>{money(settled || invoice.balanceDue === 0 ? invoice.amountPaid : invoice.totalAmount)}</dd></div><div><dt>{settled || invoice.balanceDue === 0 ? "Balance due" : "Received"}</dt><dd>{money(settled || invoice.balanceDue === 0 ? invoice.balanceDue : invoice.amountPaid)}</dd></div></dl>}
+      </section>
+      {Boolean(invoice.creditedPaise || invoice.refundedPaise) && <div className={ui.adjustments}><dl><div><dt>Credits applied</dt><dd>{money((invoice.creditedPaise || 0) / 100)}</dd></div><div><dt>Confirmed refunds</dt><dd>{money((invoice.refundedPaise || 0) / 100)}</dd></div></dl><p>Received shows gross receipts before refunds.</p></div>}
       {error && <Alert variant="error" title="Check collection details">{error}</Alert>}
       {editable && <>
         <PharmacyDrawerGate compact locationId={invoice.locationId} canOpen={canOpenTill} onReady={setDrawerReady} />
@@ -73,10 +94,8 @@ export function PharmacyCollectionForm({ invoice, canCollect, canOpenTill = fals
           <div className="rounded-xl border border-border p-3"><Checkbox label="I confirmed that these amounts were actually received" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} /></div>
         </fieldset></form>
       </>}
-      <details open={!editable} className="border-t border-border pt-3"><summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Bill details and saved receipts</summary><div className="space-y-4 pt-2"><PharmacyDocumentButton invoice={invoice} />
-        {(history.length > 0 || historyError) && <section aria-label="Saved collection receipts" className="space-y-3"><h3 className="text-sm font-semibold">Saved receipts</h3>{historyError && <Alert variant="error" title="Receipt history unavailable">{historyError}<Button size="sm" onClick={() => { void loadHistory(); }}>Retry receipt history</Button></Alert>}{history.map(receipt => <Card key={receipt.receiptId} padding="sm" contentClassName="gap-3"><CollectionReceiptSummary receipt={receipt} /><PharmacyDocumentButton invoice={invoice} receipt={receipt} /></Card>)}{cursor && <Button size="sm" variant="outline" onClick={() => { void loadHistory(cursor); }}>Next receipt page</Button>}</section>}
-      </div></details>
+      {editable ? <details className={ui.expandable}><summary>Bill details and saved receipts</summary>{documents}</details> : documents}
     </div>
   </>;
-  return embedded ? <Card padding="sm" contentClassName="gap-3"><header><h2 className="text-sm font-semibold">Payment for {invoice.invoiceNumber}</h2><p className="text-xs text-text-secondary">Bill saved. Record the received payment below.</p></header>{content}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={onClose}>Close collections</Button>{editable && <Button size="sm" type="submit" form={formId} loading={busy} aria-label="Record payment" disabled={!canSubmit}>Save payment</Button>}</div></Card> : <Modal open presentation="sheet" title={invoice.documentVersion === 3 ? "Collect opening balance" : editable ? "Collect payment" : "Bill & receipts"} ariaLabel={invoice.documentVersion === 3 ? "Collect opening balance" : "Collect payment"} description={invoice.invoiceNumber} onClose={onClose} busy={busy} size="md" bodyClassName={styles.dialog} footer={<><Button size="sm" variant="outline" disabled={busy} onClick={onClose}>Close collections</Button>{editable && <Button size="sm" type="submit" form={formId} loading={busy} aria-label="Record payment" disabled={!canSubmit}>Record {money(payment.total / 100)} received</Button>}</>}>{content}</Modal>;
+  return embedded ? <Card padding="none" className={ui.embedded} contentClassName="gap-3"><header><h2 className="text-sm font-semibold">Payment for {invoice.invoiceNumber}</h2><p className="text-xs text-text-secondary">{editable ? "Bill saved. Record the received payment below." : "View the saved bill and payment receipts."}</p></header>{content}<div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={onClose} aria-label="Close collections">{editable ? "Cancel" : "Done"}</Button>{editable && <Button size="sm" type="submit" form={formId} loading={busy} aria-label="Record payment" disabled={!canSubmit}>Save payment</Button>}</div></Card> : <Modal open presentation="sheet" title={invoice.documentVersion === 3 ? "Collect opening balance" : editable ? "Collect payment" : "Bill & receipts"} ariaLabel={invoice.documentVersion === 3 ? "Collect opening balance" : "Collect payment"} description={invoice.invoiceNumber} onClose={onClose} busy={busy} size="md" bodyClassName={styles.dialog} footer={editable ? <><Button size="sm" variant="outline" disabled={busy} onClick={onClose} aria-label="Close collections">{editable ? "Cancel" : "Done"}</Button>{editable && <Button size="sm" type="submit" form={formId} loading={busy} aria-label="Record payment" disabled={!canSubmit}>Record {money(payment.total / 100)} received</Button>}</> : undefined}>{content}</Modal>;
 }
