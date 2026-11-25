@@ -63,6 +63,8 @@ export interface TableProps<T> {
   showColumnVisibility?: boolean;
   toolbarFilters?: ReactNode;
   pagination?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => Promise<boolean>;
   rowsPerPageOptions?: number[];
   defaultRowsPerPage?: number;
   onRowClick?: (row: T) => void;
@@ -118,6 +120,8 @@ export default function Table<T extends Record<string, any>>({
   showColumnVisibility = true,
   toolbarFilters,
   pagination = true,
+  hasMore = false,
+  onLoadMore,
   rowsPerPageOptions = [10, 25, 50, 100],
   defaultRowsPerPage = 10,
   onRowClick,
@@ -234,8 +238,13 @@ export default function Table<T extends Record<string, any>>({
   }, [filteredData, sortKey, sortDir]);
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedData.length / rowsPerPage));
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / rowsPerPage) + (hasMore ? 1 : 0));
   const currentPage = Math.min(requestedPage, totalPages);
+  async function changePage(page: number) {
+    if (loading) return;
+    if (page * rowsPerPage > sortedData.length && hasMore && onLoadMore && !await onLoadMore()) return;
+    setCurrentPage(page);
+  }
   useEffect(() => { if (requestedPage > totalPages) setCurrentPage(totalPages); }, [requestedPage, totalPages]);
   const displayEmptyMessage = error ? "Results are unavailable. Please try again." : searchQuery.trim() || Object.values(columnFilters).some(Boolean) ? "No results match your search or filters." : emptyMessage;
   const currentData = useMemo(() => {
@@ -808,7 +817,7 @@ export default function Table<T extends Record<string, any>>({
                       <button
                         key={pNum}
                         type="button"
-                        onClick={() => setCurrentPage(pNum)}
+                        onClick={() => { void changePage(pNum); }}
                         className={cn(
                           "h-7 min-w-[28px] px-1.5 rounded-lg flex items-center justify-center font-bold text-xs transition-all cursor-pointer shadow-2xs",
                           isActive ? "bg-primary-600 text-brand-mist shadow-xs border border-primary-500" : "border border-border/80 bg-surface text-text-muted hover:text-text hover:bg-surface-hover"
@@ -822,8 +831,8 @@ export default function Table<T extends Record<string, any>>({
 
                 <button
                   type="button"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={loading || currentPage === totalPages}
+                  onClick={() => { void changePage(Math.min(totalPages, currentPage + 1)); }}
                   className="h-8 px-2.5 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer flex items-center justify-center font-bold min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-[34px]"
                   aria-label="Next page"
                 >
