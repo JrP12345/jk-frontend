@@ -88,7 +88,7 @@ it("opens expiry return review for purchase-and-return staff without granting mo
     throw new Error("Source unavailable");
   });
   mount(); fireEvent.click(await screen.findByRole("tab", { name: "Alerts" })); fireEvent.click(screen.getByRole("tab", { name: "Expired" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Review supplier return" }));
+  fireEvent.click(await within(screen.getByRole("table", { name: "Expiry alerts" })).findByRole("button", { name: "Review supplier return" }));
   await waitFor(() => expect(screen.getByRole("tab", { name: "Finance & dues" })).toHaveAttribute("aria-selected", "true"));
   expect(await screen.findByText("Source unavailable")).toBeInTheDocument();
   expect(fixture.get.mock.calls.some(([url]) => url.includes("/purchases/purchase/return-source?"))).toBe(true);

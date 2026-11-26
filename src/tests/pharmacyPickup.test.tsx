@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { PublicPharmacyCatalogue } from "@/components/pharmacy/PublicPharmacyCatalogue";
 import PickupTicketPage from "@/app/pickup/PickupTicketPage";
 import { PharmacyStorefrontSettings } from "@/components/pharmacy/PharmacyStorefrontSettings";
@@ -21,7 +21,7 @@ vi.mock("@/lib/pharmacyPickup", async original => ({ ...await original<typeof im
 const product = { id: "product", name: "Ordinary medicine", genericName: "Generic", strength: "", baseUnit: "tablet", unitVersion: 1, available: true };
 const ticket: PickupTicket = { id: "request", locationId: "branch", reference: "PK-123456789A", status: "requested", revision: 0, createdAt: "2026-11-14T00:00:00Z", expiresAt: "2099-11-16T00:00:00Z", items: [{ medicineId: product.id, name: product.name, strength: "", baseUnit: "tablet", quantity: 2 }] };
 const secret = "a".repeat(64);
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 beforeEach(() => {
   vi.clearAllMocks(); window.history.replaceState(null, "", "/");
   vi.mocked(publicMedicines).mockResolvedValue({ items: [product], nextCursor: null, pickupEnabled: true });
@@ -169,7 +169,8 @@ it("separates catalogue publication from pickup permission and saves the current
 it("scans a parcel, links a saved bill and uses the authoritative revision for preparation", async () => {
   vi.mocked(changePickup).mockResolvedValue({ ...ticket, status: "ready", revision: 1, customerName: "Customer", phone: "9999999999" });
   render(<PharmacyPickups locationId="branch" canPrepare canCollect canOpenTill />);
-  fireEvent.click(await screen.findByRole("button", { name: "Open parcel" }));
+  fireEvent.click(await screen.findByRole("button", { name: `Open parcel ${ticket.reference}` }));
+  fireEvent.click(await screen.findByRole("button", { name: "Link a bill already prepared" }));
   fireEvent.change(await screen.findByLabelText("Saved counter bill number"), { target: { value: "I-123" } });
   fireEvent.click(screen.getByRole("button", { name: "Mark parcel ready" }));
   await waitFor(() => expect(changePickup).toHaveBeenCalledWith("request", { locationId: "branch", action: "ready", expectedRevision: 0, invoiceNumber: "I-123" }, expect.any(String)));
@@ -177,6 +178,35 @@ it("scans a parcel, links a saved bill and uses the authoritative revision for p
 });
 it("allows read-only queue users to scan but hides preparation and handover actions", async () => {
   render(<PharmacyPickups locationId="branch" canPrepare={false} canCollect={false} canOpenTill={false} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Open parcel" }));
+  fireEvent.click(await screen.findByRole("button", { name: `Open parcel ${ticket.reference}` }));
   await screen.findByText("Customer · 9999999999"); expect(screen.queryByRole("button", { name: "Mark parcel ready" })).not.toBeInTheDocument();
+});
+
+it("opens one mobile detail sheet and prepares the authoritative parcel without a transition", async () => {
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => ({ matches: media === "(max-width: 767px)", media, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+  const prepare = vi.fn();
+  const authoritative = { ...ticket, revision: 3, customerName: "Customer", phone: "9999999999" };
+  vi.mocked(scanPickupTicket).mockResolvedValue(authoritative);
+  render(<PharmacyPickups locationId="branch" canPrepare canCollect canOpenTill onPrepare={prepare} />);
+  fireEvent.click(await screen.findByRole("button", { name: `Open parcel ${ticket.reference}` }));
+  const sheet = await screen.findByRole("dialog", { name: ticket.reference });
+  expect(screen.getAllByRole("button", { name: "Prepare parcel bill" })).toHaveLength(1);
+  expect(within(sheet).getByRole("region", { name: "Requested medicines" })).toHaveTextContent("2 tablet");
+  fireEvent.click(within(sheet).getByRole("button", { name: "Prepare parcel bill" }));
+  expect(prepare).toHaveBeenCalledWith(authoritative);
+  expect(changePickup).not.toHaveBeenCalled();
+});
+
+it("keeps an uncertain cancellation frozen and retries with the same revision and operation key", async () => {
+  vi.mocked(changePickup).mockRejectedValueOnce(new Error("Connection interrupted")).mockResolvedValueOnce({ ...ticket, status: "cancelled", revision: 1, customerName: "Customer", phone: "9999999999" });
+  render(<PharmacyPickups locationId="branch" canPrepare canCollect canOpenTill />);
+  fireEvent.click(await screen.findByRole("button", { name: `Open parcel ${ticket.reference}` }));
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel pickup request" }));
+  await screen.findByText("Connection interrupted");
+  const first = vi.mocked(changePickup).mock.calls[0];
+  expect(screen.getByRole("button", { name: "Cancel pickup request" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Check / retry same operation" }));
+  await waitFor(() => expect(changePickup).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(changePickup).mock.calls[1]).toEqual(first);
+  expect(first).toEqual(["request", { locationId: "branch", action: "cancel", expectedRevision: 0 }, expect.any(String)]);
 });

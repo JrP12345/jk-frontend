@@ -51,14 +51,14 @@ function savedKey(storageKey: string) {
   if (key !== null && !/^[a-zA-Z0-9_-]{8,100}$/.test(key)) throw new Error("Sale reference requires review before another issue.");
   return key;
 }
-interface Props { onViewHistory?: () => void; toolbarContext?: ReactNode; toolbarActions?: ReactNode; initialPickup?: StaffPickup | null; onPickupPrepared?: () => void; locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void; onCreateLocal?: (name: string) => void; catalogueEditorOpen?: boolean; catalogueRevision?: number }
+interface Props { onViewHistory?: () => void; toolbarContext?: ReactNode; toolbarActions?: ReactNode; initialPickup?: StaffPickup | null; onPickupConsumed?: () => void; onPickupPrepared?: () => void; locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void; onCreateLocal?: (name: string) => void; catalogueEditorOpen?: boolean; catalogueRevision?: number }
 export function PharmacyCounter(props: Props) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user);
   return <PharmacyOfflineCounterGate key={`${scope}:${props.locationId}:${props.inventoryMode || "tracked"}`} organizationId={user?.organization_id} locationId={props.locationId} actorId={user?.id} canIssue={props.canCollect}>
     <CounterSession {...props} />
   </PharmacyOfflineCounterGate>;
 }
-function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initialPickup, onPickupPrepared, locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReviewProducts = false, onProductReviewed, onCreateLocal, catalogueEditorOpen = false, catalogueRevision = 0 }: Props) {
+function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initialPickup, onPickupConsumed, onPickupPrepared, locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReviewProducts = false, onProductReviewed, onCreateLocal, catalogueEditorOpen = false, catalogueRevision = 0 }: Props) {
   const availability = usePharmacyCounterAvailability(locationId);
   const user = useAuthStore(state => state.user), scope = authScopeKey(user), storageKey = `pharmacy-sale:${referenceOwnerKey(user)}:${locationId}`;
   const [initial] = useState(() => { try { return { key: savedKey(storageKey), error: "" }; } catch (failure) { return { key: null, error: message(failure) }; } });
@@ -105,7 +105,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
   const initialBrowse = useRef(false);
   const customerPanel = useRef<HTMLElement>(null), discountInput = useRef<HTMLInputElement>(null), paymentPanel = useRef<HTMLDivElement>(null);
   const checkoutLock = useRef(false);
-  const [clearOpen, setClearOpen] = useState(false), [collectionPending, setCollectionPending] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false), [clearingCart, setClearingCart] = useState(false), [collectionPending, setCollectionPending] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lookupFlight = useRef<{ key: string; repeats: number } | null>(null);
   const scanner = useRef<HTMLInputElement>(null), quantityInputs = useRef(new Map<string, HTMLInputElement>());
@@ -133,11 +133,11 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
   }, [catalogue, journal, initial.key, scope, locationId, inventoryMode, current]);
   const canReview = canReviewProducts && hasAnyPermission(user, "MANAGE_ORGANIZATION");
   const restoring = !draft.ready || !journalReady || !catalogueReady;
-  const editable = !restoring && !draft.error && !busy && !preparingBill && !submitted && !outcome && !pickupLoading && !catalogueOpen && !catalogueEditorOpen && !addingCustomer && !paymentEditor && !(canReview && reviewing);
+  const editable = !restoring && !draft.error && !busy && !preparingBill && !clearingCart && !submitted && !outcome && !pickupLoading && !catalogueOpen && !catalogueEditorOpen && !addingCustomer && !paymentEditor && !(canReview && reviewing);
   function invalidate() { setCreditOverride(""); revision.current++; beginQuote(); setQuote(null); setQuoteError(""); setQuoting(false); setError(""); }
   useEffect(() => {
     if (!initialPickup || restoring || pending || outcome || initializedPickup.current === initialPickup.id) return;
-    if (pickup?.id === initialPickup.id) { initializedPickup.current = initialPickup.id; return; }
+    if (pickup?.id === initialPickup.id || held.some(cart => cart.pickup?.id === initialPickup.id)) { initializedPickup.current = initialPickup.id; onPickupConsumed?.(); return; }
     if (lines.length && held.length >= 3) { void Promise.resolve().then(() => { if (current()) setError("Hold or clear a cart before preparing this parcel; all held bill slots are in use."); }); return; }
     const controller = new AbortController();
     void (async () => {
@@ -152,11 +152,12 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
         if (lines.length) setHeld(previous => [...previous, { lines, customer, discount, billNumber, ...(pickup ? { pickup } : {}) }]);
         initializedPickup.current = initialPickup.id;
         setPickup({ id: initialPickup.id, revision: initialPickup.revision }); setLines(prepared); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0"); setAdvancedPayment(null); setOnAccount(false); setQuote(null); setQuoteError("");
+        onPickupConsumed?.();
       } catch (e) { if (!controller.signal.aborted && current()) { setPickupLoadFailed(true); setError(message(e)); } }
       finally { if (!controller.signal.aborted && current()) setPickupLoading(false); }
     })();
     return () => { controller.abort(); };
-  }, [initialPickup, restoring, pending, outcome, pickup, lines, held.length, customer, discount, billNumber, locationId, current, pickupLoadRetry]);
+  }, [initialPickup, restoring, pending, outcome, pickup, lines, held, customer, discount, billNumber, locationId, current, pickupLoadRetry, onPickupConsumed]);
   function reviewProduct(id: string) { if (editable && canReview) { invalidate(); setReviewing(id); } }
   function productResults() {
     const frequentOnly = !productResultsSnapshot && !search.trim() && productFilter.includes("frequent");
@@ -284,9 +285,15 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     setSearch(""); setSearchError(""); setProductResultsSnapshot(null); setCustomerSearch(""); setCustomers([]); setNextCustomer(null); setCustomerLookupEmpty(false);
     requestAnimationFrame(() => scanner.current?.focus());
   }
-  function acceptSale(result: CounterResult, recovered = false) {
+  async function acceptSale(result: CounterResult, recovered = false) {
     setLastSavedBill(result);
-    if (result.pickup) { setRecentInvoice(result.invoiceId); finishCart(result); onPickupPrepared?.(); return; }
+    if (result.pickup) {
+      // Persist the completed draft before navigation can unmount this counter.
+      // A failed local write retains the original sale reference for read-only recovery.
+      await draft.flush({ cart: { lines: [], customerId: null, discount: "0", billNumber: nextBillNumber.current }, held: held.map(packDraft) });
+      if (!current()) return;
+      setRecentInvoice(result.invoiceId); finishCart(result); onPickupPrepared?.(); return;
+    }
     if (result.collection) { setRecentInvoice(result.invoiceId); finishCart(result); return; }
     if (!canCollect && !recovered) { setRecentInvoice(result.invoiceId); finishCart(result); return; }
     if (onAccount && frozen.current?.input.customerId && result.status === "unpaid") { setRecentInvoice(result.invoiceId); finishCart(result); }
@@ -320,7 +327,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
       if (!current()) return;
       revision.current++;
       const result = await measurePharmacyStep("save_request", () => issueCounter(pinned.input, pinned.key));
-      if (current()) acceptSale(result);
+      if (current()) await acceptSale(result);
     } catch (failure) { if (current()) {
       const response = (failure as { response?: { status?: number; data?: { details?: { code?: string } } } })?.response;
       const status = response?.status || 0;
@@ -360,7 +367,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     if (!current() || lock.current || !pending) return;
     // Recovery is read-only; a remembered payment choice must not authorize a new collection.
     lock.current = true; setBusy(true); setError(""); revision.current++;
-    try { const result = await recoverCounter(locationId, pending); if (current()) acceptSale(result, true); }
+    try { const result = await recoverCounter(locationId, pending); if (current()) await acceptSale(result, true); }
     catch (failure) { if (current()) setError(message(failure)); }
     finally { lock.current = false; if (current()) setBusy(false); }
   }
@@ -375,6 +382,19 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     setOnAccount(false); setAdvancedPayment(null); setPaymentMethod("cash"); setCashPreview(null); setMobilePanel("products"); setPaymentReference(""); setDrawerReady(false); printRequested.current = false; setBillNumber(nextBillNumber.current++);
     try { if (savedKey(storageKey) !== outcome.requestKey) throw new Error("Sale reference changed; recover the saved result."); sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {}); frozen.current = null; setPending(null); setSubmitted(false); setOutcome(null); setLines([]); setPickup(undefined); setCustomer(null); setQuote(null); setDiscount("0"); setCustomerMode("walk-in"); setCustomers([]); setCustomerSearch(""); setAddedMessage(""); setError(""); requestAnimationFrame(() => scanner.current?.focus()); }
     catch (failure) { setError(message(failure)); }
+  }
+  async function clearCart() {
+    if (!editable || pending) return;
+    setClearingCart(true);
+    try {
+      await draft.flush({ cart: { lines: [], customerId: null, discount: "0", billNumber }, held: held.map(packDraft) });
+      if (!current()) return;
+      setPaymentMethod("cash"); setCashPreview(null); setPaymentReference(""); setOnAccount(false); setAdvancedPayment(null);
+      invalidate(); setLines([]); setPickup(undefined); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0");
+      setCustomers([]); setCustomerSearch(""); setNextCustomer(null); setCustomerLookupEmpty(false); setEditingLineId(null); setQuoteDetailsOpen(false); setAddedMessage(""); setClearOpen(false);
+      requestAnimationFrame(() => scanner.current?.focus());
+    } catch (failure) { if (current()) { setError(message(failure)); setClearOpen(false); } }
+    finally { if (current()) setClearingCart(false); }
   }
   function hold() { if (!editable || pending || !lines.length) return; if (held.length >= 3) { setError("Three bills are already on hold. Resume and finish one, or close a held bill using its close button, before creating another. Your current bill is unchanged."); return; } setOnAccount(false); setAdvancedPayment(null); setPaymentMethod("cash"); setCashPreview(null); setMobilePanel("products"); setPaymentReference(""); setHeld(previous => [...previous, { lines, customer, discount, billNumber, ...(pickup ? { pickup } : {}) }]); setBillNumber(nextBillNumber.current++); setLines([]); setPickup(undefined); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0"); invalidate(); }
   function resume(index: number) {
@@ -426,7 +446,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
         : event.key === "F6" ? () => { showPanel("pay"); requestAnimationFrame(() => discountInput.current?.focus()); }
         : event.key === "F8" ? () => { showPanel("pay"); requestAnimationFrame(() => paymentPanel.current?.querySelector<HTMLButtonElement>("button")?.focus()); }
         : event.key === "F10" ? () => { if (canCheckout) void checkout(); }
-        : event.ctrlKey && event.key === "Delete" ? () => { if (editable && lines.length && !pending) setClearOpen(true); } : null;
+        : event.ctrlKey && event.key === "Delete" ? () => { if (editable && (lines.length || pickup) && !pending) setClearOpen(true); } : null;
       if (action) { event.preventDefault(); action(); }
     };
   });
@@ -438,7 +458,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     <nav aria-label="Open counter bills" className={pos.bills}>
       <div className={pos.billTabs}>
       {toolbarContext && <div className={pos.billLocation}>{toolbarContext}</div>}
-      <span className={pos.activeBill}>Bill {billNumber} · {customer ? "Recorded" : "Walk-in"}{payable !== undefined && <strong>{money(payable / 100)}</strong>}<Button size="sm" variant="ghost" className={pos.closeBill} disabled={!editable || !lines.length || Boolean(pending)} aria-label="Clear current bill" title="Clear current bill" onClick={() => setClearOpen(true)}><X size={12} aria-hidden="true" /></Button></span>
+      <span className={pos.activeBill}>Bill {billNumber} · {customer ? "Recorded" : "Walk-in"}{payable !== undefined && <strong>{money(payable / 100)}</strong>}<Button size="sm" variant="ghost" className={pos.closeBill} disabled={!editable || (!lines.length && !pickup) || Boolean(pending)} aria-label="Clear current bill" title="Clear current bill" onClick={() => setClearOpen(true)}><X size={12} aria-hidden="true" /></Button></span>
       {held.map((cart, index) => <span className={pos.heldBill} key={index}><Button size="sm" variant="ghost" disabled={!editable || Boolean(pending)} onClick={() => resume(index)} aria-label={`Resume held cart ${index + 1} (${cart.lines.length} products)`}>Bill {cart.billNumber || index + 2} · {cart.customer ? "Recorded" : "Walk-in"}</Button><Button size="sm" variant="ghost" className={pos.closeBill} disabled={!editable || Boolean(pending)} aria-label={`Close held bill ${index + 1}`} onClick={() => setClosingHeld(index)}><X size={12} aria-hidden="true" /></Button></span>)}
       </div>
       <Button size="sm" variant="primary" className={pos.newBill} aria-label="New bill" title={held.length >= 3 ? "Three bills on hold: finish or close one to create another" : !lines.length ? "Current bill is already empty" : "New bill (F2)"} disabled={!editable || Boolean(pending) || !lines.length} onClick={() => { hold(); showPanel("products", true); }}><Plus size={18} aria-hidden="true" /><span className={pos.newBillLabel}>New bill <kbd>F2</kbd></span></Button>
@@ -490,7 +510,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
         </section>
         <section aria-label="Counter cart" className={pos.cart}>
           <Card padding="none" className={pos.panel} contentClassName={pos.panelContent}>
-            <div className={pos.cartHeader}><div><CardTitle>Bill {billNumber}</CardTitle><p>{lines.length} {lines.length === 1 ? "product" : "products"} · {String(pieces)} units</p></div><div className={pos.cartHeaderActions}><Button size="sm" variant="ghost" disabled={!lines.length || quoting || !editable} aria-label="Refresh prices" title="Refresh prices" onClick={() => { void refreshQuote(); }}><RotateCw size={15} aria-hidden="true" /></Button><Button size="sm" variant="ghost" disabled={!quote} aria-label="Batch and tax details" title="Batch and tax details" onClick={() => setQuoteDetailsOpen(true)}><FileText size={15} aria-hidden="true" /></Button>{lines.length > 0 && <Button size="sm" variant="outline" disabled={!editable || Boolean(pending)} aria-label="Clear cart" onClick={() => setClearOpen(true)}>Clear <kbd>Ctrl+Del</kbd></Button>}</div></div>
+            <div className={pos.cartHeader}><div><CardTitle>Bill {billNumber}</CardTitle><p>{lines.length} {lines.length === 1 ? "product" : "products"} · {String(pieces)} units</p></div><div className={pos.cartHeaderActions}><Button size="sm" variant="ghost" disabled={!lines.length || quoting || !editable} aria-label="Refresh prices" title="Refresh prices" onClick={() => { void refreshQuote(); }}><RotateCw size={15} aria-hidden="true" /></Button><Button size="sm" variant="ghost" disabled={!quote} aria-label="Batch and tax details" title="Batch and tax details" onClick={() => setQuoteDetailsOpen(true)}><FileText size={15} aria-hidden="true" /></Button>{(lines.length > 0 || pickup) && <Button size="sm" variant="outline" disabled={!editable || Boolean(pending)} aria-label="Clear cart" onClick={() => setClearOpen(true)}>Clear <kbd>Ctrl+Del</kbd></Button>}</div></div>
             <div className={pos.columnHead} aria-hidden="true"><span>#</span><span>Product</span><span>Quantity</span><span>Rate</span><span>GST</span><span>Amount</span><span /></div>
             <div className={pos.cartLines} role="region" aria-label="Bill product list" tabIndex={0}><fieldset disabled={!editable} className={pos.cartFields} aria-label="Products and cart">
               {!lines.length && <EmptyState icon={<ShoppingBasket aria-hidden="true" />} title="Your cart is empty" description="Scan or select a medicine to begin." className={pos.emptyCart} />}
@@ -505,7 +525,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
                   <span className={pos.lineGst} title={quote ? "GST rate from the current quote" : "Last captured rate; checked at billing"}><span className="sr-only">GST </span>{gstRate === undefined ? "—" : `${gstRate / 100}%`}</span>
                   <strong className={pos.lineAmount}><span className="sr-only">Line total </span><span>{calculated ? money(calculated.grossAmountPaise / 100) : estimated ? money(estimated.grossPaise / 100) : "—"}</span></strong>
                 </div>
-                <div className={pos.lineActions}><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} aria-label={`Edit item ${productLabel(line.product)}`} title="Pack quantities and line discount" onClick={() => setEditingLineId(line.lineId)}><SlidersHorizontal size={14} aria-hidden="true" /></Button><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} onClick={() => { invalidate(); setLines(previous => previous.filter(row => row.lineId !== line.lineId)); }} aria-label={`Remove ${productLabel(line.product)}`}><X size={16} aria-hidden="true" /></Button></div>
+                <div className={pos.lineActions}><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} aria-label={`Edit item ${productLabel(line.product)}`} title="Pack quantities and line discount" onClick={() => setEditingLineId(line.lineId)}><SlidersHorizontal size={14} aria-hidden="true" /></Button><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} onClick={() => { if (pickup && lines.length === 1) { void clearCart(); return; } invalidate(); setLines(previous => previous.filter(row => row.lineId !== line.lineId)); }} aria-label={`Remove ${productLabel(line.product)}`}><X size={16} aria-hidden="true" /></Button></div>
 
               </fieldset>; })}
             </fieldset></div>
@@ -587,7 +607,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
           <dl className="space-y-2 text-sm"><div className="flex justify-between gap-3"><dt className="text-text-secondary">Taxable value</dt><dd>{money(quote.calculation.totals.baseAmountPaise / 100)}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-secondary">CGST</dt><dd>{money(quote.calculation.totals.cgstPaise / 100)}</dd></div><div className="flex justify-between gap-3"><dt className="text-text-secondary">SGST</dt><dd>{money(quote.calculation.totals.sgstPaise / 100)}</dd></div><div className="flex justify-between gap-3 border-t border-border pt-3 text-lg font-semibold"><dt>Total</dt><dd>{money(quote.calculation.totals.payablePaise / 100)}</dd></div></dl>
         </Card></Modal>}
     <ConfirmDialog open={closingHeld !== null} title="Close held bill?" description="Remove this held draft? The current bill will stay saved." confirmLabel="Close held bill" onClose={() => setClosingHeld(null)} onConfirm={() => { if (editable && !pending && closingHeld !== null) { setHeld(previous => previous.filter((_, index) => index !== closingHeld)); setClosingHeld(null); } }} />
-    <ConfirmDialog open={clearOpen} onClose={() => setClearOpen(false)} title="Clear this cart?" description="Remove the current items and discounts. Held carts will stay saved." confirmLabel="Clear cart" variant="danger" onConfirm={() => { if (!editable || pending) return; setPaymentMethod("cash"); setCashPreview(null); invalidate(); setLines([]); setPickup(undefined); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0"); setClearOpen(false); scanner.current?.focus(); }} />
+    <ConfirmDialog open={clearOpen} loading={clearingCart} onClose={() => setClearOpen(false)} title="Clear this cart?" description={pickup ? "Remove this parcel from the cart. The medicine request stays in the pickup queue. Held carts stay saved." : "Remove the current items, customer and payment choices. Held carts stay saved."} confirmLabel="Clear cart" variant="danger" onConfirm={() => { void clearCart(); }} />
     {reminderCustomer && <PharmacyCustomerReminders key={`${scope}:${locationId}:${reminderCustomer}`} partyId={reminderCustomer} locationId={locationId} onClose={() => setReminderCustomer(null)} />}
     {priorPayment && <Modal open title="Resolve earlier payment" size="lg" onClose={() => setPriorPayment(null)}><PharmacyCollections locationId={locationId} canCollect={canCollect} canOpenTill={canOpenTill} initialInvoiceId={priorPayment} checkoutOnly embeddedCheckout autoAcknowledge onCollected={receipt => { if (receipt.invoiceId === priorPayment) { setPriorPayment(null); setError(""); } }} /></Modal>}
     {viewRecentInvoice && <PharmacyCollections locationId={locationId} canCollect={false} initialInvoiceId={viewRecentInvoice} focusOnly onInvoiceClose={() => setViewRecentInvoice(null)} />}
