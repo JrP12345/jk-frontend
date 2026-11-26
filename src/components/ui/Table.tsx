@@ -63,6 +63,8 @@ export interface TableProps<T> {
   showColumnVisibility?: boolean;
   toolbarFilters?: ReactNode;
   pagination?: boolean;
+  /** Server-owned rows can contain a larger batch than the displayed page. */
+  remotePagination?: { page: number; rowCount: number; rowOffset: number; onPageChange: (page: number) => void };
   hasMore?: boolean;
   onLoadMore?: () => Promise<boolean>;
   rowsPerPageOptions?: number[];
@@ -70,6 +72,9 @@ export interface TableProps<T> {
   onRowClick?: (row: T) => void;
   mobileCardView?: boolean;
   renderMobileCard?: (row: T, index: number) => ReactNode;
+  mobileLayout?: "cards" | "list";
+  renderPageSummary?: (rows: T[], loadedCount: number) => ReactNode;
+  mobilePaginationAction?: ReactNode;
 }
 
 const densityPadding: Record<TableDensity, string> = {
@@ -120,6 +125,7 @@ export default function Table<T extends Record<string, any>>({
   showColumnVisibility = true,
   toolbarFilters,
   pagination = true,
+  remotePagination,
   hasMore = false,
   onLoadMore,
   rowsPerPageOptions = [10, 25, 50, 100],
@@ -127,6 +133,9 @@ export default function Table<T extends Record<string, any>>({
   onRowClick,
   mobileCardView = true,
   renderMobileCard,
+  mobileLayout = "cards",
+  renderPageSummary,
+  mobilePaginationAction,
 }: TableProps<T>) {
   // State
   const density = initialDensity;
@@ -238,10 +247,12 @@ export default function Table<T extends Record<string, any>>({
   }, [filteredData, sortKey, sortDir]);
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedData.length / rowsPerPage) + (hasMore ? 1 : 0));
-  const currentPage = Math.min(requestedPage, totalPages);
+  const rowCount = remotePagination?.rowCount ?? sortedData.length;
+  const totalPages = Math.max(1, Math.ceil(rowCount / rowsPerPage) + (hasMore ? 1 : 0));
+  const currentPage = Math.min(remotePagination?.page ?? requestedPage, totalPages);
   async function changePage(page: number) {
     if (loading) return;
+    if (remotePagination) { remotePagination.onPageChange(page); return; }
     if (page * rowsPerPage > sortedData.length && hasMore && onLoadMore && !await onLoadMore()) return;
     setCurrentPage(page);
   }
@@ -249,9 +260,10 @@ export default function Table<T extends Record<string, any>>({
   const displayEmptyMessage = error ? "Results are unavailable. Please try again." : searchQuery.trim() || Object.values(columnFilters).some(Boolean) ? "No results match your search or filters." : emptyMessage;
   const currentData = useMemo(() => {
     if (!pagination) return sortedData;
-    const start = (currentPage - 1) * rowsPerPage;
+    const start = (currentPage - 1) * rowsPerPage - (remotePagination?.rowOffset ?? 0);
+    if (start < 0) return [];
     return sortedData.slice(start, start + rowsPerPage);
-  }, [sortedData, currentPage, rowsPerPage, pagination]);
+  }, [sortedData, currentPage, rowsPerPage, pagination, remotePagination?.rowOffset]);
 
   // Dynamic Sliding Pagination Window
   const paginationRange = useMemo(() => {
@@ -344,11 +356,12 @@ export default function Table<T extends Record<string, any>>({
   const hasMobileControls = selectable || columns.some((column) => column.sortable) || (hasFilterableColumns && showFilterRow) || Boolean(sortKey);
 
   return (
-    <div aria-busy={loading} className={cn("w-full min-w-0 flex flex-col relative", className)}>
+    <div aria-busy={loading} className={cn("w-full min-w-0 flex flex-col relative", mobileLayout === "list" && "max-md:flex-1 max-md:min-h-0", className)}>
       {loading && <span role="status" aria-live="polite" className="sr-only">{currentData.length ? "Updating results" : "Loading results"}</span>}
       {/* UNIFIED PREMIUM CARD WRAPPER */}
       <div className={cn(
         "w-full rounded-container border border-border bg-surface overflow-hidden flex flex-col",
+        mobileLayout === "list" && "max-md:flex-1 max-md:min-h-0",
         variant === "bordered" && "border border-border",
         variant === "flat" && "border-none shadow-none bg-transparent"
       )}>
@@ -494,8 +507,9 @@ export default function Table<T extends Record<string, any>>({
         {(searchQuery || activeFiltersCount > 0) && <div className="px-3 py-2"><Button size="sm" variant="ghost" onClick={() => { setSearchQuery(""); setColumnFilters({}); setCurrentPage(1); }}>Clear search and filters</Button></div>}
 
         {/* 2. TABLE GRID AREA — Desktop table, Mobile card view */}
+        {renderPageSummary?.(currentData, sortedData.length)}
         {mobileCardView && (
-          <div className={cn("md:hidden p-3 space-y-2.5 transition-opacity duration-200", loading && currentData.length > 0 && "opacity-80")}>
+          <div className={cn("md:hidden transition-opacity duration-200", mobileLayout === "cards" ? "p-3 space-y-2.5" : "min-h-0 flex-1 overflow-y-auto overscroll-contain divide-y divide-border/60", loading && currentData.length > 0 && "opacity-80")}>
             {loading && currentData.length === 0 ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="p-3.5 rounded-xl border border-border/60 bg-surface-alt/30 space-y-2.5">
@@ -759,11 +773,11 @@ export default function Table<T extends Record<string, any>>({
         </div>
 
         {/* 3. FOOTER PAGINATION BAR (ALIGNED & RESPONSIVE) */}
-        {pagination && (currentData.length > 0 || !loading) && (
-          <div className="px-4 py-3 border-t border-border/80 bg-surface flex flex-col xl:flex-row items-center justify-between gap-3 text-xs text-text-muted">
-            <div className="flex items-center justify-between w-full sm:w-auto gap-4 font-medium">
+        {pagination && (currentData.length > 0 || !loading || mobilePaginationAction || remotePagination) && (
+          <div className="shrink-0 px-4 py-3 border-t border-border/80 bg-surface flex flex-col xl:flex-row items-center justify-between gap-3 text-xs text-text-muted">
+            <div className={cn("items-center justify-between w-full sm:w-auto gap-4 font-medium", mobilePaginationAction ? "hidden md:flex" : "flex")}>
               <span className="shrink-0">
-                Showing {sortedData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to {Math.min(currentPage * rowsPerPage, sortedData.length)} of {sortedData.length}
+                Showing {rowCount > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to {Math.min(currentPage * rowsPerPage, rowCount)} of {rowCount}
               </span>
 
               <div className="flex items-center gap-1.5 font-medium shrink-0">
@@ -776,7 +790,8 @@ export default function Table<T extends Record<string, any>>({
                     value={rowsPerPage.toString()}
                     onChange={(e) => {
                       setRowsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
+                      if (remotePagination) remotePagination.onPageChange(1);
+                      else setCurrentPage(1);
                     }}
                     options={rowsPerPageOptions.map((opt) => ({ value: opt.toString(), label: opt.toString() }))}
                   />
@@ -788,8 +803,8 @@ export default function Table<T extends Record<string, any>>({
               <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-start">
                 <button
                   type="button"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={loading || currentPage === 1}
+                  onClick={() => { void changePage(Math.max(1, currentPage - 1)); }}
                   className="h-8 min-w-[34px] px-2.5 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer flex items-center justify-center font-bold min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-[34px]"
                   aria-label="Previous page"
                 >
@@ -797,7 +812,8 @@ export default function Table<T extends Record<string, any>>({
                 </button>
 
                 {/* Compact mobile page text */}
-                <span className="text-xs font-semibold text-text md:hidden px-2">
+                {mobilePaginationAction && <div className="flex-1 md:hidden">{mobilePaginationAction}</div>}
+                <span className={cn("text-xs font-semibold text-text md:hidden px-2", mobilePaginationAction && "hidden")}>
                   Page {currentPage} of {totalPages}
                 </span>
 

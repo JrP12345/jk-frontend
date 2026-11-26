@@ -2,6 +2,11 @@ import api from "./api";
 import { validateCollectionReceipt, type CollectionInput, type CollectionReceipt, type CounterInvoice } from "./pharmacyCollections";
 import type { CataloguePage, CataloguePageQuery } from "./pharmacyBranchCatalogue";
 import { recordPharmacyServerTiming } from "./pharmacySavePerformance";
+import { apiErrorKind } from "./apiError";
+
+// Financial commits may outlive the general API's short read deadline.
+export const COUNTER_SAVE_TIMEOUT_MS = 45_000;
+const COUNTER_RECOVERY_TIMEOUT_MS = 15_000;
 
 export interface CounterProduct { id: string; name: string; genericName: string; strength?: string; manufacturer?: string; rackLocation?: string; barcodes?: string[]; retailPricePaise?: number; stockQuantity: number; eligible: boolean; saleBlocked?: boolean; saleBlockReason?: string; unitDefinition?: { version: number; baseUnit: string; packUnit: string; unitsPerPack: number; outerPackUnit?: string; packsPerOuter?: number } }
 export interface CounterCustomer { id: string; name: string; address: string; phone?: string; revision: number; memberDiscountBps?: number }
@@ -51,16 +56,24 @@ function result(value: unknown, locationId: string, key: string): CounterResult 
   return row;
 }
 export async function issueCounter(input: CounterIssueInput, key: string) {
-  let response;
-  try { response = await api.post(input.externalPrescription ? "/pharmacy/external-prescriptions/supply" : "/pharmacy/sales", input, { headers: { "Idempotency-Key": key } }); }
-  catch (failure) { recordPharmacyServerTiming((failure as { response?: { headers?: Record<string, unknown> } }).response?.headers?.["server-timing"]); throw failure; }
-  recordPharmacyServerTiming(response.headers?.["server-timing"]);
-  const saved = result(response.data?.data, input.locationId, key);
+  let saved: CounterResult;
+  try {
+    const response = await api.post(input.externalPrescription ? "/pharmacy/external-prescriptions/supply" : "/pharmacy/sales", input, { headers: { "Idempotency-Key": key }, timeout: COUNTER_SAVE_TIMEOUT_MS });
+    recordPharmacyServerTiming(response.headers?.["server-timing"]);
+    saved = result(response.data?.data, input.locationId, key);
+  } catch (failure) {
+    recordPharmacyServerTiming((failure as { response?: { headers?: Record<string, unknown> } }).response?.headers?.["server-timing"]);
+    if (!["unavailable", "server"].includes(apiErrorKind(failure))) throw failure;
+    // A lost response does not mean rollback. Read the same operation before
+    // surfacing failure; never replay a bill or payment automatically.
+    try { saved = await recoverCounter(input.locationId, key, Boolean(input.externalPrescription)); }
+    catch { throw failure; }
+  }
   if (input.pickup && saved.pickup?.id !== input.pickup.id) throw Error("Saved pickup link could not be confirmed. Keep the same reference.");
   if (saved.totalPaise !== input.expectedTotalPaise) throw new Error("Saved total differs from the confirmed bill. Keep the same reference.");
   if (input.payment && (!saved.collection || saved.collection.entries.length !== input.payment.entries.length || saved.collection.entries.some(entry => !input.payment!.entries.some(wanted => wanted.componentId === entry.componentId && wanted.amountPaise === entry.amountPaise && wanted.paymentMethod === entry.paymentMethod && wanted.referenceNumber === entry.referenceNumber)) || saved.collection.cashTenderedPaise !== input.payment.cashTenderedPaise)) throw new Error("Saved payment could not be confirmed. Keep the same reference.");
   return saved;
 }
 export async function recoverCounter(locationId: string, key: string, external = false) {
-  const response = await api.get(`/pharmacy/${external ? "external-prescription-operations" : "sale-operations"}/${encodeURIComponent(key)}?locationId=${encodeURIComponent(locationId)}`); return result(response.data?.data, locationId, key);
+  const response = await api.get(`/pharmacy/${external ? "external-prescription-operations" : "sale-operations"}/${encodeURIComponent(key)}?locationId=${encodeURIComponent(locationId)}`, { timeout: COUNTER_RECOVERY_TIMEOUT_MS }); return result(response.data?.data, locationId, key);
 }

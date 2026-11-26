@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Badge, Button, Card, DatePicker, Input, Modal, Table, Tabs, cn } from "@/components/ui";
-import { Search } from "lucide-react";
+import { Filter, Search } from "lucide-react";
+import { localDateKey } from "@/lib/date";
 import { PharmacyCollectionForm, type CounterPaymentPreference } from "./PharmacyCollectionForm";
 export { PharmacyCollectionForm } from "./PharmacyCollectionForm";
 import { useLatestRead } from "@/hooks/useLatestRead";
@@ -20,11 +21,11 @@ export { CollectionReceiptSummary } from "./PharmacyCollectionReceipt";
 
 const errorMessage = (failure: unknown) => (failure as { response?: { data?: { message?: string } } })?.response?.data?.message || (failure instanceof Error ? failure.message : "Collection could not be confirmed. Keep the same reference.");
 type CollectionsProps = { locationId: string; canCollect: boolean; canOpenTill?: boolean; initialInvoiceId?: string; autoAcknowledge?: boolean; focusOnly?: boolean; checkoutOnly?: boolean; embeddedCheckout?: boolean; issuedTotalPaise?: number; checkoutPayment?: CounterCheckoutPayment; preference?: CounterPaymentPreference; onInvoiceClose?: () => void; onCollected?: (receipt: CollectionReceipt) => void; onPendingChange?: (pending: boolean) => void };
-export function PharmacyCollections(props: CollectionsProps) {
+export function PharmacyCollections(props: CollectionsProps & { onNewSale?: () => void }) {
   const scope = authScopeKey(useAuthStore(state => state.user));
   return <CollectionSession key={`${scope}:${props.locationId}`} {...props} />;
 }
-function CollectionSession({ locationId, canCollect, canOpenTill = false, initialInvoiceId, autoAcknowledge = false, focusOnly = false, checkoutOnly = false, embeddedCheckout = false, issuedTotalPaise, checkoutPayment, preference, onInvoiceClose, onCollected, onPendingChange }: CollectionsProps) {
+function CollectionSession({ locationId, canCollect, canOpenTill = false, initialInvoiceId, autoAcknowledge = false, focusOnly = false, checkoutOnly = false, embeddedCheckout = false, issuedTotalPaise, checkoutPayment, preference, onInvoiceClose, onCollected, onPendingChange, onNewSale }: CollectionsProps & { onNewSale?: () => void }) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user), storageKey = `pharmacy-collection:${referenceOwnerKey(user)}:${locationId}`;
   const [initial] = useState(() => { try { return { pending: pendingReference(storageKey), error: "" }; } catch (failure) { return { pending: null, error: errorMessage(failure) }; } });
   const [pending, setPending] = useState(initial.pending), [receipt, setReceipt] = useState<CollectionReceipt | null>(null), [error, setError] = useState(initial.error);
@@ -45,7 +46,8 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [invoice, setInvoice] = useState<CounterInvoice | null>(null), [refresh, setRefresh] = useState(0);
   const [search, setSearch] = useState(""), [query, setQuery] = useState(""), [status, setStatus] = useState("all");
-  const [startDate, setStartDate] = useState(""), [endDate, setEndDate] = useState(""), [dateError, setDateError] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [startDate, setStartDate] = useState(() => localDateKey()), [endDate, setEndDate] = useState(() => localDateKey()), [dateError, setDateError] = useState("");
   const [period, setPeriod] = useState<{ startDate: string; endDate: string } | null>(null), [timezone, setTimezone] = useState("");
   useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setCursor(undefined); }, 250); return () => clearTimeout(timer); }, [search]);
   const listKey = JSON.stringify([query, status, cursor, period]);
@@ -132,7 +134,7 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
   const invoiceForm = invoice && !(checkoutPayment && !error && (!pending || pending.invoiceId === invoice.id)) && <PharmacyCollectionForm embedded={embeddedCheckout} key={`${invoice.id}:${invoice.paymentRevision}`} invoice={invoice} preference={invoice.id === initialInvoiceId ? preference : undefined} canOpenTill={canOpenTill} canCollect={journalReady && canCollect && !receipt && (!pending || pending.invoiceId === invoice.id) && !submitted} busy={busy} onClose={() => { setInvoice(null); onInvoiceClose?.(); }} onProviderCollected={!pending && canCollect ? result => { if (!current() || result.invoiceId !== invoice.id) return; onCollected?.(result); setRefresh(value => value + 1); void open(invoice.id); } : undefined} onSubmit={input => { void send(invoice.id, input); }} />;
   // Dialog-only callers must not add a grid/flex item to the counter behind the portal.
   if (focusOnly) return <>{error && <Modal open title="Bill unavailable" onClose={() => { setError(""); onInvoiceClose?.(); }}><Alert variant="error" title="Could not open bill">{error}</Alert></Modal>}{invoiceForm}</>;
-  return <section className={cn(styles.list, "gap-3")} aria-label="Pharmacy sales and collections">
+  return <section className={cn(styles.list, "gap-3")} data-sales-list={showList || undefined} aria-label="Pharmacy sales and collections">
     {embeddedCheckout && !error && !receipt && <p role="status" className="text-sm text-text-secondary">{busy ? "Saving payment..." : "Checking saved bill..."}</p>}
 
 
@@ -142,24 +144,27 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
         {submitted && canCollect && <Button size="sm" disabled={busy} onClick={() => { if (frozen.current) void send(frozen.current.invoiceId, frozen.current.input); }}>Retry same collection</Button>}
         {canCollect && (!submitted || canCorrect) && <Button size="sm" variant="outline" disabled={busy} onClick={() => { frozen.current = null; setSubmitted(false); setCanCorrect(false); void open(pending.invoiceId); }}>Re-enter original collection</Button>}</>}
     </Alert>}
-    {showList && <Card padding="sm" className="rounded-xl shadow-none" contentClassName="gap-3">
-      <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-end">
-        <Input label="Search bills" type="search" aria-label="Search sales" icon={<Search size={16} aria-hidden="true" />} size="sm" containerClassName="min-w-0 xl:w-72 xl:shrink-0" placeholder="Bill number or customer" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} />
-        <form aria-label="Sales date filter" className="grid min-w-0 grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(140px,180px)_minmax(140px,180px)_auto]" onSubmit={event => { event.preventDefault(); applyDates(); }}>
-          <DatePicker size="sm" label="From" value={startDate} minDate="2000-01-01" maxDate="2199-12-31" onChange={setStartDate} />
-          <DatePicker size="sm" label="To" value={endDate} minDate="2000-01-01" maxDate="2199-12-31" onChange={setEndDate} />
-          <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-1"><Button size="sm" type="submit">Apply</Button><Button size="sm" variant="outline" onClick={() => { beginRead(); setStartDate(""); setEndDate(""); setPeriod(null); setCursor(undefined); setDateError(""); setRefresh(value => value + 1); }}>Clear</Button></div>
+    {showList && <Card padding="none" className="rounded-xl shadow-none" contentClassName="gap-0">
+      <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2 md:px-4 md:py-3">
+        <h1 className="text-sm font-semibold text-text md:text-base">Sales & collections</h1>
+        <div className="flex shrink-0 items-center gap-2">{!initialInvoiceId && <Button size="xs" variant="ghost" onClick={() => setRecoveryOpen(true)}>Recover sale</Button>}{onNewSale && <div className="hidden md:block"><Button size="xs" onClick={onNewSale}>New counter sale</Button></div>}</div>
+      </div>
+      <div aria-label="Payment status"><Tabs fullWidth variant="underline" scrollActiveIntoView={false} activeTab={status} onChange={value => { setStatus(value); setCursor(undefined); }} tabs={[{ id: "all", label: "All" }, { id: "unpaid", label: "Unpaid" }, { id: "paid", label: "Paid" }]} /></div>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_44px] items-center gap-2 border-b border-border/60 p-3 md:grid-cols-[minmax(200px,1fr)_auto] md:px-4">
+        <Input type="search" aria-label="Search sales" icon={<Search size={15} aria-hidden="true" />} size="sm" containerClassName="min-w-0" placeholder="Bill number or customer" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} />
+        <div className="md:hidden"><Button size="sm" variant="outline" aria-expanded={filtersOpen} aria-controls="sales-date-filter" aria-label="Show filters" icon={<Filter size={15} aria-hidden="true" />} onClick={() => setFiltersOpen(open => !open)} /></div>
+        <form id="sales-date-filter" aria-label="Sales date filter" className={cn("col-span-2 min-w-0 items-center gap-2 md:col-span-1 md:flex", filtersOpen ? "flex flex-wrap" : "hidden")} onSubmit={event => { event.preventDefault(); applyDates(); }}>
+          <DatePicker label="Sale dates" className="[&_label]:sr-only" mode="range" size="sm" startDate={startDate} endDate={endDate} minDate="2000-01-01" maxDate="2199-12-31" placeholder="Date range" onRangeChange={range => { setStartDate(range.startDate); setEndDate(range.endDate); }} />
+          <div className="flex shrink-0 gap-2"><Button size="xs" type="submit">Apply</Button><Button size="xs" variant="outline" onClick={() => { beginRead(); setStartDate(localDateKey()); setEndDate(localDateKey()); setPeriod(null); setCursor(undefined); setDateError(""); setRefresh(value => value + 1); }}>Clear</Button></div>
           <p className="sr-only">Both dates include the full day at this branch{!listBusy && timezone ? ` (${timezone})` : ""}. Search and payment filters still apply.</p>
           {dateError && <p role="alert" className="col-span-2 text-xs text-error sm:col-span-3">{dateError}</p>}
         </form>
-        {!initialInvoiceId && <Button size="sm" variant="ghost" className="self-start xl:ml-auto xl:self-end" onClick={() => setRecoveryOpen(true)}>Recover sale</Button>}
       </div>
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-        <div aria-label="Payment status" className="min-w-0"><Tabs variant="pills" scrollActiveIntoView={false} activeTab={status} onChange={value => { setStatus(value); setCursor(undefined); }} tabs={[{ id: "all", label: "All" }, { id: "unpaid", label: "Unpaid" }, { id: "paid", label: "Paid" }]} /></div>
 
-      </div>
       {listError && <Alert variant="error" title="Sales unavailable">{listError}<Button size="sm" onClick={() => setRefresh(value => value + 1)}>Retry sales</Button></Alert>}
-      <Table<InvoiceSummary> caption="Pharmacy sales" data={visibleItems} loading={listBusy || loadingMore} hasMore={Boolean(next)} onLoadMore={loadMore} variant="flat" density="compact" fitContent searchable={false} pagination defaultRowsPerPage={10} rowsPerPageOptions={[10]} showColumnVisibility={false} mobileCardView={false}
+      <Table<InvoiceSummary> caption="Pharmacy sales" data={visibleItems} loading={listBusy || loadingMore} hasMore={Boolean(next)} onLoadMore={loadMore} variant="flat" density="compact" fitContent searchable={false} pagination defaultRowsPerPage={10} rowsPerPageOptions={[10]} showColumnVisibility={false} mobileCardView mobileLayout="list"
+        mobilePaginationAction={onNewSale && <Button size="sm" fullWidth onClick={onNewSale}>New counter sale</Button>}
+        renderPageSummary={(rows, count) => <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2 text-xs text-text-secondary md:px-4"><span>{rows.length} of {count}{next ? "+" : ""} bills</span><span>Page total <strong className="font-semibold tabular-nums text-text">{money(rows.reduce((sum, row) => sum + row.totalAmount, 0))}</strong></span></div>}
         emptyMessage={query || status !== "all" || period ? "No matching sales" : "No sales yet"}
         className="rounded-lg [&_th:nth-child(2)]:hidden [&_td:nth-child(2)]:hidden [&_th:nth-child(4)]:hidden [&_td:nth-child(4)]:hidden md:[&_th:nth-child(2)]:table-cell md:[&_td:nth-child(2)]:table-cell md:[&_th:nth-child(4)]:table-cell md:[&_td:nth-child(4)]:table-cell"
         columns={[
@@ -168,10 +173,10 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
           { key: "total", header: "Total", width: "120px", align: "right", render: row => <span className="break-all text-xs font-semibold tabular-nums">{money(row.totalAmount)}</span> },
           { key: "status", header: "Status", width: "110px", align: "center", render: row => <Badge variant={row.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(row.status) ? "warning" : "neutral"}>{row.status === "partially_paid" ? "Part paid" : row.status.replaceAll("_", " ")}</Badge> },
           { key: "actions", header: "", width: "90px", align: "right", render: row => <Button size="sm" variant={canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "primary" : "outline"} disabled={busy} aria-label={`${row.documentVersion === 3 ? "Open opening balance" : "Open sale"} ${row.invoiceNumber}`} onClick={() => { void open(row.id); }}>{canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "Collect" : "View"}</Button> },
-        ]} />
+        ]} renderMobileCard={row => <button type="button" className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring" disabled={busy} onClick={() => { void open(row.id); }}><span className="min-w-0"><strong className="block break-all text-xs font-semibold text-text">{row.invoiceNumber}</strong><span className="block truncate text-[11px] text-text-secondary">{row.customerSnapshot?.name || "Walk-in customer"}</span></span><span className="shrink-0 text-right"><strong className="block text-xs tabular-nums">{money(row.totalAmount)}</strong><Badge variant={row.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(row.status) ? "warning" : "neutral"}>{row.status === "partially_paid" ? "Part paid" : row.status.replaceAll("_", " ")}</Badge></span></button>} />
     </Card>}
 
-    {recoveryOpen && <Modal open title="Recover sale" onClose={() => setRecoveryOpen(false)} size="md"><PharmacySaleRecovery locationId={locationId} onOpen={id => { setRecoveryOpen(false); void open(id); }} /></Modal>}
+    {recoveryOpen && <Modal open title="Recover sale" description="Find a saved sale using its original counter reference." onClose={() => setRecoveryOpen(false)} size="md"><PharmacySaleRecovery locationId={locationId} onOpen={id => { setRecoveryOpen(false); void open(id); }} /></Modal>}
     {invoiceForm}
   </section>;
 }

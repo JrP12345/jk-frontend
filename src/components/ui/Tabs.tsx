@@ -19,6 +19,8 @@ export interface TabsProps {
   defaultTab?: string;
   activeTab?: string;
   variant?: "underline" | "pills";
+  /** Give each tab an equal share of the available width. */
+  fullWidth?: boolean;
   onChange?: (tabId: string) => void;
   /** Disable for embedded previews that should leave the page's scroll position alone. */
   scrollActiveIntoView?: boolean;
@@ -30,6 +32,7 @@ const Tabs = memo(function Tabs({
   defaultTab,
   activeTab: controlledActiveTab,
   variant = "underline",
+  fullWidth = false,
   onChange,
   scrollActiveIntoView = true,
   className = "",
@@ -63,13 +66,15 @@ const Tabs = memo(function Tabs({
   };
 
   useIsomorphicLayoutEffect(() => {
-    updateSlider();
+    if (variant === "pills") updateSlider();
     if (scrollActiveIntoView && activeTabRef.current) {
       activeTabRef.current.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", inline: "nearest", block: "nearest" });
     }
-    window.addEventListener("resize", updateSlider);
-    return () => window.removeEventListener("resize", updateSlider);
-  }, [active, variant, tabs, scrollActiveIntoView]);
+    if (variant === "pills") {
+      window.addEventListener("resize", updateSlider);
+      return () => window.removeEventListener("resize", updateSlider);
+    }
+  }, [active, variant, tabs, scrollActiveIntoView, fullWidth]);
 
   const enabledTabs = tabs.filter((t) => !t.disabled);
 
@@ -101,22 +106,11 @@ const Tabs = memo(function Tabs({
         role="tablist"
         onKeyDown={handleKeyDown}
         className={cn(
-          "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full select-none touch-manipulation [scroll-snap-type:x_mandatory]",
-          variant === "underline" ? "border-b border-border/80 pb-px" : "material-glass-control rounded-xl p-1"
+          "relative flex items-center overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full select-none touch-manipulation [scroll-snap-type:x_mandatory]",
+          variant === "underline" ? "border-b border-border/80 pb-px" : "material-glass-control rounded-xl p-1",
+          fullWidth ? "gap-0" : "gap-1 sm:gap-2"
         )}
       >
-        {/* Underline Slider */}
-        {variant === "underline" && (
-          <div
-            className="absolute bottom-0 h-0.5 rounded-full bg-accent transition-[left,width,opacity] duration-[var(--motion-standard)] ease-smooth"
-            style={{
-              left: sliderStyle.left,
-              width: sliderStyle.width,
-              opacity: sliderStyle.opacity,
-            }}
-          />
-        )}
-
         {/* Pills Slider */}
         {variant === "pills" && (
           <div
@@ -146,10 +140,11 @@ const Tabs = memo(function Tabs({
               disabled={tab.disabled}
               onClick={() => handleChange(tab.id)}
               className={cn(
-                "relative z-10 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-medium cursor-pointer transition-colors duration-[var(--motion-fast)] ease-smooth disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg min-h-[44px] md:min-h-0 [scroll-snap-align:start]",
+                "relative z-10 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-medium cursor-pointer transition-colors duration-[var(--motion-fast)] ease-smooth disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap focus-visible:outline-none min-h-[44px] md:min-h-0 [scroll-snap-align:start]",
+                fullWidth && "flex-1 basis-0 min-w-0 justify-center",
                 variant === "underline"
-                  ? cn("-mb-px", isActive ? "text-accent dark:text-accent font-semibold" : "text-text-secondary hover:text-text")
-                  : cn(isActive ? "text-text font-semibold" : "text-text-secondary hover:text-text")
+                  ? cn("-mb-px rounded-none focus-visible:bg-selected after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:content-['']", isActive ? "text-accent dark:text-accent font-semibold after:bg-accent" : "text-text-secondary hover:text-text")
+                  : cn("rounded-lg focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring", isActive ? "text-text font-semibold" : "text-text-secondary hover:text-text")
               )}
             >
               {tab.icon && <span className="[&>svg]:h-4 [&>svg]:w-4 shrink-0">{tab.icon}</span>}

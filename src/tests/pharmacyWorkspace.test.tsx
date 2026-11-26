@@ -137,6 +137,29 @@ it("keeps tab counts and filters inventory without a selector for the sole locat
   expect(await screen.findAllByText("No medicines match these filters.")).not.toHaveLength(0);
 });
 
+it("opens medicine details without writing and hands editing to the existing medicine form", async () => {
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: `View medicine ${medicine.name}` }));
+  const detail = await screen.findByRole("dialog", { name: medicine.name });
+  expect(within(detail).getByRole("region", { name: "Medicine details" })).toHaveTextContent("30 base units");
+  expect(within(detail).getByRole("region", { name: "Medicine details" })).toHaveTextContent("B-001");
+  expect(fixture.post).not.toHaveBeenCalled(); expect(fixture.put).not.toHaveBeenCalled(); expect(fixture.delete).not.toHaveBeenCalled();
+  fireEvent.click(within(detail).getByRole("button", { name: "Edit medicine", exact: true }));
+  const edit = await screen.findByRole("dialog", { name: "Edit medicine" });
+  expect(within(edit).getByRole("textbox", { name: "Medicine name *" })).toHaveValue(medicine.name);
+  expect(screen.queryByRole("dialog", { name: medicine.name })).not.toBeInTheDocument();
+  expect(fixture.put).not.toHaveBeenCalled();
+});
+
+it("keeps the inventory tabs on the existing server filter contracts", async () => {
+  mount(); await screen.findAllByText(medicine.name);
+  fireEvent.click(screen.getByRole("tab", { name: "Low stock", exact: true }));
+  await waitFor(() => expect(fixture.get).toHaveBeenCalledWith("/medicines?page=1&limit=100&locationId=clinic&stockFilter=low", expect.anything()));
+  fireEvent.click(screen.getByRole("tab", { name: "Expired", exact: true }));
+  await waitFor(() => expect(fixture.get).toHaveBeenCalledWith("/medicines?page=1&limit=100&locationId=clinic&stockFilter=expired", expect.anything()));
+  expect(fixture.post).not.toHaveBeenCalled(); expect(fixture.put).not.toHaveBeenCalled();
+});
+
 it("uses the shared branch selection and does not offer an aggregate inventory scope", async () => {
   fixture.locations.push({ id: "other", name: "Other branch", city: "Surat" });
   const view = mount(); await screen.findAllByText(medicine.name);
@@ -282,12 +305,17 @@ it("exposes finance for refund staff without clinical billing or inventory grant
 });
 
 it("loads catalogue pages only when requested and preserves the server total", async () => {
-  fixture.get.mockImplementation(async (url: string) => response(url.includes("page=2") ? [{ ...medicine, id: "later", name: "Later formulation" }] : url.startsWith("/medicines") ? [medicine] : [], { "x-total-pages": "2", "x-total-count": "101" }));
+  const firstBatch = Array.from({ length: 100 }, (_, index) => ({ ...medicine, id: `medicine-${index}`, name: index === 0 ? medicine.name : `Formulation ${index + 1}` }));
+  fixture.get.mockImplementation(async (url: string) => response(url.includes("page=2") ? [{ ...medicine, id: "later", name: "Later formulation" }] : url.startsWith("/medicines") ? firstBatch : [], { "x-total-pages": "2", "x-total-count": "101" }));
   mount(); await screen.findAllByText(medicine.name); expect(screen.queryByText("Later formulation")).not.toBeInTheDocument();
   expect(fixture.get.mock.calls.some(([url]) => url.includes("page=2"))).toBe(false);
-  fireEvent.click(screen.getByRole("button", { name: "Next medicine page" })); await screen.findAllByText("Later formulation");
+  fireEvent.click(screen.getByRole("button", { name: "11", exact: true })); await screen.findAllByText("Later formulation");
   expect(screen.getByRole("tab", { name: /Inventory\s*101/ })).toBeInTheDocument();
   expect(fixture.get).toHaveBeenCalledWith("/medicines?page=2&limit=100&locationId=clinic", expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Previous page" }));
+  await screen.findAllByText("Formulation 91");
+  expect(screen.getByText("Showing 91 to 100 of 101")).toBeInTheDocument();
 });
 
 it("keeps a bounded page read separate from a failed later-page request", async () => {

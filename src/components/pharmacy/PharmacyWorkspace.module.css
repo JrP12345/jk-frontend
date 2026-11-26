@@ -54,6 +54,16 @@ form.actions { display: grid; grid-template-columns: minmax(0,1fr) auto; align-i
   .workspace[data-counter-layout=true] .counterNavigation > section { min-height: 0; overflow: hidden; }
 }
 /* Let the existing scroll viewport size the counter, rather than adding a guessed vh height to its padding. */
+@media (max-width:767px) {
+  :global([data-pharmacy-compact]):has(:is([data-sales-list], [data-inventory-list])) { overflow: hidden; display: flex; flex-direction: column; padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+  :global([data-pharmacy-compact]):has(:is([data-sales-list], [data-inventory-list])) > :global([data-dashboard-content]),
+  :global([data-pharmacy-compact]) > :global([data-dashboard-content]) > div:has(:is([data-sales-list], [data-inventory-list])),
+  .workspace:has(:is([data-sales-list], [data-inventory-list])), .counterNavigation:has(:is([data-sales-list], [data-inventory-list])),
+  .counterNavigation > section:has(:is([data-sales-list], [data-inventory-list])) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .workspace:has(:is([data-sales-list], [data-inventory-list])) { padding-bottom: 0; overflow: hidden; }
+  .list[data-sales-list], .inventoryView { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+  .list[data-sales-list] > :global(.group), .inventoryView > :global(.group) { flex: 1; min-height: 0; }
+}
 @media (min-width:1280px) and (min-height:560px) {
   :global([data-pharmacy-compact]):has(.workspace[data-counter-layout=true] [data-counter-ready]) { overflow-y: hidden; }
   :global([data-pharmacy-compact]):has(.workspace[data-counter-layout=true] [data-counter-ready]) > :global([data-dashboard-content]) { height: 100%; min-height: 0; display: flex; flex-direction: column; }
@@ -102,6 +112,7 @@ form.actions { display: grid; grid-template-columns: minmax(0,1fr) auto; align-i
 .count { padding: 10px 12px; border-top: 1px solid var(--border); font-size: .75rem; color: var(--text-muted); }
 .empty { padding: 28px 16px; text-align: center; font-size: .8125rem; color: var(--text-muted); }
 .list { display: grid; gap: 16px; min-width: 0; }
+.inventoryView { min-width: 0; }
 .list > header { display: grid; gap: 5px; }
 .list > header h2 { font-size: 1.0625rem; line-height: 1.4; font-weight: 600; letter-spacing: -.015em; }
 .list > header > p { max-width: 70ch; color: var(--text-secondary); font-size: .8125rem; line-height: 1.65; }

@@ -183,7 +183,18 @@ it("searches branch sales and payment status on the server without writing", asy
   expect(api.post).not.toHaveBeenCalled();
 });
 
-function saleDate(label: string, value: string) { fireEvent.change(datePickerInput(screen.getByLabelText(label)), { target: { value } }); }
+function saleDate(label: string, value: string) {
+  if (label === "From") fireEvent.click(screen.getByRole("button", { name: /Sale dates/ }));
+  const target = new Date(`${value}T12:00:00`);
+  const name = target.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const dialog = screen.getByRole("dialog", { name: "Choose Sale dates" });
+  for (let attempt = 0; attempt < 36 && !within(dialog).queryByRole("button", { name, exact: true }); attempt++) {
+    const day = within(dialog).getAllByRole("button").find(button => /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),/.test(button.getAttribute("aria-label") || ""));
+    const displayed = new Date(day!.getAttribute("aria-label")!);
+    fireEvent.click(within(dialog).getByRole("button", { name: target < displayed ? "Previous Month" : "Next Month" }));
+  }
+  fireEvent.click(within(dialog).getByRole("button", { name, exact: true }));
+}
 it("applies sale dates explicitly, retains other filters and dates across pages, and clears them", async () => {
   api.get.mockImplementation(async (url: string) => {
     const params = new URL(url, "https://test.invalid").searchParams;
@@ -192,14 +203,14 @@ it("applies sale dates explicitly, retains other filters and dates across pages,
   mount(); await screen.findByRole("button", { name: "Next page" });
   fireEvent.click(screen.getByRole("button", { name: "Next page" }));
   await waitFor(() => expect(api.get.mock.lastCall![0]).toContain("cursor=older-sale"));
+  const picker = screen.getByRole("button", { name: /Sale dates/ });
+  const today = new Date();
+  const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  expect(datePickerInput(picker)).toHaveValue(`${date} to ${date}`);
   const calls = api.get.mock.calls.length;
-  saleDate("From", "2026-10-20");
-  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-  expect(screen.getByRole("alert")).toHaveTextContent("Choose both sale dates"); expect(api.get).toHaveBeenCalledTimes(calls);
-  saleDate("To", "2026-10-19");
-  fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-  expect(screen.getByRole("alert")).toHaveTextContent("start on or before"); expect(api.get).toHaveBeenCalledTimes(calls);
-  saleDate("To", "2026-10-21");
+  saleDate("From", "2026-10-21");
+  saleDate("To", "2026-10-20");
+  expect(api.get).toHaveBeenCalledTimes(calls);
   fireEvent.click(screen.getByRole("button", { name: "Apply" }));
   await screen.findByText(/Both dates include.*Asia\/Kolkata/);
   expect(new URL(api.get.mock.lastCall![0], "https://test.invalid").searchParams.has("cursor")).toBe(false);
@@ -256,7 +267,7 @@ it("keeps search and payment controls available after an empty result or failed 
   });
   mount(); await screen.findByRole("button", { name: "Open sale " + summary.invoiceNumber });
   change("Search sales", "missing");
-  await screen.findByText("No matching sales");
+  await screen.findAllByText("No matching sales");
   expect(screen.getByRole("searchbox", { name: "Search sales" })).toHaveValue("missing");
   expect(screen.getByRole("tab", { name: "Unpaid", exact: true })).toBeEnabled();
   change("Search sales", "failed");

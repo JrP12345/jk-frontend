@@ -1,6 +1,8 @@
 "use client";
 
 import { PharmacyProductStockTools } from "@/components/pharmacy/PharmacyProductStockTools";
+import { PharmacyInventory } from "@/components/pharmacy/PharmacyInventory";
+import type { DropdownItem } from "@/components/ui/Dropdown";
 import { PharmacyStaffGuide } from "@/components/pharmacy/PharmacyStaffGuide";
 import { PharmacyAlternatives } from "@/components/pharmacy/PharmacyAlternatives";
 import type { StaffPickup } from "@/lib/publicPharmacy";
@@ -16,7 +18,7 @@ import { validSingleChoice } from "@/lib/locationWorkflow";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore, type LocationInfo } from "@/store/locationStore";
-import { Alert, Table, Tabs, Button, Input, Select, useToast, Badge, Dropdown, ConfirmDialog, ChartContainer, DonutChart, DatePicker } from "@/components/ui";
+import { Alert, Table, Tabs, Button, Input, Select, useToast, Badge, ConfirmDialog, ChartContainer, DonutChart, DatePicker } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { PharmacyAlertsCenter } from "@/components/pharmacy/PharmacyAlertsCenter";
 import { PharmacyStockReceipts } from "@/components/pharmacy/PharmacyStockReceipts";
@@ -44,11 +46,11 @@ import { PharmacyTill } from "@/components/pharmacy/PharmacyTill";
 import { PharmacySkeleton } from "@/components/pharmacy/PharmacySkeleton";
 import { PharmacyFinance } from "@/components/pharmacy/PharmacyFinance";
 import { stockReceiptScope, readStockReceiptReference, subscribeStockReceiptReferences } from "@/lib/pharmacyStockReceipts";
-import { dateLabel, expired, lowStock, money, prepareDispense, readMedicinePage, type Medicine, type PendingPrescription, type DispenseItem } from "@/components/pharmacy/pharmacyWorkspace";
+import { dateLabel, lowStock, money, prepareDispense, readMedicinePage, type Medicine, type PendingPrescription, type DispenseItem } from "@/components/pharmacy/pharmacyWorkspace";
 import styles from "@/components/pharmacy/PharmacyWorkspace.module.css";
 import { playChimeSound } from "@/utils/audioChimes";
 import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
-import { RotateCw, Plus, MoreHorizontal, Edit3, Trash2, Phone, Search, Building2, Upload, ClipboardCheck } from "lucide-react";
+import { RotateCw, Plus, Edit3, Trash2, Phone, Search, Building2, Upload, ClipboardCheck } from "lucide-react";
 
 const blankMedicine = () => ({ name: "", genericName: "", batchNumber: "", expiryDate: "", stockQuantity: "0", costPrice: "", price: "", manufacturer: "", strength: "", rackLocation: "", category: "tablet", scheduleType: "general",
   barcodes: "", reorderLevel: "20", hsnCode: "", gstRate: "", baseUnit: "", packUnit: "", unitsPerPack: "", outerPackUnit: "", packsPerOuter: "", supplyBatch: "", supplyExpiry: "", supplyPrecision: "month", supplyMrp: "" });
@@ -398,7 +400,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const filteredMedicines = medicines;
   const filteredPending = pending.filter(group => `${group.patientId.name} ${group.patientId.phone || ""} ${group.tokenNumber || ""} ${group.prescriptions.map(rx => rx.name).join(" ")}`.toLowerCase().includes(dispenseSearch.trim().toLowerCase().replace(/^#/, "")));
   const canReviewProducts = hasAnyPermission(user, "MANAGE_ORGANIZATION") && Boolean(capabilities?.moduleEnabled && capabilities.actions.viewStock);
-  const stockActions = (medicine: Medicine) => (canCatalog || canReceive || canReviewProducts || capabilities?.actions.viewStock) && <Dropdown align="right" trigger={<Button variant="ghost" size="sm" className={styles.icon} aria-label={`Actions for ${medicine.name}`} disabled={!actionable}><MoreHorizontal size={18} /></Button>} items={[
+  const stockActionItems = (medicine: Medicine): DropdownItem[] => [
     ...(capabilities?.inventoryMode !== "billing_only" ? [{ label: "Batches, counts & history", icon: <ClipboardCheck size={16} />, onClick: () => setStockTarget(medicine.id) }] : []),
     { label: "Compare medicine brands", icon: <Search size={16} />, onClick: () => setComparisonTarget(medicine.id) },
     ...(canReceive ? [{ label: "Add batch", icon: <Plus size={16} />, onClick: () => openBatch(medicine) }] : []),
@@ -406,9 +408,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     ...(canReviewProducts ? [{ label: "Product / batch sale holds", icon: <ClipboardCheck size={16} />, onClick: () => setSaleControlTarget(medicine.id) }] : []),
     ...(canCatalog ? [{ label: "Edit medicine", icon: <Edit3 size={16} />, onClick: () => openMedicine(medicine) },
       { label: "Archive medicine", icon: <Trash2 size={16} />, variant: "danger" as const, onClick: () => setDeleting(medicine) }] : []),
-  ]} />;
-  const medicineIdentity = (medicine: Medicine) => <div className={styles.identity}><strong>{medicine.name}</strong>{medicine.saleControl?.blocked && <Badge variant="warning">Sale hold</Badge>}<small>{[medicine.genericName, medicine.strength, medicine.manufacturer, medicine.rackLocation ? `Rack ${medicine.rackLocation}` : ""].filter(Boolean).join(" · ")}</small>{medicine.unitDefinition && <small>1 {medicine.unitDefinition.packUnit} = {medicine.unitDefinition.unitsPerPack} {medicine.unitDefinition.baseUnit}</small>}</div>;
-  const quantity = (medicine: Medicine) => capabilities?.inventoryMode === "billing_only" ? <span>Not tracked</span> : <span className={medicine.stockQuantity === 0 || lowStock(medicine) ? styles.danger : ""}>{medicine.stockQuantity} {medicine.stockQuantity === 0 ? "(out of stock)" : lowStock(medicine) ? "(low)" : ""}</span>;
+  ];
   const reviewOrganizationId = capabilities?.organizationId || user?.organization_id || "";
   const canProfessionalReview = Boolean(reviewOrganizationId && capabilities?.moduleEnabled && hasAnyPermission(user, "MANAGE_ORGANIZATION"));
   const canFinance = Boolean(capabilities?.actions.viewSettlements || capabilities?.actions.viewPurchases && capabilities.actions.processReturn);
@@ -423,27 +423,9 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     {showStockTools && canCreate && <Button size="sm" disabled={!locationId || !actionable || reading} onClick={() => openMedicine()}><Plus size={16} aria-hidden="true" />Add medicine</Button>}
     {showStockTools && canCreate && <Button size="sm" variant="outline" disabled={!locationId || !actionable || reading} onClick={() => setCatalogueOpen(true)}>Find in catalogue</Button>}
   </>;
-  const inventory = <div className={styles.list}>
-    {compactWorkspace && <div className={styles.actions}>{stockTools}</div>}
-    <section className={styles.panel} aria-label="Medicine inventory" aria-busy={reading || query !== search.trim()}>
-      <div className={styles.toolbar}><Input type="search" maxLength={100} icon={<Search size={16} />} aria-label="Search medicines" placeholder="Name, composition, manufacturer or barcode" value={search} onChange={event => setSearch(event.target.value)} /><Select aria-label="Filter inventory" value={filter} onChange={event => { setFilter(event.target.value); setCatalogPage(1); }} options={capabilities?.inventoryMode === "billing_only" ? [{ value: "all", label: "Catalogue" }] : [{ value: "all", label: "All stock" }, { value: "low", label: "Low physical stock" }, { value: "out", label: "Zero physical stock" }, { value: "expired", label: "Catalog expired" }]} /></div>
-      {user?.workspaceProfile === "pharmacy" && catalogLoaded && !catalogError ? <div className="px-4 sm:px-5">
-        <h2 className="py-4 text-sm font-semibold">Inventory <span className="ml-2 text-xs font-normal text-text-secondary">{capabilities?.inventoryMode === "billing_only" ? "Stock not tracked" : "Physical stock in base units"}</span></h2>
-        <div className="divide-y divide-border">{filteredMedicines.map(medicine => <article key={medicine.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-4">
-          <div className="min-w-0">{medicineIdentity(medicine)}</div>
-          <div className="row-span-2 flex items-start gap-2"><div className="shrink-0 space-y-1 text-right"><p className="text-sm font-semibold tabular-nums">{capabilities?.inventoryMode === "billing_only" ? "Not tracked" : medicine.stockQuantity}</p>{capabilities?.inventoryMode !== "billing_only" && <Badge variant={medicine.stockQuantity === 0 ? "danger" : lowStock(medicine) ? "warning" : "success"}>{medicine.stockQuantity === 0 ? "Out of stock" : lowStock(medicine) ? "Low stock" : "In stock"}</Badge>}</div>{stockActions(medicine)}</div>
-          <p className="col-span-2 text-xs leading-relaxed text-text-secondary sm:col-span-1">Catalogue batch: {medicine.batchNumber || "Not recorded"} | Catalogue expiry: {dateLabel(medicine.expiryDate)} | Default price {money(medicine.price)}</p>
-        </article>)}</div>
-        {!filteredMedicines.length && <p className="py-8 text-center text-sm text-text-secondary">{search || filter !== "all" ? "No medicines match these filters." : "No medicines yet. Add medicine to start your inventory."}</p>}
-      </div> : <Table<Medicine> variant="flat" density="compact" fitContent searchable={false} showColumnVisibility={false} loading={reading && !catalogLoaded} error={catalogError} onRetry={fetchData} data={filteredMedicines} pagination={false} columns={[
-        { key: "name", header: "Medicine", render: medicineIdentity }, { key: "batchNumber", header: "Catalog batch" },
-        { key: "stockQuantity", header: "Physical stock", render: quantity }, { key: "expiryDate", header: "Catalog expiry", render: medicine => <span className={expired(medicine.expiryDate) ? styles.danger : ""}>{dateLabel(medicine.expiryDate)}</span> },
-        { key: "price", header: "Default price", render: medicine => money(medicine.price) }, { key: "actions", header: "", align: "right", render: stockActions },
-      ]} renderMobileCard={medicine => <article className={styles.card}><div className={styles.rowHeading}>{medicineIdentity(medicine)}{stockActions(medicine)}</div><div className={styles.meta}><span>Batch {medicine.batchNumber || "Not recorded"}</span></div><dl className={styles.cardFacts}><div><dt>Physical stock</dt><dd>{quantity(medicine)}</dd></div><div><dt>Default price</dt><dd>{money(medicine.price)}</dd></div><div><dt>Catalog expiry</dt><dd className={expired(medicine.expiryDate) ? styles.danger : ""}>{dateLabel(medicine.expiryDate)}</dd></div></dl></article>} emptyMessage={search || filter !== "all" ? "No medicines match these filters." : "No medicines yet. Add medicine to start your inventory."} />}
-      {catalogLoaded && <div className={styles.toolbar}><p className={styles.count}>{filteredMedicines.length} medicines shown{catalogTotal === null ? "" : ` of ${catalogTotal}`}</p>{catalogPages > 1 && <div className={styles.actions}><Button size="sm" variant="outline" aria-label="Previous medicine page" disabled={catalogPage <= 1 || reading || Boolean(busy)} onClick={() => setCatalogPage(page => page - 1)}>Previous</Button><span>Page {catalogPage} of {catalogPages}</span><Button size="sm" variant="outline" aria-label="Next medicine page" disabled={catalogPage >= catalogPages || reading || Boolean(busy)} onClick={() => setCatalogPage(page => page + 1)}>Next</Button></div>}</div>}
-    </section>
+  const inventory = <PharmacyInventory medicines={filteredMedicines} billingOnly={capabilities?.inventoryMode === "billing_only"} search={search} filter={filter} reading={reading || query !== search.trim()} loaded={catalogLoaded} error={catalogError} total={catalogTotal} page={catalogPage} pages={catalogPages} busy={Boolean(busy)} actionable={actionable && Boolean(locationId)} onSearch={setSearch} onFilter={value => { setFilter(value); setCatalogPage(1); }} onPage={setCatalogPage} onRetry={fetchData} actionsFor={stockActionItems} onCreate={canCreate ? () => openMedicine() : undefined} onFind={canCreate ? () => setCatalogueOpen(true) : undefined} onImport={capabilities?.importKinds?.length ? () => setImportOpen(true) : undefined} importDisabled={!locationId}>
     {catalogLoaded && medicines.length > 0 && <details className={styles.details} onToggle={event => setShowHealth(event.currentTarget.open)}><summary>Stock on this page</summary>{showHealth && <ChartContainer title="Stock on this page" description="This overview covers the current page; Alerts lists batch expiry dates." height={180}><DonutChart height={180} data={[{ name: "In stock", value: medicines.filter(m => !lowStock(m)).length, color: "var(--chart-2)" }, { name: "Low stock", value: medicines.filter(m => lowStock(m) && m.stockQuantity > 0).length, color: "var(--chart-3)" }, { name: "Out of stock", value: medicines.filter(m => m.stockQuantity === 0).length, color: "var(--danger)" }].filter(value => value.value > 0)} /></ChartContainer>}</details>}
-  </div>;
+  </PharmacyInventory>;
   const dispensing = !locationId ? <p className={styles.empty}>Choose a location to view and dispense prescriptions.</p> : <section className={styles.panel} aria-label="Pending prescriptions">
     <div className={`${styles.toolbar} ${styles.toolbarSingle}`}><Input type="search" aria-label="Search prescriptions" icon={<Search size={16} />} placeholder="Patient, phone, token or medicine" value={dispenseSearch} onChange={event => setDispenseSearch(event.target.value)} /></div>
     <Table<PendingPrescription> variant="flat" density="compact" fitContent searchable={false} showColumnVisibility={false} keyField="encounterId" loading={reading && !pendingLoaded} error={pendingError} onRetry={fetchData} data={filteredPending} pagination={filteredPending.length > 10} columns={[
@@ -461,7 +443,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
       <div><h1>{counterOnly ? "Counter sales" : "Pharmacy"}</h1><p>{counterOnly ? "Create bills, collect payments and manage your cash drawer" : "Sales, inventory and branch records"}</p></div>
       <div className={styles.actions}>
         <Button variant="ghost" size="sm" aria-label="Refresh pharmacy" className={styles.icon} disabled={reading || Boolean(busy)} onClick={fetchData}><RotateCw size={17} className={reading ? "animate-spin" : ""} /></Button>
-        {stockTools}
+        {activeView !== "inventory" && stockTools}
       </div>
     </header>
     {locationContext}
@@ -491,7 +473,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     </div>}><p>{recoveryMessage || "Checking the existing dispense before allowing another bill."}</p><p className={styles.reference}>Reference: {pendingDispenseKey}</p></Alert>)}
     {catalogError && activeTab === "dispensing" && <Alert variant="error" title="Inventory unavailable" action={<Button size="sm" variant="outline" onClick={fetchData}>Retry inventory</Button>}>{catalogError}</Alert>}
 
-    {locationId && capabilities && <PharmacyNavigation toolbarContext={compactWorkspace && activeView !== "counter" && (activeView !== "sales" || locations.length > 1) ? locationContext : undefined} toolbarActions={compactWorkspace && activeView !== "counter" && activeView !== "sales" ? refreshAction : undefined} compact={compactWorkspace} className={styles.tabs} variant="pills" activeTab={activeView} onChange={tab => { if (tab === "professional-reviews" && activeView !== tab) professionalReturnTab.current = activeView; setActiveTab(tab); }} scrollActiveIntoView={false} tabs={[
+    {locationId && capabilities && <PharmacyNavigation toolbarContext={compactWorkspace && activeView !== "counter" && (!["sales", "inventory"].includes(activeView) || locations.length > 1) ? locationContext : undefined} toolbarActions={compactWorkspace && !["counter", "sales", "inventory"].includes(activeView) ? refreshAction : undefined} compact={compactWorkspace} className={styles.tabs} variant="pills" activeTab={activeView} onChange={tab => { if (tab === "professional-reviews" && activeView !== tab) professionalReturnTab.current = activeView; setActiveTab(tab); }} scrollActiveIntoView={false} tabs={[
       { id: "inventory", label: capabilities.inventoryMode === "billing_only" ? "Catalogue" : "Inventory", badge: catalogLoaded ? catalogTotal ?? medicines.length : undefined, content: inventory },
       { id: "dispensing", label: "Dispense", badge: locationId && pendingLoaded ? pending.length : undefined, content: dispensing },
       { id: "alerts", label: "Alerts", content: <>{compactWorkspace && <div className={styles.actions}>{stockTools}</div>}<PharmacyAlertsCenter locationId={locationId} medicines={medicines} canManage={canReceive && actionable} onOpenAddBatch={openBatch} refreshKey={dataRevision} onShortbook={capabilities?.actions.managePurchases ? medicine => { if (medicine.unitDefinition) { setShortbookProduct({ ...medicine, unitDefinition: medicine.unitDefinition }); setActiveTab("purchases"); } } : undefined} onSupplierReturn={capabilities?.actions.viewPurchases && capabilities.actions.processReturn ? source => { setSupplierReturnTarget(source); setActiveTab("finance"); } : undefined} /></> },
@@ -508,7 +490,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
       { id: "register", label: "Prescription registers", content: <PharmacyRegister locationId={locationId} canExport={Boolean(capabilities.actions.exportRegister)} /> },
       { id: "external-prescriptions", label: "Outside prescriptions", content: <PharmacyExternalPrescriptions locationId={locationId} inventoryMode={capabilities.inventoryMode || "tracked"} canSupply={Boolean(capabilities.actions.externalDispense)} canSell={Boolean(capabilities.actions.sell)} canCollect={Boolean(capabilities.actions.collect)} canOpenTill={Boolean(capabilities.actions.openTill)} canViewSales={Boolean(capabilities.actions.viewSales)} /> },
       { id: "pickups", label: "Medicine pickups", content: <PharmacyPickups onPrepare={row => { setPickupDraft(row); setActiveTab("counter"); }} onResolveBill={capabilities?.actions.viewReturns ? id => { setReturnInvoice(id); setActiveTab("returns"); } : undefined} locationId={locationId} canPrepare={Boolean(capabilities?.actions.sell)} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} /> },
-      { id: "sales", label: "Sales & collections", content: <PharmacyCollections locationId={locationId} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} /> },
+      { id: "sales", label: "Sales & collections", content: <PharmacyCollections locationId={locationId} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} onNewSale={capabilities?.actions.sell ? () => setActiveTab("counter") : undefined} /> },
       { id: "staff-guide", label: "Staff guide", content: <PharmacyStaffGuide capabilities={capabilities} onNavigate={setActiveTab} /> },
     ].filter(tab => tab.id === "staff-guide" ? true : tab.id === "alerts" && capabilities?.inventoryMode === "billing_only" ? false : tab.id === "professional-reviews" ? canProfessionalReview : tab.id === "files" ? capabilities?.actions.readFiles : tab.id === "register" ? capabilities?.actions.readRegister : tab.id === "external-prescriptions" ? capabilities?.actions.viewExternalPrescriptions : tab.id === "transfers" ? capabilities?.actions.transferStock && capabilities?.actions.viewCost : ["reports", "daily"].includes(tab.id) ? capabilities?.actions.viewReports : tab.id === "till" ? capabilities?.actions.viewTill : tab.id === "finance" ? canFinance : tab.id === "returns" ? capabilities?.actions.viewReturns : tab.id === "counter" ? capabilities?.actions.sell : tab.id === "pickups" || tab.id === "sales" ? capabilities?.actions.viewSales : tab.id === "purchases" ? capabilities?.actions.viewPurchases : tab.id === "dispensing" ? capabilities?.actions.viewRxQueue : capabilities?.actions.viewStock)} />}
 

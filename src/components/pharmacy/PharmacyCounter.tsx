@@ -171,7 +171,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     const timer = setTimeout(() => setAddedProduct(null), 1000);
     return () => clearTimeout(timer);
   }, [addedProduct]);
-  function add(product: CounterProduct) {
+  function add(product: CounterProduct, focusSearch = true) {
     if (pickup) { setError("Keep this parcel bill to its requested items. Hold or clear it before a separate purchase."); return; }
     if (!editable) return;
     if (product.saleBlocked) { setSearchError("This product is on a sale hold. Ask your organization administrator to review the recorded restriction."); return; }
@@ -186,7 +186,9 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     // operator saw them until they deliberately search or change a filter.
     const visible = productResults().visibleProducts;
     setProductResultsSnapshot(visible.length ? visible : null);
-    setSearch(""); setSearchError(""); setPicked(0); setKeyboardPicking(false); setAddedMessage(`Added 1 ${product.unitDefinition.baseUnit} of ${product.name} to cart.`); requestAnimationFrame(() => scanner.current?.focus());
+    setSearch(""); setSearchError(""); setPicked(0); setKeyboardPicking(false); setAddedMessage(`Added 1 ${product.unitDefinition.baseUnit} of ${product.name} to cart.`);
+    if (focusSearch) requestAnimationFrame(() => scanner.current?.focus());
+    else scanner.current?.blur();
   }
   const exactLookup = /^\d+$/.test(search.trim());
   async function lookup(exact = false, cursor?: string, addExact = true, force = false) {
@@ -472,7 +474,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
               {displayProducts.length > 0 && !visibleProducts.length && <p className={pos.hint}>{productFilter.includes("frequent") ? "Products you add often appear here. Clear filters to browse all products." : "No products match these types. Clear filters or search again."}</p>}
               {visibleProducts.map((product, index) => { const snapshot = catalogue.price(product.id), observedRate = snapshot && snapshot.quantity > 0 ? snapshot.grossPaise / snapshot.quantity : null, cachedRate = observedRate ?? (Number.isSafeInteger(product.retailPricePaise) && product.retailPricePaise! >= 0 ? product.retailPricePaise! : null); return <article key={product.id} className={pos.product} data-picked={keyboardPicking && index === picked} data-added={addedProduct?.id === product.id || undefined}>
                 {addedProduct?.id === product.id && <span key={addedProduct.sequence} className={pos.addedFeedback} aria-hidden="true" />}
-                {product.eligible && !product.saleBlocked && product.unitDefinition ? <Button variant="ghost" disabled={!editable || inventoryMode === "tracked" && product.stockQuantity === 0} className={pos.productPick} aria-label={`Add ${productLabel(product)}`} onClick={() => add(product)}><span className={pos.productBody}>
+                {product.eligible && !product.saleBlocked && product.unitDefinition ? <Button variant="ghost" disabled={!editable || inventoryMode === "tracked" && product.stockQuantity === 0} className={pos.productPick} aria-label={`Add ${productLabel(product)}`} onClick={event => add(product, event.detail === 0 || Boolean(window.matchMedia?.("(hover: hover) and (pointer: fine)").matches))}><span className={pos.productBody}>
                   <span className={pos.productHeading}><strong>{product.name}{product.strength && !product.name.toLowerCase().includes(product.strength.toLowerCase()) && <span className={pos.strength}> {product.strength}</span>}</strong><strong className={pos.productRate} title={observedRate === null ? "Catalogue retail price; batch price is checked at billing" : "Last checked unit price; revalidated when saving"}>{cachedRate === null ? "—" : money(cachedRate / 100)}</strong></span>
                   <span className={pos.productMeta}><span title={[product.rackLocation ? `Rack ${product.rackLocation}` : "", product.manufacturer, snapshot?.batches[0] ? `Batch ${snapshot.batches[0].batchNumber} · Exp ${snapshot.batches[0].expiryValue}` : "Batch checked at billing", inventoryMode === "billing_only" ? "Stock not tracked" : `${product.stockQuantity} ${product.unitDefinition.baseUnit} in stock (snapshot)`].filter(Boolean).join(" · ")}>{product.rackLocation && <>Rack {product.rackLocation} · </>}{inventoryMode === "billing_only" ? "Stock not tracked" : product.stockQuantity === 0 ? "Out of stock" : `${product.stockQuantity} in stock`}{product.manufacturer && <> · {product.manufacturer}</>}{snapshot?.batches[0] && <> · {snapshot.batches[0].batchNumber} · {snapshot.batches[0].expiryValue}</>}</span><span>{cachedRate === null ? "Price at billing" : `/${product.unitDefinition.baseUnit}`} · {product.unitDefinition.packUnit} {product.unitDefinition.unitsPerPack}</span></span>
                 </span></Button>

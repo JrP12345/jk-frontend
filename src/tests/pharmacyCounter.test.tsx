@@ -38,6 +38,20 @@ it("confirms an added product briefly without changing the product card or bill"
   await waitFor(() => expect(productButton.closest("article")).not.toHaveAttribute("data-added"), { timeout: 2000 });
   expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1);
 });
+it.each([false, true])("adds a tapped product with scanner refocus only for a fine pointer (%s)", async finePointer => {
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => ({ matches: finePointer, media, onchange: null, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() })));
+  mount(false);
+  const add = await screen.findByRole("button", { name: "Add Ordinary product" });
+  const input = screen.getByRole("textbox", { name: "Scan barcode or search products" });
+  input.focus();
+  const focus = vi.spyOn(input, "focus");
+  fireEvent.click(add, { detail: 1 });
+  await act(async () => { await new Promise(resolve => requestAnimationFrame(resolve)); });
+  expect(screen.getByLabelText("Quantity Ordinary product")).toHaveValue(1);
+  if (finePointer) expect(focus).toHaveBeenCalled();
+  else { expect(focus).not.toHaveBeenCalled(); expect(input).not.toHaveFocus(); }
+});
+
 it("opens history from the mobile panel controls", async () => {
   const onViewHistory = vi.fn();
   render(<ToastProvider><PharmacyCounter locationId="branch" canCollect={false} onViewHistory={onViewHistory} /></ToastProvider>);
@@ -443,7 +457,7 @@ beforeEach(() => {
   });
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it("keeps a priced cart while another PC holds offline authority and blocks new Save and keyboard issuance", async () => {
   const get = api.get.getMockImplementation()!;
   api.get.mockImplementation(async (url: string, config: unknown) => url.endsWith("/counter-availability") ? response({ locationId: "branch", mode: "offline_active", checkedAt: new Date().toISOString(), offline: { deviceName: "Main pharmacy PC", currentOperator: false, validUntil: new Date(Date.now() + 60_000).toISOString() } }) : get(url, config));
@@ -553,6 +567,28 @@ it("retries a frozen sale under the same key, then gives a separate purchase a n
   const first = api.post.mock.calls.find(([url]) => url === "/pharmacy/sales")!; fireEvent.click(screen.getByRole("button", { name: "Retry same sale" })); await screen.findByRole("button", { name: "View last saved bill" }); expect(api.post.mock.calls.filter(([url]) => url === "/pharmacy/sales")[1]).toEqual(first);
   await scan(); await save(); const issues = api.post.mock.calls.filter(([url]) => url === "/pharmacy/sales"); expect(issues[2][2].headers["Idempotency-Key"]).not.toBe(first[2].headers["Idempotency-Key"]);
 });
+it("confirms a timed-out paid save immediately using a read without another money command", async () => {
+  const post = api.post.getMockImplementation()!, get = api.get.getMockImplementation()!;
+  let saved: unknown;
+  api.post.mockImplementation(async (url, body, config) => {
+    if (url === "/pharmacy/sales") {
+      saved = await post(url, body, config);
+      throw Object.assign(new Error("timeout of 45000ms exceeded"), { code: "ECONNABORTED" });
+    }
+    return post(url, body, config);
+  });
+  api.get.mockImplementation((url, config) => url.includes("/sale-operations/") ? Promise.resolve(saved) : get(url, config));
+  mount(); await scan(); await review();
+  fireEvent.click(screen.getByRole("button", { name: "Save counter bill" }));
+  await screen.findByRole("button", { name: "View last saved bill" });
+  expect(screen.getByText("Your cart is empty")).toBeInTheDocument();
+  const saves = api.post.mock.calls.filter(([url]) => url === "/pharmacy/sales");
+  expect(saves).toHaveLength(1);
+  expect(api.get).toHaveBeenCalledWith(`/pharmacy/sale-operations/${saves[0][2].headers["Idempotency-Key"]}?locationId=branch`, expect.objectContaining({ timeout: 15000 }));
+  expect(api.post.mock.calls.filter(([url]) => url.endsWith("/collections"))).toHaveLength(0);
+  expect(sessionStorage.getItem(`pharmacy-sale:${referenceOwnerKey(useAuthStore.getState().user)}:branch`)).toBeNull();
+});
+
 it("recovers an uncertain sale after reload without another issue or money mutation", async () => {
   const post = api.post.getMockImplementation()!; api.post.mockImplementation((url, body, config) => url === "/pharmacy/sales" ? Promise.reject(new Error("timeout")) : post(url, body, config)); const view = mount(false); await scan(); await review(); fireEvent.click(screen.getByRole("button", { name: "Save counter bill" })); await screen.findByText("timeout");
   const key = api.post.mock.calls.find(([url]) => url === "/pharmacy/sales")![2].headers["Idempotency-Key"]; view.unmount(); const original = api.get.getMockImplementation()!; api.get.mockImplementation(async (url: string, config: unknown) => url.includes("/sale-operations/") ? response({ ...bill, requestKey: key }) : original(url, config));
