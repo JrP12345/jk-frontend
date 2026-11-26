@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { PharmacyReturns } from "@/components/pharmacy/PharmacyReturns";
 import { ToastProvider } from "@/components/ui";
@@ -12,10 +12,11 @@ const source = { invoiceId: "invoice", invoiceNumber: "I00012627/000001", locati
   lines: [{ sourceLineId: "source-line", sourceBatchId: "source-batch", medicineId: "medicine", description: "Original product", batchNumber: "ACTUAL-BATCH", soldQuantity: 2, returnedQuantity: 0, remainingQuantity: 2, unitSnapshot: { baseUnit: "tablet" }, expiryValue: "2099-12" }], credits: [] };
 const result = { returnId: "return", invoiceId: "invoice", locationId: "branch", invoiceNumber: source.invoiceNumber, creditNoteId: "credit", creditNoteNumber: "C00012627/000001", creditedPaise: 1000, totalCreditedPaise: 1000, balancePaise: 1000, refundPayablePaise: 0, disposition: "quarantined", taxAdjustment: "professional_review_required", revision: 1 };
 const mount = (canApprove = true, locationId = "branch", canProcess = true) => render(<ToastProvider><PharmacyReturns locationId={locationId} canProcess={canProcess} canApprove={canApprove} /></ToastProvider>);
-async function open() { fireEvent.click(await screen.findByRole("button", { name: `Review return ${source.invoiceNumber}` })); await screen.findByRole("region", { name: "Original return source" }); }
+async function open() { await screen.findAllByRole("button", { name: `Review return ${source.invoiceNumber}` }); fireEvent.click(within(screen.getByRole("table", { name: "Return invoices" })).getByRole("button", { name: `Review return ${source.invoiceNumber}` })); await screen.findByRole("region", { name: "Original return source" }); }
 function fill() { fireEvent.change(screen.getByLabelText("Return quantity ACTUAL-BATCH"), { target: { value: "1" } }); fireEvent.change(screen.getByLabelText("Actual return reason"), { target: { value: "Actual goods returned" } }); fireEvent.change(screen.getByLabelText("Actual approval/review reference"), { target: { value: "Actual approval reference" } }); fireEvent.click(screen.getByRole("checkbox", { name: /physical quarantine/ })); }
 async function review() { fireEvent.click(screen.getByRole("button", { name: "Review source credit" })); await screen.findByRole("region", { name: "Reviewed return credit" }); }
 beforeEach(() => {
+  Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
   vi.mocked(printElement).mockReset().mockResolvedValue();
   sessionStorage.clear(); useAuthStore.setState({ user: { id: "operator", name: "Operator", role: "cashier", email: "operator@example.test", organization_id: "org", permissions: ["PHARMACY_RETURN", "PHARMACY_APPROVE_REFUND"] } });
   api.get.mockReset().mockImplementation(async (url: string) => url.includes("/return-source?") ? response(source) : response({ items: [{ id: "invoice", invoiceNumber: source.invoiceNumber, totalAmount: 20, currency: "INR" }], nextCursor: null }));
@@ -52,6 +53,61 @@ it("loads and reprints the committed credit note without another return or refun
     lines: [{ description: "Original product", batchNumber: "ACTUAL-BATCH", quantity: 1, condition: "unopened", payablePaise: 1000 }],
     creditNote: { id: "credit", returnId: "return", locationId: "branch", invoiceId: "invoice", sourceInvoiceNumber: source.invoiceNumber, sourceIssuedAt: "2026-10-19T06:30:00Z", issuedAt: "2026-10-20T06:30:00Z", creditNoteNumber: result.creditNoteNumber, currency: "INR", taxAdjustment: "professional_review_required", baseAmountPaise: 1000, cgstPaise: 0, sgstPaise: 0, grossAmountPaise: 1000, roundOffPaise: 0, payablePaise: 1000,
       issuerSnapshot: { issuer: { legalName: "Captured Pharmacy", address: "Captured branch", drugLicenceNumbers: ["CAPTURED-LICENCE"] }, recipient: { name: "Actual customer" } } } };
-  api.get.mockResolvedValue(response(document)); fireEvent.click(screen.getByRole("button", { name: "Preview return credit note return" })); const paper = await screen.findByRole("article", { name: "Saved sales return credit note" }); expect(paper).toHaveTextContent("Captured Pharmacy"); expect(paper).toHaveTextContent("actual-approver"); expect(paper).toHaveTextContent("ACTUAL-BATCH");
+  api.get.mockResolvedValue(response(document)); fireEvent.click(screen.getByRole("button", { name: `View credit note ${result.creditNoteNumber}` })); const paper = await screen.findByRole("article", { name: "Saved sales return credit note" }); expect(paper).toHaveTextContent("Captured Pharmacy"); expect(paper).not.toHaveTextContent("actual-approver"); expect(paper).not.toHaveTextContent("actual-operator"); expect(paper).toHaveTextContent("ACTUAL-BATCH"); expect(paper).toHaveTextContent("Actual review");
   fireEvent.click(screen.getByRole("button", { name: "Print return credit note" })); await waitFor(() => expect(printElement).toHaveBeenCalledOnce()); expect(vi.mocked(printElement).mock.lastCall![1]).toMatchObject({ title: result.creditNoteNumber, paper: "A4" }); expect(api.post).toHaveBeenCalledTimes(2);
+});
+
+it("shows ten bills at a time and retains the applied search when fetching the next source batch", async () => {
+  const first = Array.from({ length: 25 }, (_, index) => ({ id: `invoice-${index + 1}`, invoiceNumber: `INV-${index + 1}`, totalAmount: 20, status: "paid", currency: "INR" }));
+  api.get.mockImplementation(async (url: string) => response(url.includes("cursor=next-batch") ? { items: [{ ...first[0], id: "invoice-26", invoiceNumber: "INV-26" }], nextCursor: null } : { items: first, nextCursor: "next-batch" }));
+  mount(); await screen.findAllByText("INV-1");
+  expect(within(screen.getByRole("table", { name: "Return invoices" })).getAllByRole("row")).toHaveLength(11);
+  expect(screen.queryByText("INV-11")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: "Find return invoice number" }), { target: { value: "INV" } });
+  fireEvent.click(screen.getByRole("button", { name: "Find return invoice" }));
+  await screen.findAllByText("INV-1");
+  fireEvent.change(screen.getByRole("textbox", { name: "Find return invoice number" }), { target: { value: "UNAPPLIED" } });
+  fireEvent.click(screen.getByRole("button", { name: "Next page" })); await screen.findAllByText("INV-11");
+  fireEvent.click(screen.getByRole("button", { name: "Next page" })); await screen.findAllByText("INV-26");
+  const lastUrl = api.get.mock.calls.at(-1)![0];
+  expect(lastUrl).toContain("cursor=next-batch"); expect(lastUrl).toContain("invoiceNumber=INV"); expect(lastUrl).not.toContain("UNAPPLIED");
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+it("opens the mobile bill action in a read-only return sheet without granting posting access", async () => {
+  mount(false, "branch", false);
+  const buttons = await screen.findAllByRole("button", { name: `Review return ${source.invoiceNumber}` });
+  fireEvent.click(buttons.find(button => !button.closest("table"))!);
+  const dialog = await screen.findByRole("dialog", { name: `Return ${source.invoiceNumber}` });
+  expect(within(dialog).getByLabelText("Return quantity ACTUAL-BATCH")).toBeDisabled();
+  expect(within(dialog).getByRole("checkbox", { name: /physical quarantine/ })).toBeDisabled();
+  expect(within(dialog).queryByRole("button", { name: "Review source credit" })).not.toBeInTheDocument();
+  expect(within(dialog).queryByRole("button", { name: "Approve and post return" })).not.toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Close modal", exact: true }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Original return source" })).not.toBeInTheDocument());
+  expect(api.post).not.toHaveBeenCalled();
+});
+
+it("ignores a credit preview that finishes after the return sheet closes", async () => {
+  mount(); await open(); fill();
+  let finish!: () => Promise<void>; const quote = api.post.getMockImplementation()!;
+  api.post.mockImplementationOnce((url, body, config) => new Promise(resolve => { finish = async () => resolve(await quote(url, body, config)); }));
+  fireEvent.click(screen.getByRole("button", { name: "Review source credit" }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole("button", { name: "Close modal", exact: true }));
+  await act(async () => { await finish(); });
+  expect(screen.queryByRole("region", { name: "Reviewed return credit" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Approve and post return" })).not.toBeInTheDocument();
+  expect(api.post).toHaveBeenCalledOnce();
+});
+
+it("keeps the chosen returned condition in the reviewed credit and committed return", async () => {
+  mount(); await open(); fill();
+  fireEvent.click(screen.getByRole("combobox", { name: "Returned condition ACTUAL-BATCH" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Unopened", exact: true }));
+  await review();
+  fireEvent.click(screen.getByRole("button", { name: "Approve and post return" }));
+  await screen.findByText("Return committed");
+  expect(api.post.mock.calls[0][1].lines[0].condition).toBe("unopened");
+  expect(api.post.mock.calls[1][1].lines[0].condition).toBe("unopened");
 });
