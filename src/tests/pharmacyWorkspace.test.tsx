@@ -20,17 +20,12 @@ const medicine = { id: "medicine", locationId: "clinic", name: "Sample medicine 
 const rx = { id: "prescription", medicineId: "medicine", name: medicine.name, dosage: "500 mg", frequency: "1-0-1", duration: "3 days", instructions: "After food" };
 const partialRx = { ...rx, fulfillment: { mode: "quantity" as const, authorizedQuantity: 30, suppliedQuantity: 10, remainingQuantity: 20, baseUnit: "tablet", revision: 1, medicineId: "medicine" } };
 const partialStock = { ...medicine, unitDefinition: { version: 1, baseUnit: "tablet", packUnit: "strip", unitsPerPack: 10 } };
-it("returns to the selected pharmacy tab after an administrator closes pharmacist registration review", async () => {
+it("keeps pharmacist registration review out of the operational pharmacy tab bar", async () => {
   useAuthStore.setState({ user: { ...useAuthStore.getState().user!, role: "admin", permissions: ["MANAGE_ORGANIZATION", "MANAGE_MEDICINES"] } });
   fixture.capabilities.mockResolvedValue(response({ ...capabilities([...pharmacyActions]), actions: { ...capabilities([...pharmacyActions]).actions, viewSales: true } }));
-  const get = fixture.get.getMockImplementation()!;
-  fixture.get.mockImplementation(async (url: string) => url.includes("/members") ? response({ members: [] }) : get(url));
   mount();
-  fireEvent.click(await screen.findByRole("tab", { name: "Sales & collections" }));
-  fireEvent.click(screen.getByRole("tab", { name: "Pharmacist registrations" }));
-  const dialog = await screen.findByRole("dialog", { name: "Pharmacist registrations" });
-  fireEvent.click(within(dialog).getByRole("button", { name: "Close", exact: true }));
-  await waitFor(() => expect(screen.getByRole("tab", { name: "Sales & collections" })).toHaveAttribute("aria-selected", "true"));
+  await screen.findByRole("tab", { name: "Sales & collections" });
+  expect(screen.queryByRole("tab", { name: "Pharmacist registrations" })).not.toBeInTheDocument();
   expect(screen.queryByRole("dialog", { name: "Pharmacist registrations" })).not.toBeInTheDocument();
 });
 it("sends exact remaining allowance and revision with a partial supply", () => {
@@ -413,7 +408,7 @@ it("connects the daily overview to its permitted source report and day without a
   expect(fixture.get.mock.calls.some(([url]) => String(url).startsWith("/pharmacy/daily-overview"))).toBe(false);
   fireEvent.click(overview); await screen.findByText(/Business day 2026-11-22/);
   fireEvent.click(within(screen.getByRole("article", { name: "Sales issued" })).getByText("Details and source")); fireEvent.click(screen.getByRole("button", { name: "Review sales issued source" }));
-  await screen.findByLabelText("Operational report"); expect(datePickerInput(screen.getByLabelText("Report start date"))).toHaveValue("2026-11-22"); expect(datePickerInput(screen.getByLabelText("Report end date"))).toHaveValue("2026-11-22");
+  await screen.findByLabelText("Operational report"); expect(datePickerInput(screen.getByLabelText("Report dates"))).toHaveValue("2026-11-22 to 2026-11-22");
   expect(fixture.post).not.toHaveBeenCalled(); expect(fixture.put).not.toHaveBeenCalled(); expect(fixture.delete).not.toHaveBeenCalled();
 });
 it("opens collection-only staff directly into sales without stock or clinical grants", async () => {

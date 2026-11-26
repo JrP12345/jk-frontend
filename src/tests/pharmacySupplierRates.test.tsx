@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { PharmacySupplierRates } from "@/components/pharmacy/PharmacySupplierRates";
 import { PharmacyPurchases } from "@/components/pharmacy/PharmacyPurchases";
@@ -43,4 +43,33 @@ it.each(["scope", "currency", "quantity", "received", "date", "duplicates", "gro
 });
 it("rounds sub-paise unit rates only for display without overflowing intermediate products", () => {
   expect(unitRate(100, 3)).toBe("₹0.3333"); expect(unitRate(1, 6)).toBe("₹0.0017"); expect(unitRate(0, 10)).toBe("₹0.0000"); expect(unitRate(Number.MAX_SAFE_INTEGER, 1)).toBe("₹90071992547409.9100");
+});
+it("sends selected range dates when comparing supplier rates", async () => {
+  api.get.mockImplementation(async (url: string) =>
+    response(
+      url.includes("purchase-products")
+        ? { items: [{ id: medicineId, name: "Test tablets", unitDefinition: { version: 1, baseUnit: "tablet", packUnit: "strip", unitsPerPack: 10 } }], nextCursor: null }
+        : { ...data(), startDate: "2026-10-01", endDate: "2026-11-23" }
+    )
+  );
+  render(<ToastProvider><PharmacySupplierRates locationId={locationId} onInvoice={vi.fn()} /></ToastProvider>);
+  await selectProduct();
+  fireEvent.click(screen.getByRole("button", { name: /^Purchase rate dates/ }));
+  const dialog = screen.getByRole("dialog", { name: "Choose Purchase rate dates" });
+  const pick = (value: string) => {
+    const target = new Date(`${value}T12:00:00`);
+    const name = target.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    for (let attempt = 0; attempt < 36 && !within(dialog).queryByRole("button", { name, exact: true }); attempt++) {
+      const day = within(dialog).getAllByRole("button").find(button => /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),/.test(button.getAttribute("aria-label") || ""));
+      const displayed = new Date(day!.getAttribute("aria-label")!);
+      fireEvent.click(within(dialog).getByRole("button", { name: target < displayed ? "Previous Month" : "Next Month" }));
+    }
+    fireEvent.click(within(dialog).getByRole("button", { name, exact: true }));
+  };
+  pick("2026-10-01");
+  pick("2026-11-23");
+  fireEvent.click(screen.getByRole("button", { name: "Load supplier comparison" }));
+  await screen.findByRole("region", { name: "Reviewed supplier rates" });
+  expect(String(api.get.mock.calls.at(-1)?.[0])).toContain("startDate=2026-10-01");
+  expect(String(api.get.mock.calls.at(-1)?.[0])).toContain("endDate=2026-11-23");
 });

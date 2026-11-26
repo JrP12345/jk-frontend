@@ -14,6 +14,7 @@ import { PharmacyInvoiceNumberingSettings } from "./PharmacyInvoiceNumberingSett
 import { PharmacyOfflineDeviceSettings } from "./PharmacyOfflineDeviceSettings";
 import { PharmacyStockReconciliation } from "./PharmacyStockReconciliation";
 import { PharmacyStorefrontSettings } from "./PharmacyStorefrontSettings";
+import { PharmacyProfessionalReview } from "./PharmacyProfessionalReview";
 import { stockCountStorageKey } from "@/lib/pharmacyStockReconciliation";
 
 interface Props {
@@ -42,6 +43,7 @@ function CapabilitySettingsSession({ location, organizationId, onClose, onSaved 
   const [numberingOpen, setNumberingOpen] = useState(false);
   const [deviceOpen, setDeviceOpen] = useState(false);
   const [countOpen, setCountOpen] = useState(false);
+  const [pharmacistsOpen, setPharmacistsOpen] = useState(false);
   const alive = useRef(true);
   const saveLock = useRef(false);
   const path = organizationPath(`/pharmacy/locations/${encodeURIComponent(location.id)}/settings`, organizationId || location.organizationId);
@@ -97,6 +99,7 @@ function CapabilitySettingsSession({ location, organizationId, onClose, onSaved 
   }
 
   if (countOpen) return <PharmacyStockReconciliation locationId={location.id} organizationId={issuerOrganizationId} onClose={() => { setCountOpen(false); setReload(n => n + 1); }} onCompleted={() => { onSaved(); onClose(); }} />;
+  if (pharmacistsOpen && issuerOrganizationId) return <PharmacyProfessionalReview organizationId={issuerOrganizationId} locationId={location.id} onClose={() => setPharmacistsOpen(false)} />;
 
   return <Modal open onClose={onClose} busy={saving || issuerBusy} title="Pharmacy settings" description={location.name} size="md" footer={<>
     <Button size="sm" variant="outline" disabled={saving || issuerBusy} onClick={onClose}>Cancel</Button>
@@ -130,6 +133,7 @@ function CapabilitySettingsSession({ location, organizationId, onClose, onSaved 
       {numberingOpen && <PharmacyInvoiceNumberingSettings locationId={location.id} organizationId={issuerOrganizationId} disabled={saving || issuerBusy} onBusyChange={setIssuerBusy} />}
       <Button type="button" size="sm" variant="outline" disabled={saving || issuerBusy || !settings.moduleEnabled} onClick={() => setDeviceOpen(value => !value)}>{deviceOpen ? "Hide billing PC" : "Designated billing PC"}</Button>
       {deviceOpen && <PharmacyOfflineDeviceSettings locationId={location.id} organizationId={issuerOrganizationId} disabled={saving || issuerBusy} onBusyChange={setIssuerBusy} />}
+      <Button type="button" size="sm" variant="outline" disabled={saving || issuerBusy || !settings.moduleEnabled} onClick={() => setPharmacistsOpen(true)}>Pharmacist registrations</Button>
     </section>}
   </Modal>;
 }

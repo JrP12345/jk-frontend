@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -119,4 +119,15 @@ it("keeps recovery accessible after a committed count has already changed the br
   fireEvent.click(await screen.findByRole("button", { name: "Check earlier physical count" }));
   await screen.findByRole("dialog", { name: "Reconcile physical stock" });
   expect(api.patch).not.toHaveBeenCalled();
+});
+
+it("opens pharmacist registrations for organization managers inside branch settings and returns on close", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["MANAGE_ORGANIZATION"] } });
+  vi.mocked(api.get).mockImplementation(async url => response(String(url).includes("/members") ? { members: [] } : caps()));
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Pharmacist registrations" }));
+  const dialog = await screen.findByRole("dialog", { name: "Pharmacist registrations" });
+  expect(api.patch).not.toHaveBeenCalled();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Close", exact: true }));
+  await screen.findByRole("dialog", { name: "Pharmacy settings" });
 });

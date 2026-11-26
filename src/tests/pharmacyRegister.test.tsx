@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PharmacyRegister } from "@/components/pharmacy/PharmacyRegister";
 import { readRegister, registerCsv, type RegisterEntry } from "@/lib/pharmacyRegister";
@@ -37,4 +37,24 @@ it.each(["branch", "schedule", "quantity", "count", "review", "duplicates"])("re
 it("keeps full evidence columns and makes spreadsheet formula content inert", () => {
   const value = { ...entry(), patientName: '=HYPERLINK("https://example.test")', doctorName: "\t=1+1", externalPrescriptionId: "source-reference" } as RegisterEntry;
   const csv = registerCsv([value]); expect(csv).toContain('"externalPrescriptionId"'); expect(csv).toContain('"source-reference"'); expect(csv).toContain('"\'=HYPERLINK('); expect(csv).toContain('"\'\t=1+1"'); expect(csv).toContain('"doctorAddress"');
+});
+it("applies selected range dates cleanly from the shared range picker", async () => {
+  mount();
+  fireEvent.click(screen.getByRole("button", { name: /^Register dates/ }));
+  const dialog = screen.getByRole("dialog", { name: "Choose Register dates" });
+  const pick = (value: string) => {
+    const target = new Date(`${value}T12:00:00`);
+    const name = target.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    for (let attempt = 0; attempt < 36 && !within(dialog).queryByRole("button", { name, exact: true }); attempt++) {
+      const day = within(dialog).getAllByRole("button").find(button => /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),/.test(button.getAttribute("aria-label") || ""));
+      const displayed = new Date(day!.getAttribute("aria-label")!);
+      fireEvent.click(within(dialog).getByRole("button", { name: target < displayed ? "Previous Month" : "Next Month" }));
+    }
+    fireEvent.click(within(dialog).getByRole("button", { name, exact: true }));
+  };
+  pick("2026-11-01");
+  pick("2026-11-20");
+  await load();
+  expect(api.get.mock.calls[0][0]).toContain("startDate=2026-11-01");
+  expect(api.get.mock.calls[0][0]).toContain("endDate=2026-11-20");
 });

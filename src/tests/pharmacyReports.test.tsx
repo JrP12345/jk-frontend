@@ -22,14 +22,20 @@ it("opens a permitted source report for the overview day without automatically r
   render(<ToastProvider><PharmacyReports locationId="branch" initial={{ kind: "movements", date: "2026-11-21" }} /></ToastProvider>);
   await screen.findByLabelText("Operational report");
   await waitFor(() => expect(api.get).toHaveBeenCalledOnce());
-  const start = datePickerInput(screen.getByLabelText("Report start date")), end = datePickerInput(screen.getByLabelText("Report end date"));
-  expect(start).toHaveValue("2026-11-21"); expect(end).toHaveValue("2026-11-21");
+  expect(datePickerInput(screen.getByLabelText("Report dates"))).toHaveValue("2026-11-21 to 2026-11-21");
   fireEvent.click(screen.getByRole("button", { name: "Load report" })); await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
   expect(api.get.mock.calls[1][0]).toBe("/pharmacy/reports/movements"); expect(api.get.mock.calls[1][1].params).toMatchObject({ startDate: "2026-11-21", endDate: "2026-11-21" });
+  fireEvent.click(screen.getByRole("button", { name: /^Report dates/ }));
+  const dialog = screen.getByRole("dialog", { name: "Choose Report dates" });
+  const dayButton = (dateStr: string) => new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  fireEvent.click(within(dialog).getByRole("button", { name: dayButton("2026-11-15"), exact: true }));
+  fireEvent.click(within(dialog).getByRole("button", { name: dayButton("2026-11-20"), exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Load report" })); await waitFor(() => expect(api.get).toHaveBeenCalledTimes(3));
+  expect(api.get.mock.calls[2][1].params).toMatchObject({ startDate: "2026-11-15", endDate: "2026-11-20" });
 });
 it("loads current stock velocity using the selected observation window without period-date fields", async () => {
   api.get.mockImplementation(async (url: string, config: any) => url === "/pharmacy/reports" ? response({ locationId: "branch", items: [{ kind: "stock_velocity", label: "Stock movement and slow-moving analysis" }] }) : response(reportFixture("stock_velocity", "branch", [{ ...stockReportRow, dispensedUnits: 2, estimatedCoverDays: 360, activity: "Slow: at least 90 days estimated cover" }], { ...config.params, cursor: null })));
-  mount(); await screen.findByLabelText("Report elapsed-day window"); expect(screen.queryByLabelText("Report start date")).not.toBeInTheDocument(); select("Report elapsed-day window", "180"); await load(); expect(api.get.mock.calls[1][0]).toBe("/pharmacy/reports/stock_velocity"); expect(api.get.mock.calls[1][1].params).toMatchObject({ days: 180 }); expect(api.get.mock.calls[1][1].params.startDate).toBeUndefined();
+  mount(); await screen.findByLabelText("Report elapsed-day window"); expect(screen.queryByLabelText("Report dates")).not.toBeInTheDocument(); select("Report elapsed-day window", "180"); await load(); expect(api.get.mock.calls[1][0]).toBe("/pharmacy/reports/stock_velocity"); expect(api.get.mock.calls[1][1].params).toMatchObject({ days: 180 }); expect(api.get.mock.calls[1][1].params.startDate).toBeUndefined();
 });
 it("loads only allowed report choices and clearly labels source page scope and unknown cells", async () => {
   mount(); expect(await screen.findByLabelText("Operational report")).toBeInTheDocument(); expect(api.get).toHaveBeenCalledOnce(); const region = await load(); expect(within(region).getByText("Sample medicine")).toBeInTheDocument(); expect(within(region).getByText(/Amount subtotals cover this page only/)).toBeInTheDocument(); expect(screen.queryByText("Captured stock cost")).not.toBeInTheDocument();
