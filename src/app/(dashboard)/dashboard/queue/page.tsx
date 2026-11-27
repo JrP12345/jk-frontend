@@ -18,7 +18,7 @@ import { authScopeKey } from "@/lib/authScope";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
-import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn, ConfirmDialog, Tabs, Dropdown } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn, ConfirmDialog, Tabs, Dropdown, LogoLoader } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import dynamic from "next/dynamic";
 import type { UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
@@ -3687,8 +3687,7 @@ function QueueWorkspace() {
         <div className="space-y-5 p-1">
           {isLoadingEndOpdSummary ? (
             <div className="py-12 text-center space-y-2">
-              <Spinner size="lg" className="mx-auto" />
-              <p className="text-xs text-text-muted">Loading queue reconciliation summary...</p>
+              <LogoLoader size="sm" label="Loading queue reconciliation summary..." />
             </div>
           ) : (
             <>

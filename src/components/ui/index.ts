@@ -26,6 +26,8 @@ export type { Column, TableBulkAction } from "./Table";
 
 export { default as Alert } from "./Alert";
 export { default as Spinner, InlineLoader } from "./Spinner";
+export { default as LogoLoader } from "./LogoLoader";
+export type { LogoLoaderProps } from "./LogoLoader";
 export { default as LoadingState } from "./LoadingState";
 export { default as Skeleton, SkeletonCard, SkeletonTable, SkeletonStats, SkeletonForm, SkeletonCardGrid } from "./Skeleton";
 export { default as EmptyState } from "./EmptyState";

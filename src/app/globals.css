@@ -894,6 +894,60 @@ body {
   transform-origin: center;
 }
 
+/* ── Ekavyu Logo Loader ─────────────────────────────────────────────────────
+   Two-blade animation matching Logo_Loader.json Lottie sequence.
+   Top blade: fades in from offset (106,177)→(150,150), holds, retreats to (190,126).
+   Bottom blade: same but 8 frames later and to (190,134).
+   Implemented as opacity + translate so both colour modes work via currentColor.
+   Both blades use currentColor so they honour light/dark text colour tokens.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@keyframes logo-loader-top {
+  0%   { opacity: 0;   transform: translate(-18%, 11%);  }
+  18%  { opacity: 1;   transform: translate(0,    0);    }
+  67%  { opacity: 1;   transform: translate(0,    0);    }
+  82%  { opacity: 1;   transform: translate(0,    0);    }
+  88%  { opacity: 0;   transform: translate(17%, -10%);  }
+  100% { opacity: 0;   transform: translate(-18%, 11%);  }
+}
+
+@keyframes logo-loader-bottom {
+  0%   { opacity: 0;   transform: translate(-18%, 6%);   }
+  7%   { opacity: 0;   transform: translate(-18%, 6%);   }
+  25%  { opacity: 1;   transform: translate(0,    0);    }
+  73%  { opacity: 1;   transform: translate(0,    0);    }
+  88%  { opacity: 1;   transform: translate(0,    0);    }
+  95%  { opacity: 0;   transform: translate(17%, -6%);   }
+  100% { opacity: 0;   transform: translate(-18%, 6%);   }
+}
+
+.logo-loader-top-blade {
+  animation: logo-loader-top 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  transform-origin: 150px 150px;
+  will-change: transform, opacity;
+}
+
+.logo-loader-bottom-blade {
+  animation: logo-loader-bottom 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  transform-origin: 150px 150px;
+  will-change: transform, opacity;
+}
+
+/* Light mode: use the brand dark colour; dark mode: use a near-white */
+.logo-loader-top-blade,
+.logo-loader-bottom-blade {
+  color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-loader-top-blade,
+  .logo-loader-bottom-blade {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .animate-spin {
   animation: spin-gpu 1s linear infinite;
   transform-origin: center;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { Sidebar, Button, Spinner, Dropdown, Avatar, useToast, EkavyuLogo, EkavyuIcon, Select, Badge, cn, ModeSwitcher } from "@/components/ui";
+import { Sidebar, Button, Spinner, Dropdown, Avatar, useToast, EkavyuLogo, EkavyuIcon, Select, Badge, cn, ModeSwitcher, LogoLoader } from "@/components/ui";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import StaffWorkspaceSwitcher from "@/components/auth/StaffWorkspaceSwitcher";
@@ -523,7 +523,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               pathname === "/dashboard/pharmacy" ? <PharmacySkeleton counter={compactPharmacy} /> : <DashboardLoading />
             ) : !hasAccess ? (
               <div className="min-h-[400px] flex items-center justify-center bg-surface rounded-2xl border border-border p-6 text-center">
-                <Spinner size="lg" label="Redirecting..." />
+                <LogoLoader size="sm" label="Redirecting..." />
               </div>
             ) : (
               children
