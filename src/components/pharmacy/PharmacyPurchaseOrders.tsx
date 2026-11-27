@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ExternalLink, Plus, Printer, RotateCcw, RotateCw, Search, Trash2 } from "lucide-react";
 import { Alert, Badge, Button, Checkbox, DatePicker, Input, QuantityInput, Select, Spinner } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
+import { PharmacyDetailLoadingSheet } from "./PharmacyDetailLoader";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
@@ -75,6 +76,9 @@ function OrderSession({ locationId, canManage, seed, initialOrderId, onSeedClose
   const [loaded, setLoaded] = useState("");
   const [listError, setListError] = useState("");
   const [selected, setSelected] = useState<PurchaseOrder | null>(null);
+  const [openingOrder, setOpeningOrder] = useState<{ id: string; reference?: string; supplierName?: string } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
   const [editing, setEditing] = useState<PurchaseOrder | "new" | null>(seed ? "new" : null);
   const [copySeed, setCopySeed] = useState(seed);
   const [document, setDocument] = useState<PurchaseOrder | null>(null);
@@ -150,16 +154,38 @@ function OrderSession({ locationId, canManage, seed, initialOrderId, onSeedClose
       });
   }, [locationId, query, cursor, supplierId, attempt, key, read]);
 
-  async function open(id: string) {
+  function closeOpeningOrder() {
+    detailRead();
+    setOpeningOrder(null);
+    setDetailLoading(false);
+    setDetailError("");
+  }
+
+  async function open(id: string, preview?: OrderSummary) {
     const request = detailRead();
+    const isOpeningNew = !selected || selected.id !== id;
+    if (isOpeningNew) {
+      setSelected(null);
+      setOpeningOrder(preview ? { id, reference: preview.reference, supplierName: preview.supplierSnapshot.name } : { id });
+      setDetailError("");
+      setDetailLoading(true);
+    }
     try {
       const result = await readOrder(id, locationId, request.signal);
       if (request.isCurrent()) {
         setSelected(result);
+        setOpeningOrder(null);
+        setDetailError("");
         setError("");
       }
     } catch (failure) {
-      if (request.isCurrent()) setError(orderError(failure));
+      if (request.isCurrent()) {
+        const message = orderError(failure);
+        if (isOpeningNew) setDetailError(message);
+        else setError(message);
+      }
+    } finally {
+      if (request.isCurrent()) setDetailLoading(false);
     }
   }
 
@@ -420,7 +446,7 @@ function OrderSession({ locationId, canManage, seed, initialOrderId, onSeedClose
                   variant="outline"
                   disabled={busy}
                   onClick={() => {
-                    void open(row.id);
+                    void open(row.id, row);
                   }}
                 >
                   Open order {row.reference}
@@ -447,6 +473,18 @@ function OrderSession({ locationId, canManage, seed, initialOrderId, onSeedClose
           )}
         </footer>
       )}
+
+      <PharmacyDetailLoadingSheet
+        open={Boolean(!selected && !editing && !document && !collaboration && (detailLoading || detailError || (initialOrderId && !error)))}
+        size="xl"
+        title={openingOrder?.reference ? `Loading order ${openingOrder.reference}` : "Loading purchase order"}
+        description={openingOrder?.supplierName}
+        label="Loading purchase order..."
+        error={!detailLoading ? detailError : ""}
+        errorTitle="Order unavailable"
+        onRetry={openingOrder?.id && !detailLoading && detailError ? () => { void open(openingOrder.id); } : undefined}
+        onClose={closeOpeningOrder}
+      />
 
       {editing && canManage && (
         <OrderForm

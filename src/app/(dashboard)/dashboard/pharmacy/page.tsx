@@ -48,7 +48,9 @@ import { dateLabel, lowStock, money, prepareDispense, readMedicinePage, type Med
 import styles from "@/components/pharmacy/PharmacyWorkspace.module.css";
 import { playChimeSound } from "@/utils/audioChimes";
 import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
-import { RotateCw, Plus, Edit3, Trash2, Phone, Search, Building2, Upload, ClipboardCheck } from "lucide-react";
+import { RotateCw, Plus, Edit3, Trash2, Phone, Search, Building2, Upload, ClipboardCheck, Barcode, Camera, Sparkles } from "lucide-react";
+import { PharmacyBarcodeScanDialog } from "@/components/pharmacy/PharmacyBarcodeScanDialog";
+import { PharmacyBarcodeStickersModal, type BatchStickerSeed } from "@/components/pharmacy/PharmacyBarcodeStickersModal";
 
 const blankMedicine = () => ({ name: "", genericName: "", batchNumber: "", expiryDate: "", stockQuantity: "0", costPrice: "", price: "", manufacturer: "", strength: "", rackLocation: "", category: "tablet", scheduleType: "general",
   barcodes: "", reorderLevel: "20", hsnCode: "", gstRate: "", baseUnit: "", packUnit: "", unitsPerPack: "", outerPackUnit: "", packsPerOuter: "", supplyBatch: "", supplyExpiry: "", supplyPrecision: "month", supplyMrp: "" });
@@ -109,6 +111,9 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
   const [query, setQuery] = useState("");
   useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setCatalogPage(1); }, 250); return () => clearTimeout(timer); }, [search]);
   const [filter, setFilter] = useState("all");
+  const [barcodeFilter, setBarcodeFilter] = useState<"all" | "assigned" | "missing">("all");
+  const [stickerSeeds, setStickerSeeds] = useState<BatchStickerSeed[] | null>(null);
+  const [medicineScanOpen, setMedicineScanOpen] = useState(false);
   const [dispenseSearch, setDispenseSearch] = useState("");
   const [showHealth, setShowHealth] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -184,7 +189,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
       setCapabilityError("Pharmacy access could not be checked. Retry before viewing records or making changes."); setReading(false); return;
     }
     const [catalog, prescriptions] = await Promise.allSettled([
-      current.actions.viewStock ? readMedicinePage(locationId, request.signal, { page: catalogPage, search: query, stockFilter: current.inventoryMode === "billing_only" ? "all" : filter }) : Promise.resolve({ items: [] as Medicine[], totalPages: 0, totalCount: 0, page: 1 }),
+      current.actions.viewStock ? readMedicinePage(locationId, request.signal, { page: catalogPage, search: query, stockFilter: current.inventoryMode === "billing_only" ? "all" : filter, barcodeFilter }) : Promise.resolve({ items: [] as Medicine[], totalPages: 0, totalCount: 0, page: 1 }),
       catalogOnly ? Promise.resolve(null) : current.actions.viewRxQueue ? api.get(`/pharmacy/pending-prescriptions?locationId=${encodeURIComponent(locationId)}`, { signal: request.signal }).then(response => {
         if (!Array.isArray(response.data?.data)) throw new Error("Incomplete prescriptions");
         return response.data.data as PendingPrescription[];
@@ -202,7 +207,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     else if (prescriptions.status === "rejected") setPendingError("Prescriptions could not be loaded. Please try again.");
     setDataRevision(previous => previous + 1);
     setReading(false);
-  }, [beginRead, locationId, catalogPage, query, filter]);
+  }, [beginRead, locationId, catalogPage, query, filter, barcodeFilter]);
   useEffect(() => { void fetchData(); }, [fetchData]);
 
   const acceptDispenseResult = useCallback(async (result: DispenseResult, key: string) => {
@@ -404,8 +409,9 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     ...(canReceive ? [{ label: "Add batch", icon: <Plus size={16} />, onClick: () => openBatch(medicine) }] : []),
     ...(canReviewProducts ? [{ label: "Review product", icon: <ClipboardCheck size={16} />, onClick: () => setReviewTarget(medicine.id) }] : []),
     ...(canReviewProducts ? [{ label: "Product / batch sale holds", icon: <ClipboardCheck size={16} />, onClick: () => setSaleControlTarget(medicine.id) }] : []),
-    ...(canCatalog ? [{ label: "Edit medicine", icon: <Edit3 size={16} />, onClick: () => openMedicine(medicine) },
-      { label: "Archive medicine", icon: <Trash2 size={16} />, variant: "danger" as const, onClick: () => setDeleting(medicine) }] : []),
+    ...(canCatalog ? [{ label: "Edit medicine", icon: <Edit3 size={16} />, onClick: () => openMedicine(medicine) }] : []),
+    ...((canCatalog || canReceive || Boolean(medicine.barcodes?.length)) ? [{ label: "Print barcode stickers", icon: <Barcode size={16} />, onClick: () => setStickerSeeds([{ medicineId: medicine.id }]) }] : []),
+    ...(canCatalog ? [{ label: "Archive medicine", icon: <Trash2 size={16} />, variant: "danger" as const, onClick: () => setDeleting(medicine) }] : []),
   ];
   const canFinance = Boolean(capabilities?.actions.viewSettlements || capabilities?.actions.viewPurchases && capabilities.actions.processReturn);
   const canRecords = Boolean(capabilities?.actions.readRegister || capabilities?.actions.readFiles);
@@ -422,7 +428,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     {showStockTools && canCreate && <Button size="sm" disabled={!locationId || !actionable || reading} onClick={() => openMedicine()}><Plus size={16} aria-hidden="true" />Add medicine</Button>}
     {showStockTools && canCreate && <Button size="sm" variant="outline" disabled={!locationId || !actionable || reading} onClick={() => setCatalogueOpen(true)}>Find in catalogue</Button>}
   </>;
-  const inventory = <PharmacyInventory medicines={filteredMedicines} billingOnly={capabilities?.inventoryMode === "billing_only"} search={search} filter={filter} reading={reading || query !== search.trim()} loaded={catalogLoaded} error={catalogError} total={catalogTotal} page={catalogPage} pages={catalogPages} busy={Boolean(busy)} actionable={actionable && Boolean(locationId)} onSearch={setSearch} onFilter={value => { setFilter(value); setCatalogPage(1); }} onPage={setCatalogPage} onRetry={fetchData} actionsFor={stockActionItems} onCreate={canCreate ? () => openMedicine() : undefined} onFind={canCreate ? () => setCatalogueOpen(true) : undefined} onImport={capabilities?.importKinds?.length ? () => setImportOpen(true) : undefined} importDisabled={!locationId}>
+  const inventory = <PharmacyInventory medicines={filteredMedicines} billingOnly={capabilities?.inventoryMode === "billing_only"} search={search} filter={filter} barcodeFilter={barcodeFilter} reading={reading || query !== search.trim()} loaded={catalogLoaded} error={catalogError} total={catalogTotal} page={catalogPage} pages={catalogPages} busy={Boolean(busy)} actionable={actionable && Boolean(locationId)} onSearch={setSearch} onFilter={value => { setFilter(value); setCatalogPage(1); }} onBarcodeFilter={value => { setBarcodeFilter(value); setCatalogPage(1); }} onPage={setCatalogPage} onRetry={fetchData} actionsFor={stockActionItems} onCreate={canCreate ? () => openMedicine() : undefined} onFind={canCreate ? () => setCatalogueOpen(true) : undefined} onOpenStickers={locationId && medicines.length ? seeds => setStickerSeeds(seeds ?? medicines.slice(0, 15).map(item => ({ medicineId: item.id }))) : undefined} onImport={capabilities?.importKinds?.length ? () => setImportOpen(true) : undefined} importDisabled={!locationId}>
     {catalogLoaded && medicines.length > 0 && <details className={styles.details} onToggle={event => setShowHealth(event.currentTarget.open)}><summary>Stock on this page</summary>{showHealth && <ChartContainer title="Stock on this page" description="This overview covers the current page; Alerts lists batch expiry dates." height={180}><DonutChart height={180} data={[{ name: "In stock", value: medicines.filter(m => !lowStock(m)).length, color: "var(--chart-2)" }, { name: "Low stock", value: medicines.filter(m => lowStock(m) && m.stockQuantity > 0).length, color: "var(--chart-3)" }, { name: "Out of stock", value: medicines.filter(m => m.stockQuantity === 0).length, color: "var(--danger)" }].filter(value => value.value > 0)} /></ChartContainer>}</details>}
   </PharmacyInventory>;
   const dispensing = !locationId ? <p className={styles.empty}>Choose a location to view and dispense prescriptions.</p> : <section className={styles.panel} aria-label="Pending prescriptions">
@@ -457,10 +463,10 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
     {capabilities && !capabilities.enabled && <Alert variant="warning" title="Pharmacy is disabled here">Authorized stock and history remain available. New stock changes and prescription supply are disabled.</Alert>}
     {capabilities && !capabilities.moduleEnabled && <Alert variant="warning" title="Pharmacy module disabled">Contact your organization administrator about module availability.</Alert>}
     {capabilities?.commercialEntitlement === "unavailable" && <Alert variant="warning" title="Pharmacy product unavailable">An active pharmacy product at this branch is required for new sales and stock receipts. Authorized records, recovery, collections, returns and reports remain available. Contact your organization administrator to review the subscription.</Alert>}
-    <PharmacyStockReceipts medicine={receiptTarget} locationId={locationId} canReceive={canReceive} canRecover={Boolean(capabilities?.actions.readMovements)} onClose={() => setReceiptTarget(null)} onCommitted={() => { void fetchData(); }} />
+    <PharmacyStockReceipts medicine={receiptTarget} locationId={locationId} canReceive={canReceive} canRecover={Boolean(capabilities?.actions.readMovements)} onClose={() => setReceiptTarget(null)} onCommitted={() => { void fetchData(); }} onPrintStickers={seed => setStickerSeeds([seed])} />
     {reviewTarget && canReviewProducts && <PharmacyProductReview medicineId={reviewTarget} locationId={locationId} onClose={() => setReviewTarget(null)} onReviewed={() => { void fetchData(); }} />}
     {comparisonTarget && capabilities?.actions.viewStock && <PharmacyAlternatives key={`${scope}:${locationId}:${comparisonTarget}`} medicineId={comparisonTarget} locationId={locationId} onClose={() => setComparisonTarget(null)} />}
-    {stockTarget && capabilities?.actions.viewStock && <PharmacyProductStockTools key={`${scope}:${locationId}:${stockTarget}:${Boolean(capabilities.actions.viewCost)}`} medicineId={stockTarget} locationId={locationId} canAdjust={Boolean(capabilities?.actions.adjustStock && actionable)} canReadMovements={Boolean(capabilities?.actions.readMovements)} onClose={() => setStockTarget(null)} onChanged={() => { void fetchData(); }} />}
+    {stockTarget && capabilities?.actions.viewStock && <PharmacyProductStockTools key={`${scope}:${locationId}:${stockTarget}:${Boolean(capabilities.actions.viewCost)}`} medicineId={stockTarget} locationId={locationId} canAdjust={Boolean(capabilities?.actions.adjustStock && actionable)} canReadMovements={Boolean(capabilities?.actions.readMovements)} onClose={() => setStockTarget(null)} onChanged={() => { void fetchData(); }} onPrintStickers={seed => setStickerSeeds([seed])} />}
     {saleControlTarget && canReviewProducts && <PharmacySaleControls medicineId={saleControlTarget} locationId={locationId} onClose={() => setSaleControlTarget(null)} onChanged={() => { void fetchData(); }} />}
     {!locationId && !locationError && <p className={styles.empty}>{locations.length ? "Choose a location to view pharmacy records." : "No locations are assigned to your account. Ask your administrator to assign your pharmacy branch."}</p>}
     {canRecover && pendingDispenseKey && (confirmedDispense ? <Alert variant="success" title="Dispense confirmed" action={<Button size="sm" variant="outline" disabled={Boolean(busy)} onClick={acknowledgeDispense}>Done</Button>}>
@@ -481,7 +487,7 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
         { label: "Refresh alerts", disabled: reading || Boolean(busy), onClick: () => { void fetchData(); } },
       ]} /></div></> : undefined} locationId={locationId} medicines={medicines} canManage={canReceive && actionable} onOpenAddBatch={openBatch} refreshKey={dataRevision} onShortbook={capabilities?.actions.managePurchases ? medicine => { if (medicine.unitDefinition) { setShortbookProduct({ ...medicine, unitDefinition: medicine.unitDefinition }); setActiveTab("purchases"); } } : undefined} onSupplierReturn={capabilities?.actions.viewPurchases && capabilities.actions.processReturn ? source => { setSupplierReturnTarget(source); setActiveTab("finance"); } : undefined} /> },
       { id: "purchases", label: "Purchases", content: <PharmacyPurchases initialShortbookProduct={shortbookProduct} locationId={locationId} canViewCost={Boolean(capabilities?.actions.viewCost)} canManage={Boolean(capabilities?.actions.managePurchases)} canReceive={Boolean(capabilities?.actions.receiveStock)} /> },
-      { id: "counter", label: "Counter sale", content: <PharmacyCounter onViewHistory={capabilities?.actions.viewSales ? () => setActiveTab("sales") : undefined} toolbarContext={compactWorkspace && locations.length > 1 ? locationContext : undefined} toolbarActions={compactWorkspace ? refreshAction : undefined} initialPickup={pickupDraft} onPickupConsumed={consumePickupDraft} onPickupPrepared={() => { setPickupDraft(null); setActiveTab("pickups"); }} compact={user?.workspaceProfile === "pharmacy" || counterOnly} locationId={locationId} inventoryMode={capabilities?.inventoryMode || "tracked"} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} canManageCatalog={canCatalog} canReviewProducts={canReviewProducts} onCreateLocal={canCatalog ? name => openMedicine(undefined, name) : undefined} catalogueEditorOpen={medicineOpen} catalogueRevision={counterCatalogueRevision} onProductReviewed={() => { void fetchData(); }} /> },
+      { id: "counter", label: "Counter sale", content: <PharmacyCounter onViewHistory={capabilities?.actions.viewSales ? () => setActiveTab("sales") : undefined} toolbarContext={compactWorkspace && locations.length > 1 ? locationContext : undefined} toolbarActions={compactWorkspace ? refreshAction : undefined} initialPickup={pickupDraft} onPickupConsumed={consumePickupDraft} onPickupPrepared={() => { setPickupDraft(null); setActiveTab("pickups"); }} compact={user?.workspaceProfile === "pharmacy" || counterOnly} locationId={locationId} inventoryMode={capabilities?.inventoryMode || "tracked"} canCollect={Boolean(capabilities?.actions.collect)} canOpenTill={Boolean(capabilities?.actions.openTill)} canManageCatalog={canCatalog} canReceiveStock={canReceive} canReviewProducts={canReviewProducts} onCreateLocal={canCatalog ? name => openMedicine(undefined, name) : undefined} catalogueEditorOpen={medicineOpen} catalogueRevision={counterCatalogueRevision} onProductReviewed={() => { void fetchData(); }} /> },
       { id: "returns", label: "Returns", content: <PharmacyReturns initialInvoiceId={returnInvoice || undefined} locationId={locationId} canProcess={Boolean(capabilities?.actions.processReturn)} canApprove={Boolean(capabilities?.actions.approveReturn)} /> },
       { id: "daily", label: "Daily overview", content: <PharmacyDailyOverview locationId={locationId} canViewStock={Boolean(capabilities?.actions.viewStock && capabilities?.inventoryMode !== "billing_only")} canViewDrawer={Boolean(capabilities?.actions.viewTill)} onStock={() => setActiveTab("alerts")} onDrawer={() => setActiveTab("till")} onReport={(kind, date) => { setReportSeed({ kind, date }); setActiveTab("reports"); }} /> },
       { id: "reports", label: "Reports & exports", content: <PharmacyReports locationId={locationId} initial={reportSeed} /> },
@@ -521,7 +527,15 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
           <p className={styles.meta}>Stock quantities use base units. Units can be edited only before stock or batch history exists. Existing unclassified quantities need review.</p>
           <div className={styles.fieldGrid}><Select label="Outer pack (optional)" value={medicineForm.outerPackUnit} onChange={event => setMedicineForm({ ...medicineForm, outerPackUnit: event.target.value, packsPerOuter: "" })} options={[{ value: "", label: "No outer pack" }, ...packUnits.filter(value => value !== medicineForm.packUnit && value !== medicineForm.baseUnit).map(value => ({ value, label: value }))]} /><Input label="Inner packs per outer pack" type="number" min="2" max="1000000" step="1" disabled={!medicineForm.outerPackUnit} value={medicineForm.packsPerOuter} onChange={event => setMedicineForm({ ...medicineForm, packsPerOuter: event.target.value })} /></div>
           <p className={styles.meta}>Record the printed relationship, for example 1 box = 10 strips and 1 strip = 10 tablets. No conversion factor is assumed.</p>
-          <Input label="Barcode aliases" placeholder="Separate aliases with commas; keep leading zeros" value={medicineForm.barcodes} onChange={event => setMedicineForm({ ...medicineForm, barcodes: event.target.value })} error={errors.barcodes} />
+          <div className="flex flex-wrap items-end gap-2">
+            <Input containerClassName="min-w-0 flex-1" label="Barcode aliases" placeholder="Separate aliases with commas; keep leading zeros" value={medicineForm.barcodes} onChange={event => setMedicineForm({ ...medicineForm, barcodes: event.target.value })} error={errors.barcodes} />
+            <Button type="button" size="sm" variant="outline" aria-label="Scan barcode into medicine" onClick={() => setMedicineScanOpen(true)} icon={<Camera size={15} aria-hidden="true" />}>Scan</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => {
+              const generated = `EKV${String(Math.floor(10_000_000 + Math.random() * 89_999_999))}`;
+              const existing = medicineForm.barcodes.split(",").map(item => item.trim()).filter(Boolean);
+              if (!existing.includes(generated)) setMedicineForm({ ...medicineForm, barcodes: [...existing, generated].join(", ") });
+            }} icon={<Sparkles size={15} aria-hidden="true" />}>Generate</Button>
+          </div>
           <div className={styles.fieldGrid}><Input label="HSN code" value={medicineForm.hsnCode} error={errors.hsnCode} readOnly={Boolean(editingMedicine)} onChange={event => setMedicineForm({ ...medicineForm, hsnCode: event.target.value })} />
             <Input label="GST rate (%)" type="number" min="0" max="100" step="0.01" value={medicineForm.gstRate} error={errors.gstRate} readOnly={Boolean(editingMedicine)} onChange={event => setMedicineForm({ ...medicineForm, gstRate: event.target.value })} /></div>
           <p className={styles.meta}>Document issue requires reviewed HSN and tax classification. Existing tax details are changed through that review.</p>
@@ -535,5 +549,26 @@ function PharmacyWorkspace({ locationId, locations, onLocationChange, locationEr
       <form id="dispense-form" onSubmit={dispense} className={styles.form}><Input type="search" maxLength={100} label="Find stock by name or barcode" value={search} onKeyDown={event => { if (event.key === "Enter") event.preventDefault(); }} onChange={event => { setSearch(event.target.value); setFilter("all"); }} />{stockLookupBusy && <p role="status">Loading prescribed stock...</p>}{stockLookupError && <Alert variant="error" title="Stock lookup unavailable">{stockLookupError}</Alert>}<p className={styles.summary}>Choose stock and quantities. Unselected items stay pending.</p>{prescription?.prescriptions.map((rx, index) => <fieldset key={rx.id} className={styles.rx} disabled={Boolean(busy || pendingDispenseKey || stockLookupBusy)}><div><h3>{rx.name}</h3><p>{[rx.dosage, rx.frequency, rx.duration].filter(Boolean).join(" / ")}</p>{rx.instructions && <p>{rx.instructions}</p>}{rx.fulfillment?.mode === "quantity" ? <p>Authorized: {rx.fulfillment.authorizedQuantity} {rx.fulfillment.baseUnit}. Supplied: {rx.fulfillment.suppliedQuantity}. Remaining: {rx.fulfillment.remainingQuantity}.</p> : <p>No explicit quantity allowance. This row can be supplied once; further supply needs a new prescriber authorization.</p>}</div><div className={styles.mapping}><Select label={`Stock for ${rx.name}`} value={selections[index]?.medicineId || ""} onChange={event => selectStock(index, event.target.value)} options={[{ value: "", label: "Leave pending" }, ...stockOptions.filter(medicine => medicine.locationId === locationId).map(medicine => ({ value: medicine.id, label: `${[medicine.name, medicine.strength, medicine.genericName].filter(Boolean).join(" ? ")} / ${medicine.stockQuantity} ${medicine.unitDefinition?.baseUnit || "units"} / ${money(medicine.price)}`, disabled: medicine.stockQuantity <= 0 }))]} /><Input aria-label={`Quantity for ${rx.name}`} label="Quantity" type="number" inputMode="numeric" min="1" max={rx.fulfillment?.remainingQuantity ?? undefined} step="1" value={selections[index]?.quantity || ""} disabled={!selections[index]?.medicineId} onChange={event => setSelections(previous => previous.map((item, position) => position === index ? { ...item, quantity: Number(event.target.value) } : item))} /></div><details><summary>Original files for {rx.name}</summary><PharmacyPrescriptionAttachments sourceKind="clinic" locationId={locationId} prescriptionId={rx.id} canUpload={Boolean(capabilities?.actions.viewRxQueue && capabilities?.actions.dispense)} /></details></fieldset>)}{prescriptionChanged && <Alert variant="warning" title="Prescription changed">Close and reopen this prescription from the refreshed list before dispensing.</Alert>}{prepared.error && <p role="status" className={styles.meta}>{prepared.error}</p>}{catalogError && <Alert variant="error" title="Inventory unavailable">Close and refresh inventory before dispensing.</Alert>}</form>
     </Modal>
     <ConfirmDialog open={Boolean(deleting)} onClose={() => setDeleting(null)} loading={busy === "delete"} title="Archive medicine?" description={`Remove ${deleting?.name || "this medicine"} from the inventory catalog? Existing bills and movement history are retained. Products with remaining stock or pending receipts/transfers must be resolved first.`} variant="danger" confirmLabel="Archive medicine" onConfirm={() => { if (deleting) void commit("delete", () => api.delete(`/medicines/${deleting.id}`), "Medicine archived", () => setDeleting(null)); }} />
+    <PharmacyBarcodeScanDialog
+      open={medicineScanOpen}
+      title="Scan barcode to assign"
+      onClose={() => setMedicineScanOpen(false)}
+      onDetected={code => {
+        const existing = medicineForm.barcodes.split(",").map(item => item.trim()).filter(Boolean);
+        if (!existing.includes(code)) setMedicineForm(previous => ({ ...previous, barcodes: [...existing, code].join(", ") }));
+      }}
+    />
+    {stickerSeeds && (
+      <PharmacyBarcodeStickersModal
+        open
+        locationId={locationId}
+        storeName={selectedLocation?.name}
+        medicines={medicines}
+        initialSeeds={stickerSeeds}
+        canManageCatalog={canCatalog}
+        onAssigned={() => { void fetchData(); }}
+        onClose={() => setStickerSeeds(null)}
+      />
+    )}
   </div>;
 }

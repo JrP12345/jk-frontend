@@ -311,3 +311,17 @@ it("distinguishes settled credit from cash received and confirmed refunds", asyn
   await screen.findByText("No payment receipts recorded for this bill.");
   expect(api.post).not.toHaveBeenCalled();
 });
+it("opens the bill collection drawer immediately with bill summary while invoice details load", async () => {
+  let resolveInvoice!: (value: unknown) => void;
+  const pendingInvoice = new Promise(resolve => { resolveInvoice = resolve; });
+  const defaultGet = api.get.getMockImplementation()!;
+  api.get.mockImplementation(async (url: string, config: unknown) =>
+    url.includes("/invoices/invoice?") ? pendingInvoice : defaultGet(url, config));
+  mount(true);
+  fireEvent.click(await screen.findByRole("button", { name: `Open sale ${summary.invoiceNumber}` }));
+  const loadingSheet = screen.getByRole("dialog", { name: summary.invoiceNumber });
+  expect(within(loadingSheet).getByText("Recorded customer")).toBeInTheDocument();
+  expect(within(loadingSheet).getByText("Loading bill details...")).toBeInTheDocument();
+  await act(async () => { resolveInvoice(response(invoice)); });
+  await screen.findByRole("dialog", { name: "Collect payment" });
+});

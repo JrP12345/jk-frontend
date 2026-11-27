@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Alert, Button } from "@/components/ui";
+import { Alert, Button, Spinner } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import api from "@/lib/api";
@@ -20,7 +20,7 @@ export function PharmacyAlternatives({ medicineId, locationId, onClose }: { medi
     }).catch(failure => { if (request.isCurrent()) setError(failure?.response?.data?.message || failure.message || "Comparison is unavailable"); }).finally(() => { if (request.isCurrent()) setBusy(false); });
   }, [begin, medicineId, locationId, cursor, retry]);
   return <Modal open title="Compare medicine brands" size="lg" onClose={onClose}><section className={styles.list} aria-label="Medicine comparison">
-    {busy && <p role="status">Checking matching medicines...</p>}{error && <Alert variant="error" title="Comparison unavailable" action={<Button size="sm" onClick={() => setRetry(value => value + 1)}>Retry comparison</Button>}>{error}</Alert>}
+    {busy && <div role="status" className="flex items-center gap-2 py-2 text-xs text-text-secondary"><Spinner size="sm" /><span>Checking matching medicines...</span></div>}{error && <Alert variant="error" title="Comparison unavailable" action={<Button size="sm" onClick={() => setRetry(value => value + 1)}>Retry comparison</Button>}>{error}</Alert>}
     {page && <><h3>{page.source.name} · {page.source.genericName} · {page.source.strength} · {page.source.dosageForm}</h3><p>{page.basis}</p>{!page.items.length && <p>No exact matches on this candidate page.</p>}{page.items.map(product => <article className={styles.card} key={product.id}><strong>{product.name}</strong><p>{product.manufacturer || "Manufacturer not recorded"} · {product.strength} · {product.dosageForm}</p><p>{product.retailPricePaise === undefined ? "Price checked at billing" : `${money(product.retailPricePaise / 100)} per ${product.unitDefinition?.baseUnit}`} · Recorded stock {product.stockQuantity} · {product.rackLocation ? `Rack ${product.rackLocation}` : "Rack not recorded"}</p>{product.saleBlocked && <p>Sale hold: {product.saleBlockReason}</p>}</article>)}<div className={styles.actions}>{cursor && <Button size="sm" variant="outline" onClick={() => setCursor(undefined)}>First comparison page</Button>}{page.nextCursor && <Button size="sm" onClick={() => setCursor(page.nextCursor!)}>Next comparison page</Button>}</div></>}
   </section></Modal>;
 }

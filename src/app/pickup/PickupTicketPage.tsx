@@ -7,7 +7,8 @@ import QRCode from "qrcode";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { Alert, Button, Card } from "@/components/ui";
 import { useLatestRead } from "@/hooks/useLatestRead";
-import { pickupStatusLabels, readPickupTicket, type PickupTicket } from "@/lib/publicPharmacy";
+import { pickupStatusLabels, readPickupTicket, readPublicPickupAttachment, type PickupTicket } from "@/lib/publicPharmacy";
+import { PharmacyPickupAttachmentsView } from "@/components/pharmacy/PharmacyPickupAttachmentsView";
 
 const subscribeHash = (listener: () => void) => { window.addEventListener("hashchange", listener); return () => window.removeEventListener("hashchange", listener); };
 const readHash = () => window.location.hash.slice(1);
@@ -48,7 +49,9 @@ function PickupTicketSession({ token }: { token: string }) {
       <p className="text-sm text-text-secondary">{ticket.status === "requested" ? "Wait for the pharmacy to prepare your parcel before travelling. This request does not reserve medicines." : ticket.status === "ready" ? "Show this QR at the pharmacy. Staff will check the parcel and payment before handing it over." : ticket.status === "collected" ? "This parcel has already been handed over. The ticket cannot be used again." : "This ticket cannot be used for collection. Contact the pharmacy if you still need these medicines."}</p>
       {qr && ["requested", "ready"].includes(ticket.status) && <Image unoptimized src={qr} alt={`Pickup QR for ${ticket.reference}`} width={264} height={264} className="mx-auto rounded-xl bg-white" />}
       <p className="text-center font-mono text-lg font-semibold">{ticket.reference}</p>
-      <ul className="divide-y divide-border">{ticket.items.map(item => <li key={item.medicineId} className="flex justify-between gap-4 py-3 text-sm"><span>{item.name} {item.strength}</span><strong className="shrink-0">{item.quantity} {item.baseUnit}</strong></li>)}</ul>
+      {ticket.items.length > 0 && <ul className="divide-y divide-border">{ticket.items.map(item => <li key={item.medicineId} className="flex justify-between gap-4 py-3 text-sm"><span>{item.name} {item.strength}</span><strong className="shrink-0">{item.quantity} {item.baseUnit}</strong></li>)}</ul>}
+      {ticket.notes && <section aria-label="Written pickup request" className="rounded-xl border border-border/70 bg-surface-alt/50 p-3 text-sm"><h3 className="text-xs font-semibold text-text-secondary">Your written request</h3><p className="mt-1 whitespace-pre-wrap break-words text-text">{ticket.notes}</p></section>}
+      {ticket.attachments && ticket.attachments.length > 0 && <section aria-label="Uploaded pickup files" className="space-y-2"><h3 className="text-xs font-semibold text-text-secondary">Uploaded images / PDF ({ticket.attachments.length})</h3><PharmacyPickupAttachmentsView attachments={ticket.attachments} fetchBlob={(attachmentId, _download, signal) => readPublicPickupAttachment(token, attachmentId, signal)} /></section>}
       {ticket.invoiceNumber && <p className="text-sm">Bill: {ticket.invoiceNumber}</p>}
       <p className="text-xs text-text-secondary">Valid until {new Date(ticket.expiresAt).toLocaleString()}. Keep this link private; anyone with it can view the ticket.</p>
       <div className="flex flex-wrap gap-2"><Button variant="outline" loading={loading} onClick={() => { void load(); }}>Refresh status</Button><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(`${window.location.origin}/pickup#${token}`); setCopied(true); } catch { setError("Copy the address from your browser to keep this ticket"); } }}>{copied ? "Ticket link copied" : "Copy ticket link"}</Button></div>

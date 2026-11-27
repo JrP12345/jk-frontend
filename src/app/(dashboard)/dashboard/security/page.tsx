@@ -7,6 +7,7 @@ import { KeyRound, ShieldCheck } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { AuthenticatorEnrollment } from "@/components/auth/AuthenticatorEnrollment";
+import { isHapticsEnabled, isHapticsSupported, isReducedMotionPreferred, setHapticsEnabled, vibrateFeedback } from "@/lib/haptics";
 
 type Passkey = { id: string; name: string; createdAt: string; lastUsedAt?: string };
 type Owner = { id: string; name: string; email: string; limit: number | null; activeSessions: number; organizations: string[] };
@@ -22,6 +23,8 @@ export default function AccountSecurityPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [supported, setSupported] = useState(false);
   const [haptics, setHaptics] = useState(true);
+  const [hapticsSupported, setHapticsSupported] = useState(true);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const load = async () => {
     setLoading(true);
     setLoadError(false);
@@ -38,7 +41,9 @@ export default function AccountSecurityPage() {
   };
   useEffect(() => {
     setSupported(window.isSecureContext && browserSupportsWebAuthn());
-    setHaptics(localStorage.getItem("ekavyu_haptics") !== "off");
+    setHaptics(isHapticsEnabled());
+    setHapticsSupported(isHapticsSupported());
+    setReducedMotion(isReducedMotionPreferred());
     if (user && !user.impersonatedBy) void load();
     else setLoading(false);
   }, [user?.id]);
@@ -86,7 +91,24 @@ export default function AccountSecurityPage() {
       <Button icon={<KeyRound />} className="w-full sm:w-auto shrink-0" onClick={addKey} disabled={!supported || busy !== null || loading} loading={busy === "add"}>Add passkey</Button>
       {!supported && <p className="text-xs text-text-muted">Open this page in a browser that supports passkeys over HTTPS.</p>}
     </Card>
-    <Card className="p-4 sm:p-6"><Toggle label="Vibration feedback" checked={haptics} onChange={(value) => { setHaptics(value); localStorage.setItem("ekavyu_haptics", value ? "on" : "off"); }} /><p className="text-xs text-text-muted mt-2">Brief feedback for confirmations and errors on supported devices.</p></Card>
+    <Card className="p-4 sm:p-6">
+      <Toggle
+        label="Vibration feedback"
+        checked={haptics}
+        onChange={(value) => {
+          setHaptics(value);
+          setHapticsEnabled(value);
+          if (value) vibrateFeedback("success");
+        }}
+      />
+      <p className="text-xs text-text-muted mt-2">
+        {!hapticsSupported
+          ? "Vibration feedback is unavailable in this browser or device."
+          : reducedMotion
+            ? "Vibration feedback is paused while Reduced Motion is turned on in your device settings."
+            : "Brief touch feedback for controls, confirmations, and errors on supported mobile devices."}
+      </p>
+    </Card>
     {user?.role === "root" && <Card className="p-4 sm:p-6" contentClassName="gap-4">
       <h2 className="font-bold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-accent" />Organization owner sessions</h2>
       <p className="text-sm text-text-secondary">Owners have unlimited sessions by default. Lowering a limit signs out the oldest sessions above that limit.</p>

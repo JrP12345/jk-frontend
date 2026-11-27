@@ -71,7 +71,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
   const updateCoords = useCallback(() => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      setOwner(containerRef.current.closest('[role="dialog"]')?.id || undefined);
+      setOwner(containerRef.current.closest('[role="dialog"], [data-popover-root]')?.id || undefined);
       // Layout dimensions exclude the entry animation's scale transform.
       setCoords(popoverPosition(rect, menuRef.current?.offsetWidth || 192, menuRef.current?.scrollHeight || 220, align));
     }

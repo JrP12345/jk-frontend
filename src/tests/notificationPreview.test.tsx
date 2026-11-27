@@ -28,85 +28,99 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.spyOn(notificationService, "getNotifications").mockResolvedValue({ notifications: [notification], unreadCount: 1 } as never);
 });
-
-it("closes on a horizontal swipe over a notification without hijacking vertical scroll", async () => {
-  vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
-  const { dialog } = await openPreview();
-  const item = within(dialog).getByText(notification.title);
-  const start = { pointerType: "touch", pointerId: 1, isPrimary: true, clientX: 180, clientY: 160 };
-
-  fireEvent.pointerDown(item, start);
-  fireEvent.pointerMove(item, { ...start, clientX: 174, clientY: 245 });
-  fireEvent.pointerUp(item, { ...start, clientX: 174, clientY: 245 });
-  expect(dialog).toBeInTheDocument();
-
-  fireEvent.pointerDown(item, start);
-  fireEvent.pointerMove(item, { ...start, clientX: 90, clientY: 163 });
-  fireEvent.pointerUp(item, { ...start, clientX: 90, clientY: 163 });
-  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Notifications" })).not.toBeInTheDocument());
-  expect(mocks.read).not.toHaveBeenCalled();
-});
 afterEach(() => { client.clear(); forceResetScrollLock(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
 async function openPreview() {
   render(<QueryClientProvider client={client}><NotificationBell /></QueryClientProvider>);
   const trigger = screen.getByRole("button", { name: /^Open Notifications/ });
   trigger.focus();
   fireEvent.click(trigger);
-  const dialog = await screen.findByRole("dialog", { name: "Notifications" });
-  await within(dialog).findByText(notification.title);
-  expect(within(dialog).getByText("Account activity")).toBeInTheDocument();
-  return { trigger, dialog };
+  const dropdown = await screen.findByRole("region", { name: "Notifications" });
+  await within(dropdown).findByText(notification.title);
+  expect(within(dropdown).getByText("Account activity")).toBeInTheDocument();
+  return { trigger, dropdown };
 }
 
-it("closes the notification action menu before its parent dialog and restores focus", async () => {
-  const { trigger, dialog } = await openPreview();
-  fireEvent.click(within(dialog).getByRole("button", { name: `Actions for ${notification.title}` }));
+it("closes on a horizontal swipe over a notification without hijacking vertical scroll", async () => {
+  vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
+  const { dropdown } = await openPreview();
+  const item = within(dropdown).getByText(notification.title);
+  const start = { pointerType: "touch", pointerId: 1, isPrimary: true, clientX: 180, clientY: 160 };
+
+  fireEvent.pointerDown(item, start);
+  fireEvent.pointerMove(item, { ...start, clientX: 174, clientY: 245 });
+  fireEvent.pointerUp(item, { ...start, clientX: 174, clientY: 245 });
+  expect(dropdown).toBeInTheDocument();
+
+  fireEvent.pointerDown(item, start);
+  fireEvent.pointerMove(item, { ...start, clientX: 90, clientY: 163 });
+  fireEvent.pointerUp(item, { ...start, clientX: 90, clientY: 163 });
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument());
+  expect(mocks.read).not.toHaveBeenCalled();
+});
+
+it("closes the notification action menu before its parent dropdown and restores focus", async () => {
+  const { trigger, dropdown } = await openPreview();
+  fireEvent.click(within(dropdown).getByRole("button", { name: `Actions for ${notification.title}` }));
   await screen.findByRole("menu");
   fireEvent.keyDown(document.activeElement!, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
-  expect(dialog).toBeInTheDocument();
+  expect(dropdown).toBeInTheDocument();
   fireEvent.keyDown(document.activeElement!, { key: "Escape" });
-  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument());
   await waitFor(() => expect(trigger).toHaveFocus());
 });
 
-it("places the compact preview below navigation on a shared blurred backdrop", async () => {
-  const header = document.createElement("header");
-  header.dataset.appHeader = "";
-  header.getBoundingClientRect = () => ({ top: 0, bottom: 72, height: 72 } as DOMRect);
-  document.body.append(header);
-  try {
-    const { dialog } = await openPreview();
-    const viewport = dialog.parentElement!;
-    expect(viewport).toHaveClass("notification-dialog-viewport");
-    await waitFor(() => expect(viewport).toHaveStyle({ "--toast-header-offset": "84px" }));
-    expect(dialog.previousElementSibling).toHaveClass("overlay-backdrop");
-  } finally {
-    header.remove();
-  }
+it("renders as an anchored header dropdown instead of a modal dialog or blurred backdrop", async () => {
+  vi.stubGlobal("innerWidth", 1280);
+  vi.stubGlobal("innerHeight", 800);
+  render(
+    <QueryClientProvider client={client}>
+      <div>
+        <NotificationBell />
+        <button type="button">Outside control</button>
+      </div>
+    </QueryClientProvider>,
+  );
+  const trigger = screen.getByRole("button", { name: /^Open Notifications/ });
+  trigger.getBoundingClientRect = () => ({ left: 1120, right: 1164, top: 14, bottom: 58, width: 44, height: 44 } as DOMRect);
+  fireEvent.click(trigger);
+
+  const dropdown = await screen.findByRole("region", { name: "Notifications" });
+  await within(dropdown).findByText(notification.title);
+
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(document.querySelector(".overlay-backdrop")).not.toBeInTheDocument();
+  expect(document.body.style.position).not.toBe("fixed");
+  expect(dropdown.style.top).toBe("66px");
+  expect(dropdown.style.left).toBe("780px");
+  expect(dropdown.style.width).toBe("384px");
+
+  fireEvent.mouseDown(screen.getByRole("button", { name: "Outside control" }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument());
 });
 
 it("prevents duplicate notification mutations and shows one loading indicator", async () => {
   let complete!: () => void;
   mocks.pin.mockImplementation(() => new Promise<void>(resolve => { complete = resolve; }));
-  const { dialog } = await openPreview();
-  const actions = within(dialog).getByRole("button", { name: `Actions for ${notification.title}` });
+  const { dropdown } = await openPreview();
+  const actions = within(dropdown).getByRole("button", { name: `Actions for ${notification.title}` });
   fireEvent.click(actions);
   const pin = await screen.findByRole("menuitem", { name: "Pin notification" });
   fireEvent.click(pin); fireEvent.click(pin);
   expect(mocks.pin).toHaveBeenCalledOnce();
   expect(actions).toBeDisabled();
-  expect(within(dialog).getAllByRole("status")).toHaveLength(1);
+  expect(within(dropdown).getAllByRole("status")).toHaveLength(1);
   await act(async () => complete());
   expect(actions).toBeEnabled();
 });
 
 it("keeps notification failures local and allows the action to be retried", async () => {
   mocks.all.mockRejectedValueOnce(new Error("Offline"));
-  const { dialog } = await openPreview();
-  const markAll = within(dialog).getByRole("button", { name: "Mark all read" });
+  const { dropdown } = await openPreview();
+  const markAll = within(dropdown).getByRole("button", { name: "Mark all read" });
   fireEvent.click(markAll);
   await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Notification could not be updated" })));
   expect(markAll).toBeEnabled();
-  expect(dialog).toBeInTheDocument();
+  expect(dropdown).toBeInTheDocument();
 });

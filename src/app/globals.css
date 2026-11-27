@@ -1133,15 +1133,8 @@ button, a, input, select, textarea {
   max-height: max(0px, calc(var(--toast-viewport-bottom, 100dvh) - var(--toast-top) - env(safe-area-inset-bottom) - 1rem));
 }
 /* Notification previews stay compact; the full inbox lives on its own page. */
-.notification-dialog-viewport {
-  --notification-top: max(5rem, var(--toast-header-offset, 5rem), calc(env(safe-area-inset-top) + 1rem));
-  padding-top: var(--notification-top);
-}
-.notification-dialog {
-  max-height: min(28rem, calc(var(--toast-viewport-bottom, 100dvh) - var(--notification-top, 5rem) - 1rem));
-}
 .notification-preview-list {
-  max-height: min(17rem, 35dvh);
+  max-height: min(18rem, 45dvh);
 }
 @media (min-width: 768px) and (pointer: fine) { .touch-target { min-height: 32px; min-width: 32px; } }
 @media (pointer: coarse) { button[data-touch-control], input[data-touch-control], select[data-touch-control] { min-height: 44px; } }

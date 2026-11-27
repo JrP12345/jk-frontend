@@ -27,12 +27,13 @@ export const lowStock = (medicine: Medicine) => medicine.stockQuantity <= (medic
 
 export interface MedicinePage { items: Medicine[]; totalCount: number | null; totalPages: number; page: number }
 /** Exactly one bounded request; search, pagination and prescribed-ID lookup stay on the server. */
-export async function readMedicinePage(locationId: string, signal: AbortSignal, options: { page?: number; search?: string; stockFilter?: string; medicineIds?: string[] } = {}): Promise<MedicinePage> {
+export async function readMedicinePage(locationId: string, signal: AbortSignal, options: { page?: number; search?: string; stockFilter?: string; barcodeFilter?: "all" | "assigned" | "missing"; medicineIds?: string[] } = {}): Promise<MedicinePage> {
   const page = options.page ?? 1;
   const query = new URLSearchParams({ page: String(page), limit: "100" });
   if (locationId) query.set("locationId", locationId);
   if (options.search?.trim()) query.set("search", options.search.trim().slice(0, 100));
   if (options.stockFilter && options.stockFilter !== "all") query.set("stockFilter", options.stockFilter);
+  if (options.barcodeFilter && options.barcodeFilter !== "all") query.set("barcodeFilter", options.barcodeFilter);
   if (options.medicineIds?.length) query.set("medicineIds", [...new Set(options.medicineIds)].slice(0, 100).join(","));
   const response = await api.get(`/medicines?${query}`, { signal });
   if (!Array.isArray(response.data?.data) || response.data.data.length > 100) throw new Error("Incomplete medicine catalog");

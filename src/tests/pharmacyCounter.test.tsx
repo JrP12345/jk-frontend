@@ -1054,3 +1054,90 @@ it("accepts a free pickup's paid-zero result and rejects an unproven partial-pay
   api.post.mockResolvedValueOnce(response({ ...bill, status: "partially_paid", requestKey: "original-key" }));
   await expect(issueCounter({ ...input, pickup: undefined, expectedTotalPaise: 2000 }, "original-key")).rejects.toThrow(/Partial payment receipt/);
 });
+
+it("prepares a custom note/image pickup with no pre-selected items, allows adding medicines, and strips extra context when billing", async () => {
+  vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:http://localhost/counter-slip");
+  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const originalGet = api.get.getMockImplementation()!;
+  api.get.mockImplementation(async (url: string, config: unknown) => url.includes("/attachments/") ? { data: new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" }) } : originalGet(url, config));
+  const id = "b".repeat(24), prepared = vi.fn(), consumed = vi.fn();
+  const customPickup = {
+    id,
+    reference: "PK-CUSTOM1234",
+    locationId: "branch",
+    status: "requested" as const,
+    revision: 0,
+    customerName: "Walk-in",
+    phone: "9876543210",
+    createdAt: "2026-11-01T10:00:00Z",
+    expiresAt: "2099-12-31T10:00:00Z",
+    notes: "Customer asked for Ordinary product 1 strip",
+    attachments: [{ id: "att-9", name: "slip.png", contentType: "image/png" as const, size: 120 }],
+    items: [],
+  };
+  render(<ToastProvider><PharmacyCounter locationId="branch" canCollect initialPickup={customPickup} onPickupConsumed={consumed} onPickupPrepared={prepared} /></ToastProvider>);
+  await screen.findByText("Preparing pickup parcel PK-CUSTOM1234");
+  expect(consumed).toHaveBeenCalledOnce();
+  expect(screen.getByText(/Customer asked for Ordinary product 1 strip/)).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "View image slip.png" })).toBeInTheDocument();
+
+  fireEvent.click(await screen.findByRole("button", { name: "Add Ordinary product" }));
+  const quantity = await screen.findByLabelText("Quantity Ordinary product");
+  expect(quantity).toBeEnabled();
+  fireEvent.change(quantity, { target: { value: "2" } });
+
+  await review();
+  const originalPost = api.post.getMockImplementation()!;
+  api.post.mockImplementation(async (url, body, config) => url === "/pharmacy/sales" ? response({ ...bill, requestKey: config.headers["Idempotency-Key"], pickup: { id, reference: "PK-CUSTOM1234", status: "ready" } }) : originalPost(url, body, config));
+  fireEvent.click(screen.getByRole("button", { name: "Save counter bill" }));
+  await waitFor(() => expect(prepared).toHaveBeenCalledOnce());
+
+  const input = api.post.mock.calls.find(([url]) => url === "/pharmacy/sales")![1];
+  expect(input.pickup).toEqual({ id, revision: 0 });
+  expect(input.lines).toHaveLength(1);
+});
+
+it("unlocks a pending deadlock when recovery confirms 404 and saves a discounted local cart via current_total", async () => {
+  const get = api.get.getMockImplementation()!;
+  const post = api.post.getMockImplementation()!;
+  api.get.mockImplementation(async (url: string, config: unknown) => {
+    if (url.includes("/sale-operations/")) return Promise.reject({ response: { status: 404, data: { message: "No committed counter invoice is visible. Keep the same reference and check again." } } });
+    if (url.includes("/sales/products?")) return response({ items: [{ ...product, retailPricePaise: 2000 }], nextCursor: null });
+    return get(url, config);
+  });
+  api.post.mockImplementation(async (url: string, body: unknown, config: unknown) => {
+    if (url === "/pharmacy/sales") return Promise.reject({ response: { status: 500, data: { message: "Counter issue could not be confirmed." } } });
+    return post(url, body, config);
+  });
+
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Add Ordinary product" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save counter bill" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Save counter bill" }));
+
+  await screen.findByText("Counter issue could not be confirmed.");
+  expect(screen.getByRole("button", { name: "Clear cart", exact: true })).toBeDisabled();
+
+  // Recovery confirms no invoice committed (404), revealing Review rejected sale to unlock the bill cleanly
+  fireEvent.click(screen.getByRole("button", { name: "Check sale result" }));
+  await screen.findByText("Save needs review");
+  expect(screen.getByText(/No committed counter invoice is visible/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Review rejected sale" }));
+
+  await waitFor(() => expect(screen.queryByText("Save needs review")).not.toBeInTheDocument());
+  expect(screen.getByRole("button", { name: "Clear cart", exact: true })).toBeEnabled();
+  expect(screen.getByLabelText("Quantity Ordinary product")).toBeEnabled();
+
+  // Editing invoice discount and saving succeeds under current_total without stalling on an old reference
+  api.post.mockImplementation(async (url: string, body: any, config: any) => {
+    if (url === "/pharmacy/sales") return response({ ...bill, totalPaise: 1500, status: "paid", requestKey: config.headers["Idempotency-Key"], collection: receipt(body.payment, config.headers["Idempotency-Key"]) });
+    return post(url, body, config);
+  });
+  change("Invoice discount (INR)", "5");
+  await waitFor(() => expect(screen.getByLabelText("Bill total")).toHaveTextContent("15.00"));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Save counter bill" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "Save counter bill" }));
+  await screen.findByRole("button", { name: "View last saved bill" });
+  const savedCall = api.post.mock.calls.filter(([url]) => url === "/pharmacy/sales").at(-1)?.[1];
+  expect(savedCall).toMatchObject({ confirmationMode: "current_total", invoiceDiscountPaise: 500, expectedTotalPaise: 1500 });
+});

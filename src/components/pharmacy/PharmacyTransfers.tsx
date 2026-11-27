@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeftRight, RotateCw, Search } from "lucide-react";
-import { Alert, Badge, Button, Card, Input, Select, Spinner, cn } from "@/components/ui";
+import { ArrowLeftRight, Camera, RotateCw, Search } from "lucide-react";
+import { PharmacyBarcodeScanDialog } from "./PharmacyBarcodeScanDialog";
+import { PharmacyDetailLoadingState } from "./PharmacyDetailLoader";
+import { Alert, Badge, Button, Card, Input, Modal, Select, Spinner, cn } from "@/components/ui";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import { useMobileViewport } from "@/hooks/useMobileViewport";
 import { authScopeKey, referenceOwnerKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -74,11 +78,18 @@ function TransferSession({ locationId, locations, canStart }: Props) {
   const [rows, setRows] = useState<PharmacyTransfer[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState<PharmacyTransfer | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailPreview, setDetailPreview] = useState<PharmacyTransfer | null>(null);
+  const [detailError, setDetailError] = useState("");
   const [loading, setLoading] = useState(true);
   const [reading, setReading] = useState(false);
+  const mobile = useMobileViewport();
+  const detailRead = useLatestRead();
   const [destination, setDestination] = useState("");
   const [sourceSearch, setSourceSearch] = useState("");
   const [destinationSearch, setDestinationSearch] = useState("");
+  const [scanTarget, setScanTarget] = useState<"source" | "destination" | null>(null);
   const [sourceProducts, setSourceProducts] = useState<TransferProduct[]>([]);
   const [destinationProducts, setDestinationProducts] = useState<TransferProduct[]>([]);
   const [sourceProduct, setSourceProduct] = useState("");
@@ -124,9 +135,22 @@ function TransferSession({ locationId, locations, canStart }: Props) {
     };
   }, [locationId]);
 
+  const closeDetail = () => {
+    detailRead();
+    setDetailOpen(false);
+    setDetailLoading(false);
+    setDetailPreview(null);
+    setDetailError("");
+  };
+
   const clearPrivate = () => {
+    detailRead();
     setRows([]);
     setSelected(null);
+    setDetailOpen(false);
+    setDetailLoading(false);
+    setDetailPreview(null);
+    setDetailError("");
     setSourceProducts([]);
     setDestinationProducts([]);
     setLots([]);
@@ -158,16 +182,47 @@ function TransferSession({ locationId, locations, canStart }: Props) {
     });
   }
 
-  function open(id: string, eventCursor?: string) {
-    return read(() => readTransfer(locationId, id, eventCursor), row => {
-      setSelected(row);
-      setRows(previous =>
-        previous.some(item => item.id === row.id) ? previous.map(item => (item.id === row.id ? row : item)) : [row, ...previous].slice(0, 20)
-      );
-      setStageQuantity("");
-      setStageReview("");
-      setDisposition(row.sourceLocationId === locationId ? "return_to_source" : "saleable");
-    });
+  async function open(id: string, eventCursor?: string, preview?: PharmacyTransfer) {
+    if (!current()) return;
+    if (eventCursor) {
+      await read(() => readTransfer(locationId, id, eventCursor), row => {
+        setSelected(row);
+        setRows(previous =>
+          previous.some(item => item.id === row.id) ? previous.map(item => (item.id === row.id ? row : item)) : [row, ...previous].slice(0, 20)
+        );
+        setStageQuantity("");
+        setStageReview("");
+        setDisposition(row.sourceLocationId === locationId ? "return_to_source" : "saleable");
+      });
+      return;
+    }
+    const request = detailRead();
+    setDetailOpen(true);
+    setDetailLoading(true);
+    setDetailError("");
+    setError("");
+    setDetailPreview(preview || null);
+    setSelected(null);
+    try {
+      const row = await readTransfer(locationId, id, undefined);
+      if (request.isCurrent() && current()) {
+        setSelected(row);
+        setDetailPreview(null);
+        setRows(previous =>
+          previous.some(item => item.id === row.id) ? previous.map(item => (item.id === row.id ? row : item)) : [row, ...previous].slice(0, 20)
+        );
+        setStageQuantity("");
+        setStageReview("");
+        setDisposition(row.sourceLocationId === locationId ? "return_to_source" : "saleable");
+      }
+    } catch (failure) {
+      if (request.isCurrent() && current()) {
+        if ((failure as { response?: { status?: number } })?.response?.status === 403) clearPrivate();
+        setDetailError(transferError(failure));
+      }
+    } finally {
+      if (request.isCurrent() && current()) setDetailLoading(false);
+    }
   }
 
   function sourceLots(id: string, older = false) {
@@ -278,76 +333,248 @@ function TransferSession({ locationId, locations, canStart }: Props) {
       ]
     : [];
 
-  return (
-    <section aria-label="Pharmacy stock transfers" className="min-w-0 space-y-3">
-      {(error || pending || outcome) && (
-        <div className="space-y-2.5">
-          {error && (
-            <Alert variant="error" title="Transfer requires attention">
-              {error}
-            </Alert>
-          )}
-          {pending && (
-            <Alert variant="warning" title="Transfer stage reference">
-              <div className="space-y-2 text-xs">
-                <p className="break-all font-mono text-[11px]">
-                  {pending.action}: {pending.key}. Keep this reference until the outcome is confirmed.
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button size="xs" variant="outline" disabled={busy || reading} onClick={() => void recover()}>
-                    Check transfer outcome
-                  </Button>
-                  {hasFrozen && !outcome && (
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      disabled={busy || reading}
-                      onClick={() => {
-                        const request = frozen.current;
-                        if (request) void command(request.reference.action, request.input, request.reference.transferId);
-                      }}
-                    >
-                      Retry same transfer stage
-                    </Button>
-                  )}
-                  {canReview && !outcome && (
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => {
-                        frozen.current = null;
-                        setHasFrozen(false);
-                        setCanReview(false);
-                        setReviewing(true);
-                        setError("");
-                      }}
-                    >
-                      Review rejected stage
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </Alert>
-          )}
-          {outcome && (
-            <Alert variant="success" title="Transfer stage recorded">
-              <div className="space-y-2 text-xs">
-                <p>
-                  {outcome.transportReference}: revision {outcome.revision}; dispatched {outcome.dispatchedQuantity}, received{" "}
-                  {outcome.receivedQuantity}, quarantined {outcome.quarantinedQuantity}, lost {outcome.lostQuantity}, returned{" "}
-                  {outcome.returnedQuantity}, in transit {outcome.inTransitQuantity}.
-                </p>
-                <div>
-                  <Button size="xs" onClick={acknowledge}>
-                    Acknowledge recorded transfer stage
-                  </Button>
-                </div>
-              </div>
-            </Alert>
-          )}
+  const statusAlerts = (error || pending || outcome) && (
+    <div className="space-y-2.5">
+      {error && (
+        <Alert variant="error" title="Transfer requires attention">
+          {error}
+        </Alert>
+      )}
+      {pending && (
+        <Alert variant="warning" title="Transfer stage reference">
+          <div className="space-y-2 text-xs">
+            <p className="break-all font-mono text-[11px]">
+              {pending.action}: {pending.key}. Keep this reference until the outcome is confirmed.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="xs" variant="outline" disabled={busy || reading} onClick={() => void recover()}>
+                Check transfer outcome
+              </Button>
+              {hasFrozen && !outcome && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy || reading}
+                  onClick={() => {
+                    const request = frozen.current;
+                    if (request) void command(request.reference.action, request.input, request.reference.transferId);
+                  }}
+                >
+                  Retry same transfer stage
+                </Button>
+              )}
+              {canReview && !outcome && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => {
+                    frozen.current = null;
+                    setHasFrozen(false);
+                    setCanReview(false);
+                    setReviewing(true);
+                    setError("");
+                  }}
+                >
+                  Review rejected stage
+                </Button>
+              )}
+            </div>
+          </div>
+        </Alert>
+      )}
+      {outcome && (
+        <Alert variant="success" title="Transfer stage recorded">
+          <div className="space-y-2 text-xs">
+            <p>
+              {outcome.transportReference}: revision {outcome.revision}; dispatched {outcome.dispatchedQuantity}, received{" "}
+              {outcome.receivedQuantity}, quarantined {outcome.quarantinedQuantity}, lost {outcome.lostQuantity}, returned{" "}
+              {outcome.returnedQuantity}, in transit {outcome.inTransitQuantity}.
+            </p>
+            <div>
+              <Button size="xs" onClick={acknowledge}>
+                Acknowledge recorded transfer stage
+              </Button>
+            </div>
+          </div>
+        </Alert>
+      )}
+    </div>
+  );
+
+  const transferPreview = selected || detailPreview;
+  const transferDetailSection = (selected || detailLoading || detailError) && (
+    <section
+      aria-label="Selected stock transfer"
+      className={mobile ? "space-y-3" : "space-y-3 rounded-xl border border-border bg-surface-alt/25 p-3 md:p-4"}
+    >
+      {transferPreview && (
+        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border/60 pb-2.5">
+          <div className="min-w-0 space-y-0.5">
+            <h3 className="break-words text-sm font-semibold text-text">
+              {transferPreview.transportReference}: {transferPreview.sourceName}
+            </h3>
+            <p className="text-[11px] text-text-secondary">
+              Batch {transferPreview.lot.batchNumber} · Expiry {new Date(transferPreview.lot.expiryDate).toLocaleDateString("en-IN")}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Badge variant={STATUS_BADGE[transferPreview.status]} size="sm">
+              {transferPreview.status}
+            </Badge>
+            <Badge variant={transferPreview.sourceLocationId === locationId ? "info" : "neutral"} size="sm">
+              {transferPreview.sourceLocationId === locationId ? "Outgoing" : "Incoming"}
+            </Badge>
+          </div>
         </div>
       )}
+
+      {detailLoading && !selected ? (
+        <PharmacyDetailLoadingState label="Loading transfer details..." />
+      ) : !selected && detailError ? (
+        <PharmacyDetailLoadingState
+          error={detailError}
+          errorTitle="Transfer unavailable"
+          onRetry={detailPreview ? () => { void open(detailPreview.id, undefined, detailPreview); } : undefined}
+        />
+      ) : selected && (
+        <>
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {selectedMetrics.map(item => (
+              <div
+                key={item.label}
+                className={cn(
+                  "rounded-xl border border-border/70 p-2.5",
+                  item.highlight ? "bg-accent-subtle/40" : "bg-surface"
+                )}
+              >
+                <dt className="text-[11px] font-medium text-text-secondary">{item.label}</dt>
+                <dd className="mt-0.5 break-words text-xs font-semibold tabular-nums text-text sm:text-sm">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="rounded-lg border border-border/60 bg-surface px-3 py-2 text-[11px] text-text-secondary">
+            Acquisition basis: {selected.lot.costBasis.totalPaise} paise per {selected.lot.costBasis.receivedBaseUnits} base units.
+            Each partial lot retains this exact fraction.
+          </p>
+
+          {selected.events && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-text">Custody stages</p>
+              <ol
+                aria-label="Transfer stage history"
+                className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/70 bg-surface"
+              >
+                {selected.events.map(event => (
+                  <li key={event.id} className="space-y-1 px-3 py-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold text-text">
+                        {event.action} · revision {event.revision}
+                      </span>
+                      <span className="tabular-nums text-[11px] text-text-secondary">
+                        {event.quantity} units {event.disposition || ""}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-secondary">{event.reviewReference}</p>
+                  </li>
+                ))}
+              </ol>
+              {selected.nextEventsCursor && (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={locked}
+                  onClick={() => void open(selected.id, selected.nextEventsCursor!)}
+                >
+                  Older transfer stages
+                </Button>
+              )}
+            </div>
+          )}
+
+          <fieldset disabled={locked} className="space-y-3 border-t border-border/60 pt-3">
+            <Input
+              size="sm"
+              label="Transfer stage review reference *"
+              minLength={10}
+              maxLength={300}
+              value={stageReview}
+              onChange={event => setStageReview(event.target.value)}
+            />
+            {sourceBranch && ["draft", "approved"].includes(selected.status) && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="xs"
+                  disabled={!canStart || stageReview.trim().length < 10}
+                  onClick={() => stage(selected.status === "draft" ? "approve" : "dispatch")}
+                >
+                  {selected.status === "draft" ? "Approve both branches" : "Dispatch approved batch"}
+                </Button>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={stageReview.trim().length < 10}
+                  onClick={() => stage("cancel")}
+                >
+                  Cancel unshipped transfer
+                </Button>
+              </div>
+            )}
+            {selected.status === "in_transit" && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <Input
+                    size="sm"
+                    label="Physical stage quantity"
+                    type="number"
+                    min="1"
+                    max={selected.inTransitQuantity}
+                    step="1"
+                    value={stageQuantity}
+                    onChange={event => setStageQuantity(event.target.value)}
+                  />
+                  <Select
+                    size="sm"
+                    label="Physical stock disposition"
+                    value={disposition}
+                    onChange={event => setDisposition(event.target.value)}
+                    options={
+                      sourceBranch
+                        ? [
+                            { value: "return_to_source", label: "Returned to source quarantine" },
+                            { value: "lost", label: "Reviewed in-transit loss (both branches)" },
+                          ]
+                        : [
+                            { value: "saleable", label: "Received saleable" },
+                            { value: "quarantined", label: "Received into quarantine" },
+                          ]
+                    }
+                  />
+                </div>
+                <Button
+                  size="xs"
+                  disabled={
+                    !whole(actualStageQuantity) ||
+                    actualStageQuantity > selected.inTransitQuantity ||
+                    stageReview.trim().length < 10 ||
+                    (sourceBranch && !["lost", "return_to_source"].includes(disposition))
+                  }
+                  onClick={() => stage(sourceBranch ? "resolve" : "receive")}
+                >
+                  Record physical stage
+                </Button>
+              </div>
+            )}
+          </fieldset>
+        </>
+      )}
+    </section>
+  );
+
+  return (
+    <section aria-label="Pharmacy stock transfers" className="min-w-0 space-y-3">
+      {!(mobile && detailOpen) && statusAlerts}
 
       <Card padding="none" className="rounded-xl shadow-none" contentClassName="gap-0">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-3 py-3 md:px-4">
@@ -400,14 +627,14 @@ function TransferSession({ locationId, locations, canStart }: Props) {
             ) : (
               <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/70 bg-surface">
                 {rows.map(row => {
-                  const isSelected = selected?.id === row.id;
+                  const isSelected = (selected?.id || (detailLoading ? detailPreview?.id : undefined)) === row.id;
                   const direction = row.sourceLocationId === locationId ? "Outgoing" : "Incoming";
                   return (
                     <li key={row.id}>
                       <button
                         type="button"
                         disabled={locked}
-                        onClick={() => void open(row.id)}
+                        onClick={() => void open(row.id, undefined, row)}
                         className={cn(
                           "flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring disabled:pointer-events-none disabled:opacity-50",
                           isSelected && "bg-accent-subtle/35"
@@ -437,160 +664,7 @@ function TransferSession({ locationId, locations, canStart }: Props) {
               </ul>
             )}
 
-            {selected && (
-              <section
-                aria-label="Selected stock transfer"
-                className="space-y-3 rounded-xl border border-border bg-surface-alt/25 p-3 md:p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border/60 pb-2.5">
-                  <div className="min-w-0 space-y-0.5">
-                    <h3 className="break-words text-sm font-semibold text-text">
-                      {selected.transportReference}: {selected.sourceName}
-                    </h3>
-                    <p className="text-[11px] text-text-secondary">
-                      Batch {selected.lot.batchNumber} · Expiry {new Date(selected.lot.expiryDate).toLocaleDateString("en-IN")}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <Badge variant={STATUS_BADGE[selected.status]} size="sm">
-                      {selected.status}
-                    </Badge>
-                    <Badge variant={sourceBranch ? "info" : "neutral"} size="sm">
-                      {sourceBranch ? "Outgoing" : "Incoming"}
-                    </Badge>
-                  </div>
-                </div>
-
-                <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {selectedMetrics.map(item => (
-                    <div
-                      key={item.label}
-                      className={cn(
-                        "rounded-xl border border-border/70 p-2.5",
-                        item.highlight ? "bg-accent-subtle/40" : "bg-surface"
-                      )}
-                    >
-                      <dt className="text-[11px] font-medium text-text-secondary">{item.label}</dt>
-                      <dd className="mt-0.5 break-words text-xs font-semibold tabular-nums text-text sm:text-sm">{item.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-
-                <p className="rounded-lg border border-border/60 bg-surface px-3 py-2 text-[11px] text-text-secondary">
-                  Acquisition basis: {selected.lot.costBasis.totalPaise} paise per {selected.lot.costBasis.receivedBaseUnits} base units.
-                  Each partial lot retains this exact fraction.
-                </p>
-
-                {selected.events && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-text">Custody stages</p>
-                    <ol
-                      aria-label="Transfer stage history"
-                      className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/70 bg-surface"
-                    >
-                      {selected.events.map(event => (
-                        <li key={event.id} className="space-y-1 px-3 py-2 text-xs">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="font-semibold text-text">
-                              {event.action} · revision {event.revision}
-                            </span>
-                            <span className="tabular-nums text-[11px] text-text-secondary">
-                              {event.quantity} units {event.disposition || ""}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-text-secondary">{event.reviewReference}</p>
-                        </li>
-                      ))}
-                    </ol>
-                    {selected.nextEventsCursor && (
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        disabled={locked}
-                        onClick={() => void open(selected.id, selected.nextEventsCursor!)}
-                      >
-                        Older transfer stages
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                <fieldset disabled={locked} className="space-y-3 border-t border-border/60 pt-3">
-                  <Input
-                    size="sm"
-                    label="Transfer stage review reference *"
-                    minLength={10}
-                    maxLength={300}
-                    value={stageReview}
-                    onChange={event => setStageReview(event.target.value)}
-                  />
-                  {sourceBranch && ["draft", "approved"].includes(selected.status) && (
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="xs"
-                        disabled={!canStart || stageReview.trim().length < 10}
-                        onClick={() => stage(selected.status === "draft" ? "approve" : "dispatch")}
-                      >
-                        {selected.status === "draft" ? "Approve both branches" : "Dispatch approved batch"}
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        disabled={stageReview.trim().length < 10}
-                        onClick={() => stage("cancel")}
-                      >
-                        Cancel unshipped transfer
-                      </Button>
-                    </div>
-                  )}
-                  {selected.status === "in_transit" && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                        <Input
-                          size="sm"
-                          label="Physical stage quantity"
-                          type="number"
-                          min="1"
-                          max={selected.inTransitQuantity}
-                          step="1"
-                          value={stageQuantity}
-                          onChange={event => setStageQuantity(event.target.value)}
-                        />
-                        <Select
-                          size="sm"
-                          label="Physical stock disposition"
-                          value={disposition}
-                          onChange={event => setDisposition(event.target.value)}
-                          options={
-                            sourceBranch
-                              ? [
-                                  { value: "return_to_source", label: "Returned to source quarantine" },
-                                  { value: "lost", label: "Reviewed in-transit loss (both branches)" },
-                                ]
-                              : [
-                                  { value: "saleable", label: "Received saleable" },
-                                  { value: "quarantined", label: "Received into quarantine" },
-                                ]
-                          }
-                        />
-                      </div>
-                      <Button
-                        size="xs"
-                        disabled={
-                          !whole(actualStageQuantity) ||
-                          actualStageQuantity > selected.inTransitQuantity ||
-                          stageReview.trim().length < 10 ||
-                          (sourceBranch && !["lost", "return_to_source"].includes(disposition))
-                        }
-                        onClick={() => stage(sourceBranch ? "resolve" : "receive")}
-                      >
-                        Record physical stage
-                      </Button>
-                    </div>
-                  )}
-                </fieldset>
-              </section>
-            )}
+            {!mobile && transferDetailSection}
           </div>
 
           <form
@@ -651,6 +725,15 @@ function TransferSession({ locationId, locations, canStart }: Props) {
                       onChange={event => setSourceSearch(event.target.value)}
                     />
                   </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    aria-label="Scan source product barcode"
+                    onClick={() => setScanTarget("source")}
+                  >
+                    <Camera size={15} aria-hidden="true" />
+                  </Button>
                   <Button
                     type="button"
                     size="sm"
@@ -718,6 +801,16 @@ function TransferSession({ locationId, locations, canStart }: Props) {
                       onChange={event => setDestinationSearch(event.target.value)}
                     />
                   </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    aria-label="Scan destination product barcode"
+                    disabled={!destination}
+                    onClick={() => setScanTarget("destination")}
+                  >
+                    <Camera size={15} aria-hidden="true" />
+                  </Button>
                   <Button
                     type="button"
                     size="sm"
@@ -800,6 +893,31 @@ function TransferSession({ locationId, locations, canStart }: Props) {
           </form>
         </div>
       </Card>
+      {mobile && detailOpen && Boolean(transferDetailSection) && (
+        <Modal
+          open
+          presentation="sheet"
+          size="lg"
+          busy={busy}
+          title={transferPreview?.transportReference || "Stock transfer"}
+          description={transferPreview ? `${transferPreview.sourceName} → ${transferPreview.destinationName}` : undefined}
+          onClose={closeDetail}
+        >
+          <div className="space-y-3">
+            {statusAlerts}
+            {transferDetailSection}
+          </div>
+        </Modal>
+      )}
+      <PharmacyBarcodeScanDialog
+        open={Boolean(scanTarget)}
+        title={scanTarget === "destination" ? "Scan destination product barcode" : "Scan source product barcode"}
+        onClose={() => setScanTarget(null)}
+        onDetected={code => {
+          if (scanTarget === "destination") setDestinationSearch(code);
+          else if (scanTarget === "source") setSourceSearch(code);
+        }}
+      />
     </section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, Card, CardDescription, CardTitle, Checkbox, Input, Select } from "@/components/ui";
+import { Alert, Badge, Button, Card, CardDescription, CardTitle, Checkbox, Input, Select, Spinner } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { apiErrorMessage } from "@/lib/apiError";
 import { authScopeKey } from "@/lib/authScope";
@@ -56,7 +56,7 @@ function ReviewSession({ medicineId, locationId, onClose, onReviewed, onReload }
   return <Modal open title="Review product" description={product?.name || "Sale and tax classification"} onClose={onClose} busy={Boolean(saving)} size="lg" footer={<Button variant="outline" disabled={Boolean(saving)} onClick={onClose}>Close product review</Button>}>
     <div className="space-y-4">
       {!canReview && <Alert variant="warning" title="Administrator review required">An organization administrator must review this product. No changes have been made.</Alert>}
-      {loading && <p role="status" className="text-sm text-text-secondary">Loading product review details...</p>}
+      {loading && <div role="status" className="flex items-center gap-2 py-2 text-sm text-text-secondary"><Spinner size="sm" /><span>Loading product review details...</span></div>}
       {error && <Alert variant="error" title="Product review needs attention">{error}</Alert>}
       {notice && <Alert variant="success" title="Review saved">{notice}</Alert>}
       {canReview && <Button size="sm" variant="outline" disabled={loading || Boolean(saving)} onClick={onReload}>Reload product details</Button>}

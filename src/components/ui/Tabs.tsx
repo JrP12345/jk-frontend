@@ -1,6 +1,7 @@
 "use client";
 
-import { type ReactNode, useState, useRef, useEffect, useLayoutEffect, useId, memo } from "react";
+import { type ReactNode, type MouseEvent, useState, useRef, useEffect, useLayoutEffect, useId, memo } from "react";
+import { runWithTouchSelectionHaptic } from "@/lib/haptics";
 import { cn } from "./utils";
 
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -45,11 +46,16 @@ const Tabs = memo(function Tabs({
   const containerRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
 
-  const handleChange = (id: string) => {
-    if (controlledActiveTab === undefined) {
-      setInternalActive(id);
-    }
-    onChange?.(id);
+  const handleChange = (id: string, event?: MouseEvent<HTMLButtonElement>) => {
+    const switching = id !== active;
+    const commit = () => {
+      if (controlledActiveTab === undefined) {
+        setInternalActive(id);
+      }
+      onChange?.(id);
+    };
+    if (event && switching) runWithTouchSelectionHaptic(event, commit);
+    else commit();
   };
 
   const activeTab = tabs.find((t) => t.id === active);
@@ -138,7 +144,7 @@ const Tabs = memo(function Tabs({
               aria-controls={tab.content ? `${id}-tabpanel-${tab.id}` : undefined}
               tabIndex={isActive ? 0 : -1}
               disabled={tab.disabled}
-              onClick={() => handleChange(tab.id)}
+              onClick={(event) => handleChange(tab.id, event)}
               className={cn(
                 "relative z-10 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-medium cursor-pointer transition-colors duration-[var(--motion-fast)] ease-smooth disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap focus-visible:outline-none min-h-[44px] md:min-h-0 [scroll-snap-align:start]",
                 fullWidth && "flex-1 basis-0 min-w-0 justify-center",

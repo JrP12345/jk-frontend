@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, forwardRef, useId, memo } from "react";
+import { useState, forwardRef, useId, memo, type MouseEvent, type KeyboardEvent } from "react";
+import { runWithTouchSelectionHaptic } from "@/lib/haptics";
 import { cn } from "./utils";
 
 export interface ToggleProps {
@@ -39,14 +40,15 @@ const Toggle = memo(
       const [internalChecked, setInternalChecked] = useState(defaultChecked);
       const isChecked = controlledChecked !== undefined ? controlledChecked : internalChecked;
 
-      const toggle = () => {
+      const toggle = (event?: MouseEvent<HTMLElement>) => {
         if (disabled) return;
         const next = !isChecked;
         if (controlledChecked === undefined) setInternalChecked(next);
-        onChange?.(next);
+        if (event) runWithTouchSelectionHaptic(event, () => onChange?.(next));
+        else onChange?.(next);
       };
 
-      const handleKeyDown = (e: React.KeyboardEvent) => {
+      const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
         if (e.key === " " || e.key === "Enter") {
           e.preventDefault();
           toggle();

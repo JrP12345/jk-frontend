@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, Card, DatePicker, Input, Modal, Table, Tabs, cn } from "@/components/ui";
-import { Filter, Search } from "lucide-react";
+import { Alert, Badge, Button, Card, DatePicker, Input, Modal, Spinner, Table, Tabs, cn } from "@/components/ui";
+import { Camera, Filter, Search } from "lucide-react";
+import { PharmacyBarcodeScanDialog } from "./PharmacyBarcodeScanDialog";
+import { PharmacyDetailLoadingSheet } from "./PharmacyDetailLoader";
 import { localDateKey } from "@/lib/date";
 import { PharmacyCollectionForm, type CounterPaymentPreference } from "./PharmacyCollectionForm";
 export { PharmacyCollectionForm } from "./PharmacyCollectionForm";
@@ -45,8 +47,11 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
   const [loadingMore, setLoadingMore] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [invoice, setInvoice] = useState<CounterInvoice | null>(null), [refresh, setRefresh] = useState(0);
+  const [detailLoading, setDetailLoading] = useState(false), [detailError, setDetailError] = useState("");
+  const [detailPreview, setDetailPreview] = useState<{ id: string; invoiceNumber?: string; customerName?: string } | null>(null);
   const [search, setSearch] = useState(""), [query, setQuery] = useState(""), [status, setStatus] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [startDate, setStartDate] = useState(() => localDateKey()), [endDate, setEndDate] = useState(() => localDateKey()), [dateError, setDateError] = useState("");
   const [period, setPeriod] = useState<{ startDate: string; endDate: string } | null>(null), [timezone, setTimezone] = useState("");
   useEffect(() => { const timer = setTimeout(() => { setQuery(search.trim()); setCursor(undefined); }, 250); return () => clearTimeout(timer); }, [search]);
@@ -81,10 +86,22 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
     const request = beginDetail();
     void readCounterInvoice(initialInvoiceId, locationId, request.signal).then(value => { if (request.isCurrent()) setInvoice(value); }).catch(failure => { if (request.isCurrent()) setError(errorMessage(failure)); });
   }, [initialInvoiceId, locationId, beginDetail, checkoutPayment, issuedTotalPaise, detailNeeded]);
-  async function open(id: string) {
-    const request = beginDetail(); setError("");
-    try { const value = await readCounterInvoice(id, locationId, request.signal); if (request.isCurrent()) setInvoice(value); }
-    catch (failure) { if (request.isCurrent()) setError(errorMessage(failure)); }
+  function closeDetail() {
+    beginDetail();
+    setDetailLoading(false);
+    setDetailPreview(null);
+    setDetailError("");
+    setInvoice(null);
+    onInvoiceClose?.();
+  }
+  async function open(id: string, preview?: InvoiceSummary) {
+    const request = beginDetail();
+    setError(""); setDetailError(""); setInvoice(null);
+    setDetailPreview(preview ? { id, invoiceNumber: preview.invoiceNumber, customerName: preview.customerSnapshot?.anonymous ? "Walk-in customer" : preview.customerSnapshot?.name } : { id });
+    setDetailLoading(true);
+    try { const value = await readCounterInvoice(id, locationId, request.signal); if (request.isCurrent()) { setInvoice(value); setDetailPreview(null); } }
+    catch (failure) { if (request.isCurrent()) { const message = errorMessage(failure); setDetailError(message); if (focusOnly) setError(message); } }
+    finally { if (request.isCurrent()) setDetailLoading(false); }
   }
   async function send(invoiceId: string, input: CollectionInput) {
     if (!current() || !journalReady || lock.current || !canCollect || receipt) return;
@@ -100,14 +117,20 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
       frozen.current = pinned; setSubmitted(true);
       const result = await submitPharmacyCollection(pinned.invoiceId, pinned.input, pinned.key);
       if (current()) accept(result);
-    } catch (failure) { if (current()) { setDetailNeeded(true); setError(errorMessage(failure)); setCanCorrect([400, 409, 428].includes((failure as { response?: { status?: number } })?.response?.status || 0)); } }
+    } catch (failure) { if (current()) { const status = (failure as { response?: { status?: number } })?.response?.status || 0; setDetailNeeded(true); setError(errorMessage(failure)); setCanCorrect(status >= 400 && status < 500 && status !== 429); } }
     finally { lock.current = false; if (current()) setBusy(false); }
   }
-  async function recover() {
+  async function recover(background = false) {
     if (!current() || lock.current || !pending) return;
-    lock.current = true; setBusy(true); setError("");
+    lock.current = true; setBusy(true); if (!background) setError("");
     try { const result = await recoverPharmacyCollection(locationId, pending.key); if (result.invoiceId !== pending.invoiceId) throw new Error("Collection invoice reference needs review"); if (current()) accept(result); }
-    catch (failure) { if (current()) setError(errorMessage(failure)); }
+    catch (failure) {
+      if (current()) {
+        const status = (failure as { response?: { status?: number } })?.response?.status || 0;
+        if (status === 404) setCanCorrect(true);
+        if (!background || status === 404) setError(previous => background && previous ? previous : errorMessage(failure));
+      }
+    }
     finally { lock.current = false; if (current()) setBusy(false); }
   }
   function accept(result: CollectionReceipt) {
@@ -117,7 +140,7 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
     }
     setReceipt(result); setInvoice(null); onCollected?.(result);
   }
-  usePharmacyReconnect(Boolean(pending && !receipt && !canCorrect), recover);
+  usePharmacyReconnect(Boolean(pending && !receipt && !canCorrect), () => recover(true));
   function done() {
     if (!current() || busy || !pending || !receipt) return;
     try { if (pendingReference(storageKey)?.key !== receipt.requestKey) throw new Error("Collection reference changed. Reopen the result."); sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {}); setPending(null); setReceipt(null); setSubmitted(false); frozen.current = null; setError(""); setRefresh(value => value + 1); }
@@ -131,18 +154,31 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
     if (input) automaticSend.current(initialInvoiceId, input);
     else void Promise.resolve().then(() => { setDetailNeeded(true); setError("The saved bill balance differs from the confirmed payment. Review payment below; no money has been recorded."); });
   }, [checkoutPayment, invoice, journalReady, canCollect, pending, receipt, initialInvoiceId, issuedTotalPaise, locationId]);
-  const invoiceForm = invoice && !(checkoutPayment && !error && (!pending || pending.invoiceId === invoice.id)) && <PharmacyCollectionForm embedded={embeddedCheckout} key={`${invoice.id}:${invoice.paymentRevision}`} invoice={invoice} preference={invoice.id === initialInvoiceId ? preference : undefined} canOpenTill={canOpenTill} canCollect={journalReady && canCollect && !receipt && (!pending || pending.invoiceId === invoice.id) && !submitted} busy={busy} onClose={() => { setInvoice(null); onInvoiceClose?.(); }} onProviderCollected={!pending && canCollect ? result => { if (!current() || result.invoiceId !== invoice.id) return; onCollected?.(result); setRefresh(value => value + 1); void open(invoice.id); } : undefined} onSubmit={input => { void send(invoice.id, input); }} />;
+  const awaitingInitialBill = Boolean(initialInvoiceId && !invoice && !error && !embeddedCheckout && !(checkoutPayment && issuedTotalPaise !== undefined && !detailNeeded));
+  const loadingBillSheet = (
+    <PharmacyDetailLoadingSheet
+      open={!embeddedCheckout && !invoice && (detailLoading || (!focusOnly && Boolean(detailError)) || awaitingInitialBill)}
+      title={detailPreview?.invoiceNumber || "Loading bill"}
+      description={detailPreview?.customerName}
+      label="Loading bill details..."
+      error={!focusOnly && !detailLoading ? detailError : ""}
+      errorTitle="Could not open bill"
+      onRetry={detailPreview?.id && !detailLoading && detailError ? () => { void open(detailPreview.id); } : undefined}
+      onClose={closeDetail}
+    />
+  );
+  const invoiceForm = invoice && !(checkoutPayment && !error && (!pending || pending.invoiceId === invoice.id)) && <PharmacyCollectionForm embedded={embeddedCheckout} key={`${invoice.id}:${invoice.paymentRevision}`} invoice={invoice} preference={invoice.id === initialInvoiceId ? preference : undefined} canOpenTill={canOpenTill} canCollect={journalReady && canCollect && !receipt && (!pending || pending.invoiceId === invoice.id) && !submitted} busy={busy} onClose={closeDetail} onProviderCollected={!pending && canCollect ? result => { if (!current() || result.invoiceId !== invoice.id) return; onCollected?.(result); setRefresh(value => value + 1); void open(invoice.id); } : undefined} onSubmit={input => { void send(invoice.id, input); }} />;
   // Dialog-only callers must not add a grid/flex item to the counter behind the portal.
-  if (focusOnly) return <>{error && <Modal open title="Bill unavailable" onClose={() => { setError(""); onInvoiceClose?.(); }}><Alert variant="error" title="Could not open bill">{error}</Alert></Modal>}{invoiceForm}</>;
+  if (focusOnly) return <>{error && <Modal open title="Bill unavailable" onClose={() => { setError(""); onInvoiceClose?.(); }}><Alert variant="error" title="Could not open bill">{error}</Alert></Modal>}{loadingBillSheet}{invoiceForm}</>;
   return <section className={cn(styles.list, "gap-3")} data-sales-list={showList || undefined} aria-label="Pharmacy sales and collections">
-    {embeddedCheckout && !error && !receipt && <p role="status" className="text-sm text-text-secondary">{busy ? "Saving payment..." : "Checking saved bill..."}</p>}
+    {embeddedCheckout && !error && !receipt && <p role="status" className="inline-flex items-center gap-2 text-sm text-text-secondary"><Spinner size="xs" /><span>{busy ? "Saving payment..." : "Checking saved bill..."}</span></p>}
 
 
     {error && <Alert variant="error" title="Collection needs attention">{error}</Alert>}
     {pending && !busy && <Alert variant={receipt ? "success" : "warning"} title={receipt ? "Collection confirmed" : "Pending collection"}>
       <p>Reference: {pending.key}</p>{receipt ? <><CollectionReceiptSummary receipt={receipt} /><Button size="sm" variant="outline" disabled={busy} onClick={() => { void open(receipt.invoiceId); }}>View saved bill and receipts</Button><Button size="sm" disabled={busy} onClick={done}>Done with collection</Button></> : <><p>Check this result before collecting again. Keep the same reference after reload.</p><Button size="sm" variant="outline" disabled={busy} onClick={() => { void recover(); }}>Check collection result</Button>
         {submitted && canCollect && <Button size="sm" disabled={busy} onClick={() => { if (frozen.current) void send(frozen.current.invoiceId, frozen.current.input); }}>Retry same collection</Button>}
-        {canCollect && (!submitted || canCorrect) && <Button size="sm" variant="outline" disabled={busy} onClick={() => { frozen.current = null; setSubmitted(false); setCanCorrect(false); void open(pending.invoiceId); }}>Re-enter original collection</Button>}</>}
+        {canCollect && (!submitted || canCorrect) && <Button size="sm" variant="outline" disabled={busy} onClick={() => { const invoiceId = pending.invoiceId; if (canCorrect) { try { if (pendingReference(storageKey)?.key === pending.key) sessionStorage.removeItem(storageKey); } catch { /* Keep the original key if storage fails. */ } void journal.save(null).catch(() => {}); setPending(null); } frozen.current = null; setSubmitted(false); setCanCorrect(false); void open(invoiceId); }}>Re-enter original collection</Button>}</>}
     </Alert>}
     {showList && <Card padding="none" className="rounded-xl shadow-none" contentClassName="gap-0">
       <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2 md:px-4 md:py-3">
@@ -150,8 +186,9 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
         <div className="flex shrink-0 items-center gap-2">{!initialInvoiceId && <Button size="xs" variant="ghost" onClick={() => setRecoveryOpen(true)}>Recover sale</Button>}{onNewSale && <div className="hidden md:block"><Button size="xs" onClick={onNewSale}>New counter sale</Button></div>}</div>
       </div>
       <div aria-label="Payment status"><Tabs fullWidth variant="underline" scrollActiveIntoView={false} activeTab={status} onChange={value => { setStatus(value); setCursor(undefined); }} tabs={[{ id: "all", label: "All" }, { id: "unpaid", label: "Unpaid" }, { id: "paid", label: "Paid" }]} /></div>
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_44px] items-center gap-2 border-b border-border/60 p-3 md:grid-cols-[minmax(200px,1fr)_auto] md:px-4">
-        <Input type="search" aria-label="Search sales" icon={<Search size={15} aria-hidden="true" />} size="sm" containerClassName="min-w-0" placeholder="Bill number or customer" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} />
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_44px] items-center gap-2 border-b border-border/60 p-3 md:grid-cols-[minmax(200px,1fr)_auto_auto] md:px-4">
+        <Input type="search" aria-label="Search sales" icon={<Search size={15} aria-hidden="true" />} size="sm" containerClassName="min-w-0" placeholder="Bill number, customer or barcode" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} />
+        <Button type="button" size="sm" variant="outline" aria-label="Scan barcode in sales" title="Scan barcode with camera" onClick={() => setScanOpen(true)}><Camera size={15} aria-hidden="true" /></Button>
         <div className="md:hidden"><Button size="sm" variant="outline" aria-expanded={filtersOpen} aria-controls="sales-date-filter" aria-label="Show filters" icon={<Filter size={15} aria-hidden="true" />} onClick={() => setFiltersOpen(open => !open)} /></div>
         <form id="sales-date-filter" aria-label="Sales date filter" className={cn("col-span-2 min-w-0 items-center gap-2 md:col-span-1 md:flex", filtersOpen ? "flex flex-wrap" : "hidden")} onSubmit={event => { event.preventDefault(); applyDates(); }}>
           <DatePicker label="Sale dates" className="[&_label]:sr-only" mode="range" size="sm" startDate={startDate} endDate={endDate} minDate="2000-01-01" maxDate="2199-12-31" placeholder="Date range" onRangeChange={range => { setStartDate(range.startDate); setEndDate(range.endDate); }} />
@@ -172,11 +209,22 @@ function CollectionSession({ locationId, canCollect, canOpenTill = false, initia
           { key: "customer", header: "Customer", render: row => <span className="break-words text-xs text-text-secondary">{row.customerSnapshot?.name || "Walk-in customer"}</span> },
           { key: "total", header: "Total", width: "120px", align: "right", render: row => <span className="break-all text-xs font-semibold tabular-nums">{money(row.totalAmount)}</span> },
           { key: "status", header: "Status", width: "110px", align: "center", render: row => <Badge variant={row.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(row.status) ? "warning" : "neutral"}>{row.status === "partially_paid" ? "Part paid" : row.status.replaceAll("_", " ")}</Badge> },
-          { key: "actions", header: "", width: "90px", align: "right", render: row => <Button size="sm" variant={canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "primary" : "outline"} disabled={busy} aria-label={`${row.documentVersion === 3 ? "Open opening balance" : "Open sale"} ${row.invoiceNumber}`} onClick={() => { void open(row.id); }}>{canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "Collect" : "View"}</Button> },
-        ]} renderMobileCard={row => <button type="button" className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring" disabled={busy} onClick={() => { void open(row.id); }}><span className="min-w-0"><strong className="block break-all text-xs font-semibold text-text">{row.invoiceNumber}</strong><span className="block truncate text-[11px] text-text-secondary">{row.customerSnapshot?.name || "Walk-in customer"}</span></span><span className="shrink-0 text-right"><strong className="block text-xs tabular-nums">{money(row.totalAmount)}</strong><Badge variant={row.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(row.status) ? "warning" : "neutral"}>{row.status === "partially_paid" ? "Part paid" : row.status.replaceAll("_", " ")}</Badge></span></button>} />
+          { key: "actions", header: "", width: "90px", align: "right", render: row => <Button size="sm" variant={canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "primary" : "outline"} disabled={busy} aria-label={`${row.documentVersion === 3 ? "Open opening balance" : "Open sale"} ${row.invoiceNumber}`} onClick={() => { void open(row.id, row); }}>{canCollect && ["unpaid", "partially_paid"].includes(row.status) ? "Collect" : "View"}</Button> },
+        ]} renderMobileCard={row => <button type="button" className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring" disabled={busy} onClick={() => { void open(row.id, row); }}><span className="min-w-0"><strong className="block break-all text-xs font-semibold text-text">{row.invoiceNumber}</strong><span className="block truncate text-[11px] text-text-secondary">{row.customerSnapshot?.name || "Walk-in customer"}</span></span><span className="shrink-0 text-right"><strong className="block text-xs tabular-nums">{money(row.totalAmount)}</strong><Badge variant={row.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(row.status) ? "warning" : "neutral"}>{row.status === "partially_paid" ? "Part paid" : row.status.replaceAll("_", " ")}</Badge></span></button>} />
     </Card>}
 
     {recoveryOpen && <Modal open title="Recover sale" description="Find a saved sale using its original counter reference." onClose={() => setRecoveryOpen(false)} size="md"><PharmacySaleRecovery locationId={locationId} onOpen={id => { setRecoveryOpen(false); void open(id); }} /></Modal>}
+    {loadingBillSheet}
     {invoiceForm}
+    <PharmacyBarcodeScanDialog
+      open={scanOpen}
+      title="Scan product barcode to find bills"
+      onClose={() => setScanOpen(false)}
+      onDetected={code => {
+        setSearch(code);
+        setQuery(code);
+        setCursor(undefined);
+      }}
+    />
   </section>;
 }

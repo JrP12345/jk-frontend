@@ -9,7 +9,7 @@ export interface StockReceiptPayload {
 export interface StockReceiptResult {
   requestKey: string; batchId: string; medicineId: string; locationId: string; receiptLineId: string;
   kind: "opening" | "receipt"; receivedQuantity: number; movementId: string; revision: number;
-  batch: { batchNumber: string; receivedQuantity: number; expirySnapshot: { precision: "day" | "month"; value: string }; unitSnapshot: { baseUnit: string; unitsPerPack: number } };
+  batch: { batchNumber: string; receivedQuantity: number; sellingPricePaise?: number; mrpPaise?: number; expirySnapshot: { precision: "day" | "month"; value: string }; unitSnapshot: { baseUnit: string; unitsPerPack: number } };
 }
 const eventName = "pharmacy-stock-reference-change";
 const validKey = (key: string) => /^[a-zA-Z0-9_-]{8,100}$/.test(key);

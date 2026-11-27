@@ -8,12 +8,13 @@ import Modal from "@/components/queue/QueueDialog";
 import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { acknowledgeStockReceiptReference, parseReceiptPaise, readStockReceiptReference, recoverStockReceipt, reserveStockReceiptReference, stockReceiptScope, submitStockReceipt, subscribeStockReceiptReferences, type StockReceiptPayload, type StockReceiptResult } from "@/lib/pharmacyStockReceipts";
+import type { BatchStickerSeed } from "./PharmacyBarcodeStickersModal";
 import type { Medicine } from "./pharmacyWorkspace";
 import styles from "./PharmacyWorkspace.module.css";
 
-interface Props { medicine: Medicine | null; locationId: string; canReceive: boolean; canRecover: boolean; onClose: () => void; onCommitted: () => void }
+interface Props { medicine: Medicine | null; locationId: string; canReceive: boolean; canRecover: boolean; onClose: () => void; onCommitted: () => void; onPrintStickers?: (seed: BatchStickerSeed) => void }
 const message = (error: unknown) => (error as { response?: { data?: { message?: string } } })?.response?.data?.message || (error instanceof Error ? error.message : "Keep the same receipt reference and check its outcome.");
-export function PharmacyStockReceipts({ medicine, locationId, canReceive, canRecover, onClose, onCommitted }: Props) {
+export function PharmacyStockReceipts({ medicine, locationId, canReceive, canRecover, onClose, onCommitted, onPrintStickers }: Props) {
   const user = useAuthStore(state => state.user), scope = stockReceiptScope(user, locationId), authScope = authScopeKey(user);
   const pending = useSyncExternalStore(subscribeStockReceiptReferences, () => readStockReceiptReference(scope), () => null);
   const [confirmed, setConfirmed] = useState<StockReceiptResult | null>(null), [error, setError] = useState("");
@@ -48,7 +49,7 @@ export function PharmacyStockReceipts({ medicine, locationId, canReceive, canRec
     catch (failure) { setError(message(failure)); }
   }
   return <>
-    {pending && canRecover && (confirmed?.requestKey === pending ? <Alert variant="success" title="Stock receipt confirmed" action={<Button size="sm" disabled={busy} onClick={done}>Done with stock receipt</Button>}>
+    {pending && canRecover && (confirmed?.requestKey === pending ? <Alert variant="success" title="Stock receipt confirmed" action={<div className="flex flex-wrap gap-2">{onPrintStickers && <Button size="sm" variant="outline" disabled={busy} onClick={() => onPrintStickers({ medicineId: confirmed.medicineId, batchNumber: confirmed.batch.batchNumber, expiry: confirmed.batch.expirySnapshot.value, sellingPricePaise: confirmed.batch.sellingPricePaise, mrpPaise: confirmed.batch.mrpPaise, copies: Math.min(confirmed.receivedQuantity, 100) })}>Print stickers</Button>}<Button size="sm" disabled={busy} onClick={done}>Done with stock receipt</Button></div>}>
       Received {confirmed.receivedQuantity} {confirmed.batch.unitSnapshot.baseUnit} in batch {confirmed.batch.batchNumber}. Printed expiry: {confirmed.batch.expirySnapshot.value}.
     </Alert> : <Alert variant="warning" title="Pending stock receipt" action={<div className={styles.actions}><Button size="sm" variant="outline" disabled={busy} onClick={() => { void check(pending); }}>Check stock receipt</Button>{retryKey === pending && canReceive && <Button size="sm" disabled={busy} onClick={() => { if (draft.current) void send(draft.current.payload, pending); }}>Retry same stock receipt</Button>}</div>}>
       <p>{error || "Check this receipt before receiving more stock. Keep the reference if review is needed."}</p>{!retryKey && canReceive && <p>Choose the original medicine and re-enter its receipt details. The stored reference will be reused to prevent duplicate stock.</p>}<p className={styles.reference}>Reference: {pending}</p>

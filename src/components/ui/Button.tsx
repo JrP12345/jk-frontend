@@ -1,7 +1,7 @@
 "use client";
 
 import { type ButtonHTMLAttributes, type ReactNode, forwardRef, memo, useState, useRef, useLayoutEffect, useImperativeHandle } from "react";
-import { vibrateFeedback } from "@/lib/haptics";
+import { runWithTouchSelectionHaptic } from "@/lib/haptics";
 import { cn } from "./utils";
 import { InlineLoader } from "./Spinner";
 
@@ -111,8 +111,7 @@ const Button = memo(
           aria-label={rest["aria-label"] || (loading ? loadingText : undefined)}
           onClick={(event) => {
             if (isBasicallyDisabled || pendingRef.current) return;
-            vibrateFeedback("selection");
-            const result: unknown = onClick?.(event);
+            const result: unknown = runWithTouchSelectionHaptic(event, () => onClick?.(event));
             // Async click actions share feedback even without caller-managed state.
             if (result && typeof (result as PromiseLike<unknown>).then === "function") {
               pendingRef.current = true;

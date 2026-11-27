@@ -4,13 +4,15 @@ import { packDescription } from "@/lib/pharmacyUnits";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, Badge, Button, Card, CardDescription, CardTitle, ConfirmDialog, EmptyState, Input, Modal, QuantityInput, Tabs } from "@/components/ui";
-import { Barcode, Search, ShoppingBasket, Plus, X, SlidersHorizontal, FileText, RotateCw, History } from "lucide-react";
+import { Barcode, Camera, Search, ShoppingBasket, Plus, X, SlidersHorizontal, FileText, RotateCw, History } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { authScopeKey, referenceOwnerKey } from "@/lib/authScope";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { parseReceiptPaise } from "@/lib/pharmacyStockReceipts";
 import { counterProducts, counterCustomers, quoteCounter, issueCounter, recoverCounter, type CounterProduct, type CounterCustomer, type CounterIntent, type CounterQuote, type CounterResult, type CounterIssueInput } from "@/lib/pharmacyCounter";
-import type { StaffPickup } from "@/lib/publicPharmacy";
+import type { PickupAttachment, StaffPickup } from "@/lib/publicPharmacy";
+import { readStaffPickupAttachment } from "@/lib/pharmacyPickup";
+import { PharmacyPickupAttachmentsView } from "./PharmacyPickupAttachmentsView";
 import { PharmacyCounterFilters, matchesCounterType } from "./PharmacyCounterFilters";
 import { PharmacyCounterRecentBills, useCounterOverview } from "./PharmacyCounterOverview";
 import { PharmacyCounterCustomerHistory } from "./PharmacyCounterCustomerHistory";
@@ -41,9 +43,15 @@ import { usePharmacyCatalogueSync } from "@/hooks/usePharmacyCatalogueSync";
 import { PharmacyOfflineCounterGate } from "./PharmacyOfflineCounterGate";
 import { usePharmacyCounterAvailability } from "@/hooks/usePharmacyCounterAvailability";
 import { PharmacyCounterAvailabilityNotice } from "./PharmacyCounterAvailabilityNotice";
+import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
+import { looksLikeExactBarcode, normalizeBarcodeInput } from "@/lib/pharmacyBarcode";
+import { PharmacyBarcodeScanDialog } from "./PharmacyBarcodeScanDialog";
+import { PharmacyQuickProductModal } from "./PharmacyQuickProductModal";
 
 type CartLine = { lineId: string; product: CounterProduct; packs: string; loose: string; discount: string };
-type Cart = { pickup?: { id: string; revision: number }; lines: CartLine[]; customer: CounterCustomer | null; discount: string; billNumber?: number };
+type PickupRef = { id: string; revision: number; customizable?: boolean };
+type PickupContext = { id: string; reference: string; customerName?: string; notes?: string; attachments?: PickupAttachment[] };
+type Cart = { pickup?: PickupRef; lines: CartLine[]; customer: CounterCustomer | null; discount: string; billNumber?: number };
 const productLabel = (product: CounterProduct) => `${product.name}${product.manufacturer ? ` (${product.manufacturer})` : ""}`;
 const message = (failure: unknown) => (failure as { response?: { data?: { message?: string } } })?.response?.data?.message || (failure instanceof Error ? failure.message : "Counter operation could not be confirmed. Keep the same reference.");
 function savedKey(storageKey: string) {
@@ -51,14 +59,14 @@ function savedKey(storageKey: string) {
   if (key !== null && !/^[a-zA-Z0-9_-]{8,100}$/.test(key)) throw new Error("Sale reference requires review before another issue.");
   return key;
 }
-interface Props { onViewHistory?: () => void; toolbarContext?: ReactNode; toolbarActions?: ReactNode; initialPickup?: StaffPickup | null; onPickupConsumed?: () => void; onPickupPrepared?: () => void; locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void; onCreateLocal?: (name: string) => void; catalogueEditorOpen?: boolean; catalogueRevision?: number }
+interface Props { onViewHistory?: () => void; toolbarContext?: ReactNode; toolbarActions?: ReactNode; initialPickup?: StaffPickup | null; onPickupConsumed?: () => void; onPickupPrepared?: () => void; locationId: string; inventoryMode?: "tracked" | "billing_only"; canCollect: boolean; canOpenTill?: boolean; compact?: boolean; canManageCatalog?: boolean; canReceiveStock?: boolean; canReviewProducts?: boolean; onProductReviewed?: () => void; onCreateLocal?: (name: string) => void; catalogueEditorOpen?: boolean; catalogueRevision?: number }
 export function PharmacyCounter(props: Props) {
   const user = useAuthStore(state => state.user), scope = authScopeKey(user);
   return <PharmacyOfflineCounterGate key={`${scope}:${props.locationId}:${props.inventoryMode || "tracked"}`} organizationId={user?.organization_id} locationId={props.locationId} actorId={user?.id} canIssue={props.canCollect}>
     <CounterSession {...props} />
   </PharmacyOfflineCounterGate>;
 }
-function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initialPickup, onPickupConsumed, onPickupPrepared, locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReviewProducts = false, onProductReviewed, onCreateLocal, catalogueEditorOpen = false, catalogueRevision = 0 }: Props) {
+function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initialPickup, onPickupConsumed, onPickupPrepared, locationId, inventoryMode = "tracked", canCollect, canOpenTill = false, compact = false, canManageCatalog = false, canReceiveStock = false, canReviewProducts = false, onProductReviewed, onCreateLocal, catalogueEditorOpen = false, catalogueRevision = 0 }: Props) {
   const availability = usePharmacyCounterAvailability(locationId);
   const user = useAuthStore(state => state.user), scope = authScopeKey(user), storageKey = `pharmacy-sale:${referenceOwnerKey(user)}:${locationId}`;
   const [initial] = useState(() => { try { return { key: savedKey(storageKey), error: "" }; } catch (failure) { return { key: null, error: message(failure) }; } });
@@ -74,13 +82,16 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
   const [historyCustomer, setHistoryCustomer] = useState<CounterCustomer | null>(null);
   const [creditOverride, setCreditOverride] = useState("");
   const [pickupLoadRetry, setPickupLoadRetry] = useState(0), [pickupLoadFailed, setPickupLoadFailed] = useState(false);
-  const [pickup, setPickup] = useState<{ id: string; revision: number }>(), [pickupLoading, setPickupLoading] = useState(false);
+  const [pickup, setPickup] = useState<PickupRef>(), [pickupLoading, setPickupLoading] = useState(false);
+  const [pickupContexts, setPickupContexts] = useState<Record<string, PickupContext>>({});
   const initializedPickup = useRef<string | null>(null);
   const [addingCustomer, setAddingCustomer] = useState(false);
   const [paymentEditor, setPaymentEditor] = useState(false), [advancedPayment, setAdvancedPayment] = useState<CounterPaymentAllocation | null>(null);
   const [customerError, setCustomerError] = useState(""), [customerLoading, setCustomerLoading] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const [cameraScanOpen, setCameraScanOpen] = useState(false);
+  const [quickModalOpen, setQuickModalOpen] = useState(false);
   const [quoteError, setQuoteError] = useState(""), [quoteConflict, setQuoteConflict] = useState(false), [quoting, setQuoting] = useState(false), [addedMessage, setAddedMessage] = useState("");
   const [paymentReference, setPaymentReference] = useState(""), [drawerReady, setDrawerReady] = useState(false);
   const [drawerRevision, setDrawerRevision] = useState(0);
@@ -133,13 +144,43 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
   }, [catalogue, journal, initial.key, scope, locationId, inventoryMode, current]);
   const canReview = canReviewProducts && hasAnyPermission(user, "MANAGE_ORGANIZATION");
   const restoring = !draft.ready || !journalReady || !catalogueReady;
-  const editable = !restoring && !draft.error && !busy && !preparingBill && !clearingCart && !submitted && !outcome && !pickupLoading && !catalogueOpen && !catalogueEditorOpen && !addingCustomer && !paymentEditor && !(canReview && reviewing);
+  const counterUnlocked = !restoring && !draft.error && !busy && !preparingBill && !clearingCart && !submitted && !outcome && !pickupLoading && !catalogueOpen && !catalogueEditorOpen && !addingCustomer && !paymentEditor && !(canReview && reviewing);
+  const editable = counterUnlocked && !quickModalOpen && !cameraScanOpen;
+  const pickupLocked = Boolean(pickup && !pickup.customizable);
+  const activePickupContext = pickup ? pickupContexts[pickup.id] : undefined;
+  function clearPickupContext(id?: string) {
+    if (!id) return;
+    setPickupContexts(previous => {
+      if (!(id in previous)) return previous;
+      const next = { ...previous };
+      delete next[id];
+      return next;
+    });
+  }
   function invalidate() { setCreditOverride(""); revision.current++; beginQuote(); setQuote(null); setQuoteError(""); setQuoting(false); setError(""); }
   useEffect(() => {
     if (!initialPickup || restoring || pending || outcome || initializedPickup.current === initialPickup.id) return;
     if (pickup?.id === initialPickup.id || held.some(cart => cart.pickup?.id === initialPickup.id)) { initializedPickup.current = initialPickup.id; onPickupConsumed?.(); return; }
     if (lines.length && held.length >= 3) { void Promise.resolve().then(() => { if (current()) setError("Hold or clear a cart before preparing this parcel; all held bill slots are in use."); }); return; }
     const controller = new AbortController();
+    const isCustom = Boolean(initialPickup.notes?.trim() || initialPickup.attachments?.length);
+    const applyPickup = (prepared: CartLine[]) => {
+      if (lines.length) setHeld(previous => [...previous, { lines, customer, discount, billNumber, ...(pickup ? { pickup } : {}) }]);
+      initializedPickup.current = initialPickup.id;
+      setPickup({ id: initialPickup.id, revision: initialPickup.revision, ...(isCustom ? { customizable: true } : {}) });
+      if (isCustom || initialPickup.reference) {
+        setPickupContexts(previous => ({ ...previous, [initialPickup.id]: { id: initialPickup.id, reference: initialPickup.reference, customerName: initialPickup.customerName, notes: initialPickup.notes, attachments: initialPickup.attachments } }));
+      }
+      setLines(prepared); setMobilePanel(prepared.length ? "cart" : "products"); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0"); setAdvancedPayment(null); setOnAccount(false); setQuote(null); setQuoteError("");
+      onPickupConsumed?.();
+    };
+    if (!initialPickup.items.length) {
+      void Promise.resolve().then(() => {
+        if (controller.signal.aborted || !current()) return;
+        applyPickup([]);
+      });
+      return () => { controller.abort(); };
+    }
     void (async () => {
       setPickupLoading(true); setPickupLoadFailed(false); setError("");
       try {
@@ -149,10 +190,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
           if (!product?.eligible || !product.unitDefinition || item.unitVersion !== undefined && item.unitVersion !== product.unitDefinition.version) throw Error("A requested parcel product changed. Review the pickup request before billing.");
           return { lineId: crypto.randomUUID(), product, packs: "0", loose: String(item.quantity), discount: "0" };
         });
-        if (lines.length) setHeld(previous => [...previous, { lines, customer, discount, billNumber, ...(pickup ? { pickup } : {}) }]);
-        initializedPickup.current = initialPickup.id;
-        setPickup({ id: initialPickup.id, revision: initialPickup.revision }); setLines(prepared); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0"); setAdvancedPayment(null); setOnAccount(false); setQuote(null); setQuoteError("");
-        onPickupConsumed?.();
+        applyPickup(prepared);
       } catch (e) { if (!controller.signal.aborted && current()) { setPickupLoadFailed(true); setError(message(e)); } }
       finally { if (!controller.signal.aborted && current()) setPickupLoading(false); }
     })();
@@ -172,9 +210,9 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     const timer = setTimeout(() => setAddedProduct(null), 1000);
     return () => clearTimeout(timer);
   }, [addedProduct]);
-  function add(product: CounterProduct, focusSearch = true) {
-    if (pickup) { setError("Keep this parcel bill to its requested items. Hold or clear it before a separate purchase."); return; }
-    if (!editable) return;
+  function add(product: CounterProduct, focusSearch = true, allowFromModal = false) {
+    if (pickupLocked) { setError("Keep this parcel bill to its requested items. Hold or clear it before a separate purchase."); return; }
+    if (!editable && !(allowFromModal && counterUnlocked)) return;
     if (product.saleBlocked) { setSearchError("This product is on a sale hold. Ask your organization administrator to review the recorded restriction."); return; }
     if (!product.eligible || !product.unitDefinition) { setSearchError("This product needs its reviewed prescription or inventory workflow."); return; }
     if (inventoryMode === "tracked" && product.stockQuantity === 0) { setSearchError("This product is out of stock in the current snapshot. Refresh products before adding it."); return; }
@@ -192,11 +230,13 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     else scanner.current?.blur();
   }
   const exactLookup = /^\d+$/.test(search.trim());
-  async function lookup(exact = false, cursor?: string, addExact = true, force = false) {
+  async function lookup(exact = false, cursor?: string, addExact = true, force = false, termOverride?: string) {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    const flightKey = JSON.stringify([search.trim(), exact, cursor || null]);
+    const rawSearch = termOverride ?? search;
+    const trimmedSearch = rawSearch.trim();
+    const flightKey = JSON.stringify([trimmedSearch, exact, cursor || null]);
     if (lookupFlight.current?.key === flightKey) { if (exact && addExact) lookupFlight.current.repeats++; return; }
-    const cached = !cursor && !force ? catalogue.find(search, exact) : null;
+    const cached = !cursor && !force ? catalogue.find(rawSearch, exact) : null;
     if (cached?.items.length) {
       if (exact && addExact && cached.fresh && cached.items.length === 1 && cached.items[0].eligible && cached.items[0].unitDefinition) { add(cached.items[0]); return; }
       setProducts(cached.items); setNextProduct(cached.nextCursor); setProductLookupDone(true);
@@ -205,9 +245,9 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     const flight = { key: flightKey, repeats: 0 }; lookupFlight.current = flight;
     const request = beginLookup(), version = revision.current; setSearching(true); setSearchError(""); setProductLookupDone(false); setAddedMessage("");
     try {
-      const page = await counterProducts(locationId, exact ? { barcode: search.trim() } : { search: search.trim(), cursor }, request.signal);
+      const page = await counterProducts(locationId, exact ? { barcode: trimmedSearch } : { search: trimmedSearch, cursor }, request.signal);
       if (!request.isCurrent() || version !== revision.current || lock.current) return;
-      setNetwork("online"); catalogue.remember(page.items, search, exact, page.nextCursor, cursor); setCatalogueVersion(v => v + 1);
+      setNetwork("online"); catalogue.remember(page.items, rawSearch, exact, page.nextCursor, cursor); setCatalogueVersion(v => v + 1);
       if (exact && addExact) {
         if (page.items.length !== 1 || page.nextCursor) throw new Error("No unique product matches this exact barcode. Search the catalogue to review it.");
         const product = page.items[0];
@@ -218,6 +258,22 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     } catch (failure) { if (request.isCurrent()) { if (pharmacyConnectionFailure(failure)) setNetwork("offline"); if (!cached?.items.length) setSearchError(message(failure)); } }
     finally { if (lookupFlight.current === flight) lookupFlight.current = null; if (request.isCurrent()) setSearching(false); }
   }
+  const scanHandler = useRef<(code: string, allowFromCamera?: boolean) => void>(() => {});
+  useEffect(() => {
+    scanHandler.current = (rawCode: string, allowFromCamera = false) => {
+      if (!editable && !(allowFromCamera && counterUnlocked)) return;
+      const code = normalizeBarcodeInput(rawCode);
+      if (!code) return;
+      beginLookup(); lookupFlight.current = null; setSearching(false); setPicked(0); setKeyboardPicking(false); setAddedMessage(""); setProductResultsSnapshot(null);
+      setSearch(code); setSearchError("");
+      void lookup(true, undefined, true, true, code);
+    };
+  });
+  useBarcodeScanner({
+    enabled: editable,
+    inputRef: scanner,
+    onScan: code => scanHandler.current(code),
+  });
   const searchRead = useRef(lookup);
   useEffect(() => { searchRead.current = lookup; });
   const lastCatalogueRevision = useRef(catalogueRevision);
@@ -247,7 +303,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
   const intent = useCallback((): CounterIntent => {
     const invoiceDiscountPaise = parseReceiptPaise(discount);
     if (invoiceDiscountPaise === null || !lines.length) throw new Error("Add products and enter valid discounts before requesting a quote.");
-    return { locationId, ...(pickup ? { pickup } : {}), expectedInventoryMode: inventoryMode, ...(customer ? { customerId: customer.id } : {}), invoiceDiscountPaise, roundOffPaise: 0, lines: lines.map(line => {
+    return { locationId, ...(pickup ? { pickup: { id: pickup.id, revision: pickup.revision } } : {}), expectedInventoryMode: inventoryMode, ...(customer ? { customerId: customer.id } : {}), invoiceDiscountPaise, roundOffPaise: 0, lines: lines.map(line => {
       if (!/^\d+$/.test(line.packs) || !/^\d+$/.test(line.loose) || !line.product.unitDefinition) throw new Error("Enter whole pack and loose quantities.");
       const total = BigInt(line.packs) * BigInt(line.product.unitDefinition.unitsPerPack) + BigInt(line.loose), discountPaise = parseReceiptPaise(line.discount);
       if (total <= BigInt(0) || total > BigInt(Number.MAX_SAFE_INTEGER) || discountPaise === null) throw new Error("Use positive safe quantities and valid line discounts.");
@@ -274,6 +330,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
   function finishCart(result: CounterResult) {
     if (savedKey(storageKey) !== result.requestKey) throw Error("Sale reference changed; check the saved bill.");
     const sold = frozen.current?.input.lines || [];
+    clearPickupContext(pickup?.id);
     setCreditOverride(""); setPickup(undefined); catalogue.recordSale(sold); setCatalogueVersion(value => value + 1);
     if (inventoryMode === "tracked") setProducts(previous => previous.map(product => ({ ...product, stockQuantity: Math.max(0, product.stockQuantity - (sold.find(line => line.medicineId === product.id)?.quantity || 0)) })));
     if (printRequested.current) { setPrintDocument(result.document); setPrintInvoiceId(result.invoiceId); printRequested.current = false; }
@@ -303,6 +360,16 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
       setOutcome(result); setMobilePanel("pay");
     }
   }
+  function clearRejectedPending() {
+    try { if (pending && savedKey(storageKey) === pending) sessionStorage.removeItem(storageKey); }
+    catch (failure) { setError(message(failure)); return; }
+    void journal.save(null).catch(() => {});
+    frozen.current = null;
+    setPending(null);
+    setSubmitted(false);
+    setCorrectable(false);
+    invalidate();
+  }
   async function issue(retry = false, prepared: CounterIssueInput | null = quote?.issueInput || null) {
     if (!current() || lock.current || outcome || !retry && !prepared) return;
     if (!retry && availability.blocked) { setError("Use the designated offline PC or reconcile its original session before issuing a new bill here."); return; }
@@ -311,20 +378,25 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     lock.current = true; setBusy(true); setError(""); setCorrectable(false);
     try {
       if (savedKey(storageKey) !== pending) throw new Error("Sale reference changed. Check the saved result before another issue.");
-      const key = pending || crypto.randomUUID();
-      if (!pending) sessionStorage.setItem(storageKey, key);
-      setPending(key);
       const payment = !retry && canCollect && !pickup && !onAccount && prepared && prepared.expectedTotalPaise > 0 ? advancedPayment ? allocatedPayment?.input || null : prepareIssuedCheckoutPayment(locationId, prepared.expectedTotalPaise, { method: paymentMethod, tender: paymentMethod === "cash" ? tenderPreview : "0", referenceNumber: paymentReference.trim(), expectedTotalPaise: prepared.expectedTotalPaise }) : null;
       if (!retry && canCollect && !pickup && !onAccount && prepared!.expectedTotalPaise > 0 && !payment) throw Error("Review the payment amount and actual receipt before saving.");
+      const key = pending || crypto.randomUUID();
+      let newlyStored = false;
+      if (!pending) { sessionStorage.setItem(storageKey, key); newlyStored = true; }
       const pinned = frozen.current || { key, input: JSON.parse(JSON.stringify({ ...prepared!, ...(creditOverride.trim() ? { creditOverrideReference: creditOverride.trim() } : {}), ...(printRequested.current ? { includeDocument: true } : {}), ...(payment ? { payment } : {}) })) as CounterIssueInput };
       // Both records are required before the request, but they are independent local
       // recovery writes. Persisting them together removes one serial storage wait.
-      frozen.current = pinned; setSubmitted(true);
-      await Promise.all([
-        measurePharmacyStep("draft_write", () => draft.flush(draftValue)),
-        measurePharmacyStep("intent_write", () => journal.save(pinned)),
-      ]);
+      try {
+        await Promise.all([
+          measurePharmacyStep("draft_write", () => draft.flush(draftValue)),
+          measurePharmacyStep("intent_write", () => journal.save(pinned)),
+        ]);
+      } catch (storageFailure) {
+        if (newlyStored) sessionStorage.removeItem(storageKey);
+        throw storageFailure;
+      }
       if (!current()) return;
+      setPending(key); frozen.current = pinned; setSubmitted(true);
       revision.current++;
       const result = await measurePharmacyStep("save_request", () => issueCounter(pinned.input, pinned.key));
       if (current()) await acceptSale(result);
@@ -341,7 +413,11 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
           setPaymentReference(""); await refreshQuote();
           if (current()) setError("The current total changed. Review the updated amount and payment, then Save again. Nothing has been billed or collected.");
         } catch (failure) { if (current()) setError(message(failure)); }
-      } else { setError(message(failure)); setCorrectable([400, 409, 428].includes(status)); if (status === 428) { setDrawerReady(false); setDrawerRevision(value => value + 1); } }
+      } else {
+        setError(message(failure));
+        setCorrectable(status >= 400 && status < 500 && status !== 429);
+        if (status === 428) { setDrawerReady(false); setDrawerRevision(value => value + 1); }
+      }
     } }
     finally { lock.current = false; if (current()) setBusy(false); }
   }
@@ -363,15 +439,21 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
       });
     } finally { checkoutLock.current = false; if (current()) setPreparingBill(false); }
   }
-  async function recover() {
+  async function recover(background = false) {
     if (!current() || lock.current || !pending) return;
     // Recovery is read-only; a remembered payment choice must not authorize a new collection.
-    lock.current = true; setBusy(true); setError(""); revision.current++;
+    lock.current = true; setBusy(true); if (!background) setError(""); revision.current++;
     try { const result = await recoverCounter(locationId, pending); if (current()) await acceptSale(result, true); }
-    catch (failure) { if (current()) setError(message(failure)); }
+    catch (failure) {
+      if (current()) {
+        const status = (failure as { response?: { status?: number } })?.response?.status || 0;
+        if (status === 404) setCorrectable(true);
+        if (!background || status === 404) setError(previous => background && previous ? previous : message(failure));
+      }
+    }
     finally { lock.current = false; if (current()) setBusy(false); }
   }
-  usePharmacyReconnect(network === "offline" || Boolean(pending && !outcome && !correctable), async () => { if (pending && !outcome) await recover(); else if (!outcome && !lock.current) { setNetwork("online"); } });
+  usePharmacyReconnect(network === "offline" || Boolean(pending && !outcome && !correctable), async () => { if (pending && !outcome) await recover(true); else if (!outcome && !lock.current) { setNetwork("online"); } });
   function collected(receipt: CollectionReceipt) {
     if (!outcome || receipt.invoiceId !== outcome.invoiceId || !current()) return;
     setRecentInvoice(outcome.invoiceId);
@@ -380,7 +462,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
   function newSale() {
     if (!outcome || busy || collectionPending) return;
     setOnAccount(false); setAdvancedPayment(null); setPaymentMethod("cash"); setCashPreview(null); setMobilePanel("products"); setPaymentReference(""); setDrawerReady(false); printRequested.current = false; setBillNumber(nextBillNumber.current++);
-    try { if (savedKey(storageKey) !== outcome.requestKey) throw new Error("Sale reference changed; recover the saved result."); sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {}); frozen.current = null; setPending(null); setSubmitted(false); setOutcome(null); setLines([]); setPickup(undefined); setCustomer(null); setQuote(null); setDiscount("0"); setCustomerMode("walk-in"); setCustomers([]); setCustomerSearch(""); setAddedMessage(""); setError(""); requestAnimationFrame(() => scanner.current?.focus()); }
+    try { if (savedKey(storageKey) !== outcome.requestKey) throw new Error("Sale reference changed; recover the saved result."); sessionStorage.removeItem(storageKey); void journal.save(null).catch(() => {}); frozen.current = null; setPending(null); setSubmitted(false); setOutcome(null); setLines([]); clearPickupContext(pickup?.id); setPickup(undefined); setCustomer(null); setQuote(null); setDiscount("0"); setCustomerMode("walk-in"); setCustomers([]); setCustomerSearch(""); setAddedMessage(""); setError(""); requestAnimationFrame(() => scanner.current?.focus()); }
     catch (failure) { setError(message(failure)); }
   }
   async function clearCart() {
@@ -390,7 +472,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
       await draft.flush({ cart: { lines: [], customerId: null, discount: "0", billNumber }, held: held.map(packDraft) });
       if (!current()) return;
       setPaymentMethod("cash"); setCashPreview(null); setPaymentReference(""); setOnAccount(false); setAdvancedPayment(null);
-      invalidate(); setLines([]); setPickup(undefined); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0");
+      invalidate(); clearPickupContext(pickup?.id); setLines([]); setPickup(undefined); setCustomer(null); setCustomerMode("walk-in"); setDiscount("0");
       setCustomers([]); setCustomerSearch(""); setNextCustomer(null); setCustomerLookupEmpty(false); setEditingLineId(null); setQuoteDetailsOpen(false); setAddedMessage(""); setClearOpen(false);
       requestAnimationFrame(() => scanner.current?.focus());
     } catch (failure) { if (current()) { setError(message(failure)); setClearOpen(false); } }
@@ -468,11 +550,21 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     </nav>
     {pickupLoadFailed && <Button size="sm" disabled={pickupLoading} onClick={() => setPickupLoadRetry(value => value + 1)}>Retry loading requested parcel</Button>}
     {pickupLoading && <p role="status">Loading requested parcel products...</p>}
-    {pickup && <Alert variant="info" title="Preparing pickup parcel">The requested items will be billed once and linked to the parcel. Save does not record a payment.</Alert>}
+    {pickup && <Alert variant="info" title={activePickupContext?.reference ? `Preparing pickup parcel ${activePickupContext.reference}` : "Preparing pickup parcel"}>
+      {pickup.customizable ? "Add or adjust medicines matching the written description or uploaded files below. Save creates an unpaid parcel bill." : "The requested items will be billed once and linked to the parcel. Save does not record a payment."}
+      {activePickupContext && (activePickupContext.notes || activePickupContext.attachments?.length) && (
+        <div className="mt-2 space-y-2 border-t border-border/50 pt-2">
+          {activePickupContext.notes && <p className="whitespace-pre-wrap break-words text-xs text-text"><strong>Written request:</strong> {activePickupContext.notes}</p>}
+          {activePickupContext.attachments && activePickupContext.attachments.length > 0 && (
+            <PharmacyPickupAttachmentsView compact attachments={activePickupContext.attachments} fetchBlob={(attId, download, signal) => readStaffPickupAttachment(locationId, activePickupContext.id, attId, download, signal)} />
+          )}
+        </div>
+      )}
+    </Alert>}
     {network === "offline" && <Alert variant="warning" title="Working offline">Cached products and estimates remain available. Reconnect to validate and issue bills.<Button size="sm" variant="outline" disabled={busy || quoting} onClick={() => { if (pending) void recover(); else void refreshQuote(); }}>Retry connection</Button></Alert>}
     {error && (!pending || outcome) && <Alert variant="error" title="Counter needs attention">{error}</Alert>}
     {draft.error && <Alert variant="warning" title="Saved cart needs attention">{draft.error}<Button size="sm" variant="outline" onClick={() => window.location.reload()}>Reload saved draft</Button></Alert>}
-    {pending && !outcome && !busy && <Alert variant="warning" title={correctable ? "Save needs review" : "Pending sale"}>{error && <p className="mb-2">{error}</p>}<p>Check whether this sale was saved before submitting it again. Original bill details are restored when available. Keep this reference and check the saved result before retrying.</p><p className="mt-2 break-all text-xs">Reference: {pending}</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" disabled={busy} onClick={() => { void recover(); }}>Check sale result</Button>{submitted && !correctable && <Button size="sm" disabled={busy} onClick={() => { void issue(true); }}>Retry same sale</Button>}{correctable && <Button size="sm" disabled={busy} variant="outline" onClick={() => { frozen.current = null; setSubmitted(false); setCorrectable(false); invalidate(); }}>Review rejected sale</Button>}</div></Alert>}
+    {pending && !outcome && !busy && <Alert variant="warning" title={correctable ? "Save needs review" : "Pending sale"}>{error && <p className="mb-2">{error}</p>}<p>{correctable ? "No committed invoice was found for this attempt. You can retry with the same reference or review and edit the bill." : "Check whether this sale was saved before submitting it again. Original bill details are restored when available. Keep this reference and check the saved result before retrying."}</p><p className="mt-2 break-all text-xs">Reference: {pending}</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" disabled={busy} onClick={() => { void recover(); }}>Check sale result</Button>{submitted && !correctable && <Button size="sm" disabled={busy} onClick={() => { void issue(true); }}>Retry same sale</Button>}{correctable && <Button size="sm" disabled={busy} variant="outline" onClick={clearRejectedPending}>Review rejected sale</Button>}</div></Alert>}
     <>
       <div className={pos.panels} data-mobile-panel={mobilePanel}>
         <section className={pos.products} aria-label="Counter products">
@@ -480,15 +572,16 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
             <div className={pos.productTools}>
               <form onSubmit={event => { event.preventDefault(); if (!editable) return; if (!exactLookup && selectedProduct?.eligible && selectedProduct.unitDefinition) add(selectedProduct); else void lookup(exactLookup || /^(?=.*\d)[A-Z0-9-]{6,}$/.test(search.trim())); }}>
                 <div className={pos.search}>
-                  <Input ref={scanner} disabled={!editable} aria-label="Scan barcode or search products" icon={<Barcode size={16} aria-hidden="true" />} iconRight={<Button type="button" variant="ghost" size="xs" aria-label="Search products" disabled={!editable} loading={searching} onClick={() => { setProductResultsSnapshot(null); void lookup(exactLookup, undefined, true, true); }}><Search size={15} aria-hidden="true" /></Button>} placeholder="Scan barcode or type medicine" title="F1 to search · Scan and press Enter to add" size="lg" containerClassName="min-w-0 flex-1" value={search} maxLength={100} onChange={event => { beginLookup(); lookupFlight.current = null; setSearching(false); setPicked(0); setKeyboardPicking(false); setAddedMessage(""); setProductResultsSnapshot(null); setSearch(event.target.value); const local = catalogue.find(event.target.value, /^\d+$/.test(event.target.value.trim())); setProducts(local.items); setNextProduct(local.nextCursor); setSearchError(""); setProductLookupDone(Boolean(local.items.length)); }} onKeyDown={event => { if (["ArrowDown", "ArrowUp"].includes(event.key) && visibleProducts.length) { event.preventDefault(); setKeyboardPicking(true); setPicked(value => (value + (event.key === "ArrowDown" ? 1 : -1) + visibleProducts.length) % visibleProducts.length); } }} />
+                  <Input ref={scanner} disabled={!editable} aria-label="Scan barcode or search products" icon={<Barcode size={16} aria-hidden="true" />} iconRight={<Button type="button" variant="ghost" size="xs" aria-label="Search products" disabled={!editable} loading={searching} onClick={() => { setProductResultsSnapshot(null); void lookup(exactLookup, undefined, true, true); }}><Search size={15} aria-hidden="true" /></Button>} placeholder="Scan barcode or medicine" title="F1 to search · Scan and press Enter to add" size="lg" containerClassName="min-w-0 flex-1" value={search} maxLength={100} onChange={event => { beginLookup(); lookupFlight.current = null; setSearching(false); setPicked(0); setKeyboardPicking(false); setAddedMessage(""); setProductResultsSnapshot(null); setSearch(event.target.value); const local = catalogue.find(event.target.value, /^\d+$/.test(event.target.value.trim())); setProducts(local.items); setNextProduct(local.nextCursor); setSearchError(""); setProductLookupDone(Boolean(local.items.length)); }} onKeyDown={event => { if (["ArrowDown", "ArrowUp"].includes(event.key) && visibleProducts.length) { event.preventDefault(); setKeyboardPicking(true); setPicked(value => (value + (event.key === "ArrowDown" ? 1 : -1) + visibleProducts.length) % visibleProducts.length); } }} />
+                  <Button type="button" variant="outline" size="lg" aria-label="Scan barcode with camera" title="Scan barcode with mobile or webcam camera" disabled={!editable} onClick={() => setCameraScanOpen(true)}><Camera size={16} aria-hidden="true" /></Button>
                   <PharmacyCounterFilters value={productFilter} disabled={!editable} onChange={value => { setProductResultsSnapshot(null); setProductFilter(value); setPicked(0); setKeyboardPicking(false); }} />
                 </div>
               </form>
               <p role="status" className="sr-only">{searching ? "Finding products..." : addedMessage}</p>
             </div>
             <div className={pos.productResults} aria-busy={searching} role="region" aria-label="Available products" tabIndex={0} onPointerDown={() => setKeyboardPicking(false)}>
-              {searchError && <Alert variant="error" title="Lookup needs attention">{searchError}</Alert>}
-              {productLookupDone && !displayProducts.length && !searching && !searchError && !frequentOnly && <EmptyState title={search.trim() ? "No products found" : "No products at this branch"} description="Try another name or check this branch's inventory." className="py-5" />}
+              {searchError && <Alert variant="error" title="Lookup needs attention">{searchError}{canManageCatalog && network === "online" && search.trim() && <div className="mt-2"><Button size="xs" variant="outline" disabled={!editable} onClick={() => { invalidate(); setQuickModalOpen(true); }}>{looksLikeExactBarcode(search) ? `Quick add product for "${search.trim()}"` : "Quick add manual product"}</Button></div>}</Alert>}
+              {productLookupDone && !displayProducts.length && !searching && !searchError && !frequentOnly && <EmptyState title={search.trim() ? "No products found" : "No products at this branch"} description="Try another name or check this branch's inventory." action={canManageCatalog && network === "online" && search.trim() ? <Button size="xs" variant="outline" disabled={!editable} onClick={() => { invalidate(); setQuickModalOpen(true); }}>{looksLikeExactBarcode(search) ? `Quick add product for "${search.trim()}"` : "Quick add manual product"}</Button> : undefined} className="py-5" />}
               {!displayProducts.length && !productLookupDone && !searching && !frequentOnly && <EmptyState icon={<Search aria-hidden="true" />} title="Find a medicine" description="Type a name, scan a barcode or browse branch products." className="py-5" />}
               {frequentOnly && !displayProducts.length && !searching && <p className={pos.hint}>Products you add often appear here. Clear filters to browse all products.</p>}
               {displayProducts.length > 0 && !visibleProducts.length && <p className={pos.hint}>{productFilter.includes("frequent") ? "Products you add often appear here. Clear filters to browse all products." : "No products match these types. Clear filters or search again."}</p>}
@@ -502,6 +595,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
               </article>; })}
               {!search.trim() && !searching && <Button variant="ghost" size="sm" fullWidth aria-label="Browse branch products" disabled={!editable} onClick={() => { void lookup(false, undefined, false, true); }}>Refresh products</Button>}
               {canManageCatalog && <Button variant="outline" size="sm" fullWidth disabled={!editable || network !== "online"} onClick={() => { invalidate(); setCatalogueOpen(true); }}>Find in shared catalogue</Button>}
+              {canManageCatalog && <Button variant="outline" size="sm" fullWidth disabled={!editable || network !== "online"} onClick={() => { invalidate(); setQuickModalOpen(true); }} icon={<Plus size={14} aria-hidden="true" />}>Quick add manual product</Button>}
               {canManageCatalog && onCreateLocal && <Button variant="ghost" size="sm" fullWidth disabled={!editable || network !== "online"} onClick={() => { invalidate(); onCreateLocal(search.trim()); }}>Add custom product</Button>}
               {nextProduct && (!productFilter.includes("frequent") || search.trim()) && <Button size="sm" variant="outline" fullWidth disabled={!editable || searching} onClick={() => { void lookup(false, nextProduct); }}>Next product page</Button>}
             </div>
@@ -518,14 +612,14 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
                 <span className={pos.lineNumber} aria-label="Item number">{index + 1}</span>
                 <div className={pos.lineIdentity}><strong>{line.product.name}{line.product.strength && !line.product.name.toLowerCase().includes(line.product.strength.toLowerCase()) && <span className={pos.strength}> {line.product.strength}</span>}</strong><small className={pos.lineBatch} title={[line.product.rackLocation ? `Rack ${line.product.rackLocation}` : "", line.product.manufacturer, priced?.batches.map(lot => `Batch ${lot.batchNumber} · Exp ${lot.expiryValue}`).join("; ")].filter(Boolean).join(" · ")}>{line.product.rackLocation && <>Rack {line.product.rackLocation} · </>}{line.product.manufacturer && <>{line.product.manufacturer} · </>}{priced ? <>Batch {priced.batches[0]?.batchNumber} · Exp {priced.batches[0]?.expiryValue}{priced.batches.length > 1 ? ` · +${priced.batches.length - 1} more` : ""}</> : packDescription(line.product.unitDefinition!)}</small></div>
                 <div className={pos.quantity}>
-                  <QuantityInput variant="compact" ref={element => { if (element) quantityInputs.current.set(line.lineId, element); else quantityInputs.current.delete(line.lineId); }} label={`Quantity ${productLabel(line.product)}`} decreaseLabel={`Decrease quantity ${productLabel(line.product)}`} increaseLabel={`Increase quantity ${productLabel(line.product)}`} min={1} value={total} disabled={!editable || Boolean(pickup)} onValueChange={value => changeQuantity(line.lineId, value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); showPanel("products", true); } }} />
+                  <QuantityInput variant="compact" ref={element => { if (element) quantityInputs.current.set(line.lineId, element); else quantityInputs.current.delete(line.lineId); }} label={`Quantity ${productLabel(line.product)}`} decreaseLabel={`Decrease quantity ${productLabel(line.product)}`} increaseLabel={`Increase quantity ${productLabel(line.product)}`} min={1} value={total} disabled={!editable || pickupLocked} onValueChange={value => changeQuantity(line.lineId, value)} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); showPanel("products", true); } }} />
                 <div className={pos.units}><span>{line.product.unitDefinition?.baseUnit}</span><Button size="sm" variant="ghost" onClick={() => addPacks(line.lineId, 1)}>+1 {line.product.unitDefinition?.packUnit} ({line.product.unitDefinition?.unitsPerPack})</Button>{line.product.unitDefinition?.outerPackUnit && <Button size="sm" variant="ghost" onClick={() => addPacks(line.lineId, line.product.unitDefinition!.packsPerOuter!)}>+1 {line.product.unitDefinition.outerPackUnit} ({line.product.unitDefinition.packsPerOuter! * line.product.unitDefinition.unitsPerPack})</Button>}</div></div>
                 <div className={pos.linePrice} aria-label={`Pricing ${productLabel(line.product)}`}>
                   <div className={pos.unitRate}><span className="sr-only">Rate </span>{priced ? [...new Set(priced.batches.map(lot => lot.sellingPricePaise))].map(price => <small key={price}>{money(price / 100)}<span className={pos.priceUnit}> per {priced.unitSnapshot.baseUnit}</span></small>) : <small>{estimated ? <>{money(estimated.unitPaise / 100)}<span className={pos.priceUnit}> per {line.product.unitDefinition?.baseUnit}</span></> : network === "offline" ? "Price not cached" : "Calculating..."}</small>}</div>
                   <span className={pos.lineGst} title={quote ? "GST rate from the current quote" : "Last captured rate; checked at billing"}><span className="sr-only">GST </span>{gstRate === undefined ? "—" : `${gstRate / 100}%`}</span>
                   <strong className={pos.lineAmount}><span className="sr-only">Line total </span><span>{calculated ? money(calculated.grossAmountPaise / 100) : estimated ? money(estimated.grossPaise / 100) : "—"}</span></strong>
                 </div>
-                <div className={pos.lineActions}><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} aria-label={`Edit item ${productLabel(line.product)}`} title="Pack quantities and line discount" onClick={() => setEditingLineId(line.lineId)}><SlidersHorizontal size={14} aria-hidden="true" /></Button><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} onClick={() => { if (pickup && lines.length === 1) { void clearCart(); return; } invalidate(); setLines(previous => previous.filter(row => row.lineId !== line.lineId)); }} aria-label={`Remove ${productLabel(line.product)}`}><X size={16} aria-hidden="true" /></Button></div>
+                <div className={pos.lineActions}><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} aria-label={`Edit item ${productLabel(line.product)}`} title="Pack quantities and line discount" onClick={() => setEditingLineId(line.lineId)}><SlidersHorizontal size={14} aria-hidden="true" /></Button><Button size="sm" variant="ghost" className={pos.remove} disabled={!editable} onClick={() => { if (pickupLocked && lines.length === 1) { void clearCart(); return; } invalidate(); setLines(previous => previous.filter(row => row.lineId !== line.lineId)); }} aria-label={`Remove ${productLabel(line.product)}`}><X size={16} aria-hidden="true" /></Button></div>
 
               </fieldset>; })}
             </fieldset></div>
@@ -596,7 +690,7 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
     {historyCustomer && <PharmacyCounterCustomerHistory key={historyCustomer.id} customer={historyCustomer} locationId={locationId} onClose={() => setHistoryCustomer(null)} />}
     {paymentEditor && payable !== undefined && <PharmacyCounterPaymentEditor locationId={locationId} totalPaise={payable} customerId={customer?.id || null} initial={advancedPayment} onClose={() => setPaymentEditor(false)} onApply={value => { setAdvancedPayment(value); setOnAccount(false); setPaymentEditor(false); }} />}
     {addingCustomer && <PharmacyCounterCustomerForm locationId={locationId} onClose={() => setAddingCustomer(false)} onSelected={value => { invalidate(); setCustomer(value); setCustomerMode("recorded"); setAddingCustomer(false); setCustomers([]); }} />}
-    {editingLine && <Modal open title="Edit item" description={editingLine.product.name} onClose={() => setEditingLineId(null)} size="md" footer={<Button size="sm" onClick={() => { setEditingLineId(null); requestAnimationFrame(() => scanner.current?.focus()); }}>Done</Button>}><fieldset disabled={!editable || Boolean(pickup)} className={pos.itemEditor}><p>{packDescription(editingLine.product.unitDefinition!)}</p><div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
+    {editingLine && <Modal open title="Edit item" description={editingLine.product.name} onClose={() => setEditingLineId(null)} size="md" footer={<Button size="sm" onClick={() => { setEditingLineId(null); requestAnimationFrame(() => scanner.current?.focus()); }}>Done</Button>}><fieldset disabled={!editable || pickupLocked} className={pos.itemEditor}><p>{packDescription(editingLine.product.unitDefinition!)}</p><div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
                   <PharmacyPackQuantity ariaLabel={`Packs ${editingLine.product.name}`} label="Full packs" unit={editingLine.product.unitDefinition!} value={editingLine.packs} onChange={value => { invalidate(); setLines(previous => previous.map(row => row.lineId === editingLine.lineId ? { ...row, packs: value } : row)); }} onError={setError} />
                   <Input aria-label={`Loose units ${editingLine.product.name}`} label="Loose units" type="number" min="0" step="1" value={editingLine.loose} onChange={event => { invalidate(); setLines(previous => previous.map(row => row.lineId === editingLine.lineId ? { ...row, loose: event.target.value } : row)); }} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); setEditingLineId(null); showPanel("products", true); } }} />
                   <Input containerClassName="col-span-2 sm:col-span-1" aria-label={`Discount ${editingLine.product.name} (INR)`} label="Discount (INR)" type="number" min="0" step="0.01" value={editingLine.discount} onChange={event => { invalidate(); setLines(previous => previous.map(row => row.lineId === editingLine.lineId ? { ...row, discount: event.target.value } : row)); }} />
@@ -617,5 +711,40 @@ function CounterSession({ onViewHistory, toolbarContext, toolbarActions, initial
       setSearchError(inventoryMode === "tracked" ? "Product linked. Complete sale/tax review and receive actual stock in Inventory before billing." : "Product linked. Complete sale/tax review before billing; stock is not tracked.");
       if (canReview) setReviewing(product.id); onProductReviewed?.();
     }} />}
+    <PharmacyBarcodeScanDialog
+      open={cameraScanOpen}
+      title="Scan medicine barcode"
+      description="Scan a retail pack barcode or branch sticker with your camera to add it to the cart."
+      onClose={() => setCameraScanOpen(false)}
+      onDetected={code => { setCameraScanOpen(false); scanHandler.current(code, true); }}
+    />
+    {canManageCatalog && quickModalOpen && (
+      <PharmacyQuickProductModal
+        open
+        locationId={locationId}
+        inventoryMode={inventoryMode}
+        initialBarcode={looksLikeExactBarcode(search) ? search.trim() : ""}
+        initialName={!looksLikeExactBarcode(search) ? search.trim() : ""}
+        canReceiveStock={canReceiveStock}
+        canViewCost={hasAnyPermission(user, "PHARMACY_VIEW_COST", "MANAGE_MEDICINES")}
+        canReviewProducts={canReview}
+        onClose={() => setQuickModalOpen(false)}
+        onCreated={({ counterProduct: created, addToCart }) => {
+          setQuickModalOpen(false);
+          catalogue.remember([created], created.name, false, null);
+          setCatalogueVersion(v => v + 1);
+          onProductReviewed?.();
+          if (addToCart) {
+            add(created, true, true);
+          } else {
+            setSearch(created.name);
+            setProducts([created]);
+            setNextProduct(null);
+            setProductLookupDone(true);
+            setSearchError("Product saved to catalogue. Complete classification review and opening stock in Inventory before billing.");
+          }
+        }}
+      />
+    )}
   </section>;
 }

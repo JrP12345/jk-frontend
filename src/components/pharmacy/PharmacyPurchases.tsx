@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Info, Plus, Search, Trash2, Upload, UserPlus } from "lucide-react";
 import { Alert, Badge, Button, Card, Checkbox, DatePicker, Input, Select, Spinner, Tabs } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
+import { PharmacyDetailLoadingSheet } from "./PharmacyDetailLoader";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
 import { authScopeKey } from "@/lib/authScope";
@@ -109,6 +110,9 @@ function PurchaseSession({
   const [draft, setDraft] = useState<PurchaseDraft | "new" | null>(null);
   const [retry, setRetry] = useState(0);
   const [operation, setOperation] = useState<PurchaseDraft | null>(null);
+  const [openingPurchase, setOpeningPurchase] = useState<{ id: string; label?: string; supplierName?: string } | null>(null);
+  const [openingLoading, setOpeningLoading] = useState(false);
+  const [openingError, setOpeningError] = useState("");
   const beginRead = useLatestRead();
   const beginDetail = useLatestRead();
   const readKey = `${locationId}:${tab}:${query}:${cursor || ""}:${archived}`;
@@ -166,17 +170,32 @@ function PurchaseSession({
     setRetry(value => value + 1);
   };
 
-  async function openDraft(id: string) {
+  function closeOpeningPurchase() {
+    beginDetail();
+    setOpeningLoading(false);
+    setOpeningPurchase(null);
+    setOpeningError("");
+  }
+
+  async function openDraft(id: string, preview?: PurchaseDraft) {
     const request = beginDetail();
+    setDraft(null);
+    setOperation(null);
     setError("");
+    setOpeningError("");
+    setOpeningPurchase(preview ? { id, label: preview.supplierInvoiceNumber, supplierName: preview.supplierSnapshot.name } : { id });
+    setOpeningLoading(true);
     try {
       const result = await readPurchase(id, locationId);
       if (request.isCurrent()) {
+        setOpeningPurchase(null);
         if (result.status === "posted") setOperation(result);
         else setDraft(result);
       }
     } catch (failure) {
-      if (request.isCurrent()) setError(errorMessage(failure));
+      if (request.isCurrent()) setOpeningError(errorMessage(failure));
+    } finally {
+      if (request.isCurrent()) setOpeningLoading(false);
     }
   }
 
@@ -406,7 +425,7 @@ function PurchaseSession({
                           size="xs"
                           variant="outline"
                           onClick={() => {
-                            void openDraft(row.id);
+                            void openDraft(row.id, row as PurchaseDraft);
                           }}
                         >
                           Open {(row as PurchaseDraft).status === "posted" ? "purchase" : "draft"}{" "}
@@ -499,6 +518,18 @@ function PurchaseSession({
           }}
         />
       )}
+      <PharmacyDetailLoadingSheet
+        open={Boolean(!draft && !operation && (openingLoading || openingError))}
+        size="xl"
+        title={openingPurchase?.label ? `Loading ${openingPurchase.label}` : "Loading purchase"}
+        description={openingPurchase?.supplierName}
+        label="Loading purchase details..."
+        error={!openingLoading ? openingError : ""}
+        errorTitle="Purchase details unavailable"
+        onRetry={openingPurchase?.id && !openingLoading && openingError ? () => { void openDraft(openingPurchase.id); } : undefined}
+        onClose={closeOpeningPurchase}
+      />
+
       {operation && (
         <PharmacyPurchaseOperations
           key={operation.id}

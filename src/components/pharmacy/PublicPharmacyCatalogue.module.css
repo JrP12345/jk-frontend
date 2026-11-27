@@ -25,6 +25,18 @@
 .fields { display: grid; gap: 34px; min-width: 0; margin: 4px 0 34px; padding: 0; border: 0; }
 .selectionTitle { font-size: 14px; font-weight: 600; padding-top: 4px; }
 .selectionCount { margin-top: 10px; font-size: 13px; color: var(--text-secondary); }
+.customRequest { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.customTitle { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.customHint { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.noteMeta { font-size: 12px; color: var(--text-secondary); text-align: right; }
+.uploadActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.attachmentList { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.attachmentCard { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-alt); }
+.attachmentThumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; shrink: 0; flex-shrink: 0; border: 1px solid var(--border); background: var(--background); }
+.attachmentDoc { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0; border: 1px solid var(--border); background: var(--background); color: var(--text-secondary); }
+.attachmentInfo { min-width: 0; flex: 1; }
+.attachmentName { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; }
+.attachmentSize { display: block; font-size: 11px; color: var(--text-secondary); }
 .card .submit { width: 100%; min-height: 48px; margin-top: 14px; border-radius: 12px; background: var(--pharmacy-action, var(--p-500)); color: var(--pharmacy-action-text, var(--brand-mist)); font-size: 15px; }
 .card .submit:hover:not(:disabled) { background: var(--pharmacy-action-hover, var(--p-600)); }
 /* The profile provides the available width; embedded clinic catalogues stay stacked. */

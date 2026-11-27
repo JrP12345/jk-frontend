@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Checkbox, DatePicker, Input, Select } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
+import { PharmacyDetailLoadingState } from "./PharmacyDetailLoader";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
 import { authScopeKey } from "@/lib/authScope";
@@ -68,6 +69,7 @@ export function PharmacyCustomerReminders({ locationId, partyId, onClose }: { lo
   }
   return <Modal open title="Customer follow-up reminders" size="lg" busy={busy} onClose={onClose}><section className={styles.list} aria-label="Customer reminders">
     {error && <Alert variant="error" title="Reminder needs attention">{error}</Alert>}
+    {!page && !error && <PharmacyDetailLoadingState label="Loading customer reminders..." className="py-4" />}
     {pending && <Alert variant="warning" title="Check earlier reminder"><p>Reference: {pending}</p><Button size="sm" disabled={busy} onClick={() => { void recover(); }}>Check reminder result</Button>{canRetry && <Button size="sm" disabled={busy} onClick={() => { void save(); }}>Retry same reminder</Button>}{notRecorded && !canRetry && <Button size="sm" disabled={busy} onClick={() => { setReenter(true); setNotRecorded(false); setConsent(false); setRetry(value => value + 1); }}>Review original reminder details</Button>}</Alert>}
     {page && <><h3>{page.customerName}</h3><p>Send to {page.email || "email not recorded"}. Each follow-up needs the customer's permission. Refill dates are explicitly agreed with the customer; dosage is never inferred.</p>{!page.emailConfigured && <Alert variant="info" title="Email delivery is not configured">Scheduled reminders remain pending until the email service and outbound worker are available.</Alert>}
       <fieldset className={styles.form} disabled={busy || Boolean(pending && !reenter) || page.archived || !page.email}><Select label="Follow-up purpose" value={kind} options={[{ value: "refill", label: "Requested refill follow-up" }, { value: "dues", label: "Outstanding invoice follow-up" }]} onChange={event => setKind(event.target.value)} />

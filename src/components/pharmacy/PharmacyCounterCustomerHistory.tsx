@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Badge, Button, EmptyState, Modal } from "@/components/ui";
+import { Alert, Badge, Button, EmptyState, Modal, Spinner } from "@/components/ui";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { counterCustomerHistory, type CustomerSale } from "@/lib/pharmacyCollections";
 import type { CounterCustomer } from "@/lib/pharmacyCounter";
@@ -22,7 +22,7 @@ export function PharmacyCounterCustomerHistory({ customer, locationId, onClose }
   if (invoiceId) return <PharmacyCollections locationId={locationId} canCollect={false} initialInvoiceId={invoiceId} focusOnly onInvoiceClose={() => setInvoiceId(null)} />;
   return <Modal open title="Customer history" description={customer.name} size="lg" onClose={onClose} footer={<><Button variant="outline" size="sm" onClick={onClose}>Close history</Button>{cursor && <Button size="sm" variant="outline" disabled={loading} onClick={() => setCursor(undefined)}>Latest bills</Button>}{next && <Button size="sm" variant="outline" disabled={loading} onClick={() => setCursor(next)}>Older bills</Button>}</>}>
     <p className="mb-4 text-sm text-text-secondary">Saved bills at this branch, newest first. Each bill shows its current remaining due.</p>
-    {loading && <p role="status">Loading customer history...</p>}
+    {loading && <div role="status" className="flex items-center gap-2 py-2 text-xs text-text-secondary"><Spinner size="sm" /><span>Loading customer history...</span></div>}
     {error && <Alert variant="error" title="History unavailable">{error}<Button size="sm" onClick={() => { void load(); }}>Retry history</Button></Alert>}
     {!loading && !error && !items.length && <EmptyState title="No saved bills for this customer" description="Bills linked to this customer at this branch will appear here." />}
     <div className="divide-y divide-border">{items.map(row => <article key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-4">

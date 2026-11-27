@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { PublicPharmacyCatalogue } from "@/components/pharmacy/PublicPharmacyCatalogue";
 import PickupTicketPage from "@/app/pickup/PickupTicketPage";
 import { PharmacyStorefrontSettings } from "@/components/pharmacy/PharmacyStorefrontSettings";
 import { PharmacyPickups } from "@/components/pharmacy/PharmacyPickups";
-import { parsePickupTicket, pickupTokenFromScan, publicMedicines, readPickupTicket, requestPickup, type PickupTicket } from "@/lib/publicPharmacy";
-import { changePickup, readPickupQueue, readStorefront, saveStorefront, scanPickupTicket } from "@/lib/pharmacyPickup";
+import { parsePickupTicket, pickupTokenFromScan, publicMedicines, readPickupTicket, readPublicPickupAttachment, requestPickup, type PickupTicket } from "@/lib/publicPharmacy";
+import { changePickup, readPickupQueue, readStaffPickupAttachment, readStorefront, saveStorefront, scanPickupTicket } from "@/lib/pharmacyPickup";
 import { facilityHasDoctorSection } from "@/lib/facility";
 import { locationDescription } from "@/lib/publicSeo";
 import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
@@ -16,8 +16,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: fixture.push }) })
 vi.mock("qrcode", () => ({ default: { toDataURL: fixture.qr } }));
 vi.mock("@/components/MarketplaceNavbar", () => ({ default: () => <nav>Navigation</nav> }));
 vi.mock("@/components/pharmacy/PharmacyCollections", () => ({ PharmacyCollections: () => <p>Existing bill collection</p> }));
-vi.mock("@/lib/publicPharmacy", async original => ({ ...await original<typeof import("@/lib/publicPharmacy")>(), publicMedicines: vi.fn(), requestPickup: vi.fn(), readPickupTicket: vi.fn() }));
-vi.mock("@/lib/pharmacyPickup", async original => ({ ...await original<typeof import("@/lib/pharmacyPickup")>(), changePickup: vi.fn(), readPickupQueue: vi.fn(), readStorefront: vi.fn(), saveStorefront: vi.fn(), scanPickupTicket: vi.fn() }));
+vi.mock("@/lib/publicPharmacy", async original => ({ ...await original<typeof import("@/lib/publicPharmacy")>(), publicMedicines: vi.fn(), requestPickup: vi.fn(), readPickupTicket: vi.fn(), readPublicPickupAttachment: vi.fn() }));
+vi.mock("@/lib/pharmacyPickup", async original => ({ ...await original<typeof import("@/lib/pharmacyPickup")>(), changePickup: vi.fn(), readPickupQueue: vi.fn(), readStaffPickupAttachment: vi.fn(), readStorefront: vi.fn(), saveStorefront: vi.fn(), scanPickupTicket: vi.fn() }));
 const product = { id: "product", name: "Ordinary medicine", genericName: "Generic", strength: "", baseUnit: "tablet", unitVersion: 1, available: true };
 const ticket: PickupTicket = { id: "request", locationId: "branch", reference: "PK-123456789A", status: "requested", revision: 0, createdAt: "2026-11-14T00:00:00Z", expiresAt: "2099-11-16T00:00:00Z", items: [{ medicineId: product.id, name: product.name, strength: "", baseUnit: "tablet", quantity: 2 }] };
 const secret = "a".repeat(64);
@@ -26,9 +26,11 @@ beforeEach(() => {
   vi.clearAllMocks(); window.history.replaceState(null, "", "/");
   vi.mocked(publicMedicines).mockResolvedValue({ items: [product], nextCursor: null, pickupEnabled: true });
   vi.mocked(readPickupTicket).mockResolvedValue(ticket);
+  vi.mocked(readPublicPickupAttachment).mockResolvedValue(new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" }));
   vi.mocked(readStorefront).mockResolvedValue({ locationId: "branch", catalogueEnabled: false, pickupEnabled: false, revision: 0 });
   vi.mocked(readPickupQueue).mockResolvedValue({ items: [{ ...ticket, customerName: "Customer", phone: "9999999999" }], nextCursor: null });
   vi.mocked(scanPickupTicket).mockResolvedValue({ ...ticket, customerName: "Customer", phone: "9999999999" });
+  vi.mocked(readStaffPickupAttachment).mockResolvedValue(new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" }));
 });
 
 it("accepts local QR fragments and staff references without following scanned links", () => {
@@ -209,4 +211,109 @@ it("keeps an uncertain cancellation frozen and retries with the same revision an
   await waitFor(() => expect(changePickup).toHaveBeenCalledTimes(2));
   expect(vi.mocked(changePickup).mock.calls[1]).toEqual(first);
   expect(first).toEqual(["request", { locationId: "branch", action: "cancel", expectedRevision: 0 }, expect.any(String)]);
+});
+
+it("opens the mobile pickup drawer immediately while authoritative parcel details load and cancels late reads on close", async () => {
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => ({ matches: media === "(max-width: 767px)", media, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+  let resolveTicket!: (value: StaffPickup) => void;
+  const authoritative = { ...ticket, revision: 4, customerName: "Customer", phone: "9999999999" };
+  vi.mocked(scanPickupTicket).mockImplementationOnce(() => new Promise(resolve => { resolveTicket = resolve; }));
+  const prepare = vi.fn();
+  render(<PharmacyPickups locationId="branch" canPrepare canCollect canOpenTill onPrepare={prepare} />);
+  fireEvent.click(await screen.findByRole("button", { name: `Open parcel ${ticket.reference}` }));
+  const loadingSheet = screen.getByRole("dialog", { name: `Opening ${ticket.reference}` });
+  expect(within(loadingSheet).getByText("Customer · 9999999999")).toBeInTheDocument();
+  expect(within(loadingSheet).getByText("Loading parcel details...")).toBeInTheDocument();
+  expect(within(loadingSheet).queryByRole("button", { name: "Prepare parcel bill" })).not.toBeInTheDocument();
+  await act(async () => { resolveTicket(authoritative); });
+  const loadedSheet = await screen.findByRole("dialog", { name: ticket.reference });
+  expect(within(loadedSheet).getByRole("button", { name: "Prepare parcel bill" })).toBeEnabled();
+
+  let resolveSecond!: (value: StaffPickup) => void;
+  vi.mocked(scanPickupTicket).mockImplementationOnce(() => new Promise(resolve => { resolveSecond = resolve; }));
+  fireEvent.click(within(loadedSheet).getByRole("button", { name: "Close modal" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  fireEvent.click(screen.getByRole("button", { name: `Open parcel ${ticket.reference}` }));
+  const secondLoading = screen.getByRole("dialog", { name: `Opening ${ticket.reference}` });
+  fireEvent.click(within(secondLoading).getByRole("button", { name: "Close modal" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  await act(async () => { resolveSecond(authoritative); });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+it("allows submitting a written description and uploaded image without selecting catalogue medicines", async () => {
+  vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:http://localhost/preview-1");
+  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const customTicket: PickupTicket = { ...ticket, items: [], notes: "Pack urgently", attachments: [{ id: "att-1", name: "rx.png", contentType: "image/png", size: 20 }] };
+  vi.mocked(requestPickup).mockResolvedValue(customTicket);
+
+  render(<PublicPharmacyCatalogue locationId="branch" slug="pharmacy" published allowPickup />);
+  await screen.findByRole("button", { name: `Add ${product.name}` });
+  fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "Customer" } });
+  fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "9999999999" } });
+  const submit = screen.getByRole("button", { name: "Request pickup" });
+  expect(submit).toBeDisabled();
+
+  fireEvent.change(screen.getByLabelText("Description or medicine list"), { target: { value: "Dolo 650mg 1 strip" } });
+  expect(submit).toBeEnabled();
+  fireEvent.change(screen.getByLabelText("Description or medicine list"), { target: { value: "" } });
+  expect(submit).toBeDisabled();
+
+  const fileInput = screen.getByLabelText("Upload prescription or list files");
+  const pngFile = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "rx.png", { type: "image/png" });
+  await act(async () => { fireEvent.change(fileInput, { target: { files: [pngFile] } }); });
+
+  expect(await screen.findByText("1/4 attached.", { exact: false })).toBeInTheDocument();
+  expect(screen.getByAltText("rx.png")).toHaveAttribute("src", "blob:http://localhost/preview-1");
+  expect(submit).toBeEnabled();
+
+  fireEvent.change(screen.getByLabelText("Description or medicine list"), { target: { value: "Pack urgently" } });
+  fireEvent.click(submit);
+
+  await waitFor(() => expect(fixture.push).toHaveBeenCalledWith(expect.stringMatching(/^\/pickup#[a-f0-9]{64}$/)));
+  expect(requestPickup).toHaveBeenCalledWith(
+    "pharmacy",
+    "branch",
+    expect.objectContaining({
+      items: [],
+      notes: "Pack urgently",
+      attachments: [expect.objectContaining({ name: "rx.png", contentType: "image/png", base64Data: expect.any(String) })],
+    }),
+    expect.any(String),
+  );
+});
+
+it("renders written descriptions and previewable attachments on both customer tickets and staff pickup queue", async () => {
+  vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:http://localhost/blob-img");
+  vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  const customTicket: PickupTicket = {
+    ...ticket,
+    items: [],
+    notes: "Paracetamol 500mg - 1 strip",
+    attachments: [{ id: "att-1", name: "rx-note.png", contentType: "image/png", size: 256 }],
+  };
+  const customStaff = { ...customTicket, customerName: "Customer", phone: "9999999999" };
+
+  window.history.replaceState(null, "", `/pickup#${secret}`);
+  vi.mocked(readPickupTicket).mockResolvedValue(customTicket);
+  const ticketView = render(<PickupTicketPage />);
+  expect(await screen.findByText("Paracetamol 500mg - 1 strip")).toBeInTheDocument();
+  expect(screen.getByText("Uploaded images / PDF (1)")).toBeInTheDocument();
+  await waitFor(() => expect(readPublicPickupAttachment).toHaveBeenCalledWith(secret, "att-1", expect.any(AbortSignal)));
+  fireEvent.click(await screen.findByRole("button", { name: "View image rx-note.png" }));
+  expect(await screen.findByRole("dialog", { name: "rx-note.png" })).toBeInTheDocument();
+  ticketView.unmount();
+
+  vi.mocked(readPickupQueue).mockResolvedValue({ items: [customStaff], nextCursor: null });
+  vi.mocked(scanPickupTicket).mockResolvedValue(customStaff);
+  const prepare = vi.fn();
+  render(<PharmacyPickups locationId="branch" canPrepare canCollect canOpenTill onPrepare={prepare} />);
+  const queueButton = await screen.findByRole("button", { name: `Open parcel ${customTicket.reference}` });
+  expect(queueButton).toHaveTextContent("Customer · note · 1 file");
+  fireEvent.click(queueButton);
+  expect(await screen.findByText("Written request / instructions")).toBeInTheDocument();
+  expect(screen.getByText("Paracetamol 500mg - 1 strip")).toBeInTheDocument();
+  await waitFor(() => expect(readStaffPickupAttachment).toHaveBeenCalledWith("branch", customTicket.id, "att-1", false, expect.any(AbortSignal)));
+  fireEvent.click(screen.getByRole("button", { name: "Prepare parcel bill" }));
+  expect(prepare).toHaveBeenCalledWith(customStaff);
 });

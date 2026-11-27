@@ -16,6 +16,7 @@ import api, { getApiUrl } from "@/lib/api";
 import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 import { userFacingError } from "@/lib/userFacingError";
 import { Card, Button, Badge, Skeleton, Modal, DatePicker, useToast, cn, EkavyuLogo, ModeSwitcher } from "@/components/ui";
+import { vibrateFeedback } from "@/lib/haptics";
 import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Receipt, CreditCard, Pill, Volume2, VolumeX, Smartphone, Copy } from "lucide-react";
 import QRCode from "qrcode";
 
@@ -502,13 +503,7 @@ export default function PublicLiveQueueTracker() {
   }, [soundEnabled]);
 
   const triggerVibration = useCallback(() => {
-    if (typeof window !== "undefined" && "vibrate" in navigator) {
-      try {
-        navigator.vibrate([250, 100, 250, 100, 400]);
-      } catch {
-        // Ignored if browser restricts
-      }
-    }
+    vibrateFeedback("alert");
   }, []);
 
   // Monitor transitions to "in-consultation" for sensory notification (once per session)

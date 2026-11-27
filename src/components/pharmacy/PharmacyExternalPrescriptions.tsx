@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, Plus, Printer, RotateCw, Search } from "lucide-react";
+import { Camera, ChevronDown, Plus, Printer, RotateCw, Search } from "lucide-react";
 import { Alert, Badge, Button, Card, Checkbox, Input, QuantityInput, Select, Spinner, cn } from "@/components/ui";
+import { PharmacyBarcodeScanDialog } from "./PharmacyBarcodeScanDialog";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useMobileViewport } from "@/hooks/useMobileViewport";
 import { useAuthStore } from "@/store/authStore";
@@ -85,6 +86,7 @@ function PrescriptionSession({
   const [extraSearch, setExtraSearch] = useState("");
   const [extraResults, setExtraResults] = useState<CounterProduct[]>([]);
   const [extraCursor, setExtraCursor] = useState<string | null>(null);
+  const [extraScanOpen, setExtraScanOpen] = useState(false);
   const extraRead = useLatestRead();
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
@@ -829,6 +831,16 @@ function PrescriptionSession({
                         />
                       </div>
                       <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        aria-label="Scan ordinary product barcode"
+                        disabled={blocked}
+                        onClick={() => setExtraScanOpen(true)}
+                      >
+                        <Camera size={15} aria-hidden="true" />
+                      </Button>
+                      <Button
                         size="sm"
                         variant="outline"
                         className="w-full shrink-0 sm:w-auto"
@@ -838,6 +850,15 @@ function PrescriptionSession({
                         Find ordinary product
                       </Button>
                     </div>
+                    <PharmacyBarcodeScanDialog
+                      open={extraScanOpen}
+                      title="Scan barcode for ordinary item"
+                      onClose={() => setExtraScanOpen(false)}
+                      onDetected={code => {
+                        setExtraSearch(code);
+                        setExtraCursor(null);
+                      }}
+                    />
 
                     {(extraResults.length > 0 || extraCursor) && (
                       <div className="flex flex-wrap gap-2">

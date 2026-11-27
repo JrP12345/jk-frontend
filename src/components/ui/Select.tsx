@@ -1,7 +1,8 @@
 "use client";
 
-import { type SelectHTMLAttributes, type ReactNode, forwardRef, useId, useState, useEffect, useRef, useCallback, memo } from "react";
+import { type SelectHTMLAttributes, type ReactNode, type MouseEvent as ReactMouseEvent, forwardRef, useId, useState, useEffect, useRef, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
+import { runWithTouchSelectionHaptic } from "@/lib/haptics";
 import { popoverPosition } from "@/lib/popoverPosition";
 import { cn } from "./utils";
 import { fieldBase, fieldError, fieldLabel, fieldVariants } from "./controlStyles";
@@ -215,17 +216,22 @@ const Select = memo(
         }
       }, [focusedIndex, isOpen]);
 
-      const handleSelectOption = (o: SelectOption) => {
+      const handleSelectOption = (o: SelectOption, event?: ReactMouseEvent<HTMLButtonElement>) => {
         if (o.disabled) return;
-        setNativeError("");
-        setSelectedValue(o.value);
-        onChange?.({
-          target: {
-            name,
-            value: o.value,
-          },
-        });
-        setIsOpen(false);
+        const changing = o.value !== selectedValue;
+        const commit = () => {
+          setNativeError("");
+          setSelectedValue(o.value);
+          onChange?.({
+            target: {
+              name,
+              value: o.value,
+            },
+          });
+          setIsOpen(false);
+        };
+        if (event && changing) runWithTouchSelectionHaptic(event, commit);
+        else commit();
       };
 
       const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -495,7 +501,7 @@ const Select = memo(
                           tabIndex={-1}
                           aria-selected={isSelected}
                           disabled={o.disabled}
-                          onClick={() => handleSelectOption(o)}
+                          onClick={(event) => handleSelectOption(o, event)}
                           className={cn(
                             "flex items-center justify-between w-full text-left px-3.5 py-2.5 md:py-2 text-sm font-medium rounded-lg transition-colors duration-[var(--motion-fast)] cursor-pointer select-none min-h-[44px] md:min-h-0",
                             isSelected

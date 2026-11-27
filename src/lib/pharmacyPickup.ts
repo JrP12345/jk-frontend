@@ -30,4 +30,12 @@ export type PickupTransition = { locationId: string; expectedRevision: number; a
 export async function changePickup(id: string, input: PickupTransition, key: string) {
   return staffPickup((await api.post(`/pharmacy/pickups/${id}/transition`, input, { headers: { "Idempotency-Key": key } })).data?.data, input.locationId);
 }
+export async function readStaffPickupAttachment(locationId: string, pickupId: string, attachmentId: string, download = false, signal?: AbortSignal): Promise<Blob> {
+  const response = await api.get(`/pharmacy/pickups/${encodeURIComponent(pickupId)}/attachments/${encodeURIComponent(attachmentId)}`, {
+    params: { locationId, ...(download ? { download: "1" } : {}) },
+    responseType: "blob",
+    signal,
+  });
+  return response.data as Blob;
+}
 export const pickupError = (failure: unknown) => (failure as { response?: { data?: { message?: string } } })?.response?.data?.message || (failure instanceof Error ? failure.message : "The pickup operation could not be confirmed. Refresh before trying again");

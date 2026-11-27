@@ -87,3 +87,19 @@ it("restores an opaque pending stage after reload and blocks a new physical comm
   sessionStorage.setItem(stored, JSON.stringify({ key: "existing-reference-42", action: "dispatch", transferId })); render(view());
   await screen.findByRole("button", { name: "Check transfer outcome" }); expect(screen.getByRole("button", { name: "Prepare reviewed transfer" })).toBeDisabled(); expect(api.post).not.toHaveBeenCalled();
 });
+it("opens the mobile transfer drawer immediately while transfer details load", async () => {
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => ({ matches: media === "(max-width: 767px)", addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+  let resolveTransfer!: (value: unknown) => void;
+  const pendingTransfer = new Promise(resolve => { resolveTransfer = resolve; });
+  vi.mocked(api.get).mockImplementation(async url => String(url).startsWith("/pharmacy/transfers?") ? response({ items: [transfer()], nextCursor: null }) : pendingTransfer);
+  try {
+    render(view());
+    fireEvent.click(await screen.findByRole("button", { name: /DELIVERY-42/ }));
+    const sheet = screen.getByRole("dialog", { name: "DELIVERY-42" });
+    expect(sheet).toHaveTextContent("Loading transfer details...");
+    await act(async () => { resolveTransfer(response(transfer())); });
+    await screen.findByRole("button", { name: "Approve both branches" });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

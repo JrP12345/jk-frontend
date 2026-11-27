@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Modal, Select } from "@/components/ui";
+import { Alert, Button, Input, Modal, Select, Spinner } from "@/components/ui";
 import api from "@/lib/api";
 import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { createPharmacyLocalClient } from "@/lib/pharmacyDrafts";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { dateLabel, money } from "./pharmacyWorkspace";
+import type { BatchStickerSeed } from "./PharmacyBarcodeStickersModal";
 
 type Lot = { id: string; batchNumber: string; quantity: number; status: string; expiryDate: string; printedExpiry?: string; sellingPrice: number; mrp?: number; purchaseCost?: number; saleBlocked: boolean };
 type StockState = { medicineId: string; locationId: string; name: string; stockQuantity: number; stockRevision: number; unitDefinition: { baseUnit: string } | null;
@@ -15,8 +16,8 @@ type CountCommand = { key: string; input: { medicineId: string; batchId?: string
 type Movement = { _id: string; revision: number; kind: string; reason: string; beforeQuantity: number; afterQuantity: number; createdAt: string };
 const errorMessage = (e: unknown) => (e as { response?: { data?: { message?: string } } })?.response?.data?.message || (e instanceof Error ? e.message : "Stock operation could not be confirmed. Keep the same reference.");
 
-export function PharmacyProductStockTools({ medicineId, locationId, canAdjust, canReadMovements, onClose, onChanged }: {
-  medicineId: string; locationId: string; canAdjust: boolean; canReadMovements: boolean; onClose: () => void; onChanged: () => void;
+export function PharmacyProductStockTools({ medicineId, locationId, canAdjust, canReadMovements, onClose, onChanged, onPrintStickers }: {
+  medicineId: string; locationId: string; canAdjust: boolean; canReadMovements: boolean; onClose: () => void; onChanged: () => void; onPrintStickers?: (seed: BatchStickerSeed) => void;
 }) {
   const scope = authScopeKey(useAuthStore(state => state.user)), storageKey = `pharmacy-product-count:${scope}:${locationId}:${medicineId}`;
   const [journal] = useState(() => createPharmacyLocalClient<CountCommand | null>(scope, locationId, `product-count-${medicineId}`, raw => {
@@ -84,11 +85,11 @@ export function PharmacyProductStockTools({ medicineId, locationId, canAdjust, c
   }
   return <Modal open title="Batches, stock and movement history" description={data?.name} onClose={onClose} busy={busy} size="lg"><div className="space-y-4">
     {error && <Alert variant="error" title="Stock needs attention">{error}</Alert>}
-    {loading && <p role="status">Loading current stock…</p>}
+    {loading && <div role="status" className="flex items-center gap-2 py-2 text-xs text-text-secondary"><Spinner size="sm" /><span>Loading current stock…</span></div>}
     {pending && <Alert variant={result ? "success" : "warning"} title={result ? "Stock adjustment confirmed" : "Check original physical count"}><p className="break-all">Reference {pending}</p>{result ? <><p>Revision {result.revision}: {result.beforeQuantity} → {result.afterQuantity}</p><Button size="sm" disabled={busy} onClick={() => { void acknowledge(); }}>Done with this count</Button></> : <div className="flex flex-wrap gap-2"><Button size="sm" disabled={busy || !canReadMovements} onClick={() => { void recover(); }}>Check count result</Button>{staleCount && <Button size="sm" disabled={busy} onClick={() => { void recount(); }}>Reload stock and recount rejected adjustment</Button>}{canRetry && canAdjust && !staleCount && <Button size="sm" disabled={busy} onClick={() => { void count({ preventDefault() {} } as React.FormEvent); }}>Retry same count</Button>}</div>}</Alert>}
     {data && <><p>Physical stock: <strong>{data.stockQuantity} {data.unitDefinition?.baseUnit || "units"}</strong>{data.totals && <> · Saleable {data.totals.saleable} · Quarantined {data.totals.quarantined} · Expired {data.totals.expired} · Held {data.totals.held}</>}</p>
       {data.review && <Alert variant="warning" title="Reconciliation required">{data.review}</Alert>}
-      <div className="space-y-2">{data.batches.map(lot => <article className="rounded-lg border border-border p-3" key={lot.id}><div className="flex flex-wrap justify-between gap-2"><strong>{lot.batchNumber}</strong><span>{lot.quantity} {data.unitDefinition?.baseUnit} · {lot.status}{lot.saleBlocked ? " · Sale hold" : ""}</span></div><p className="text-sm text-text-secondary">Expiry {lot.printedExpiry || dateLabel(lot.expiryDate)} · Selling {money(lot.sellingPrice)} · MRP {lot.mrp === undefined ? "Missing: counter billing blocked" : money(lot.mrp)}{lot.purchaseCost !== undefined ? ` · Cost ${money(lot.purchaseCost)}` : ""}</p></article>)}</div>
+      <div className="space-y-2">{data.batches.map(lot => <article className="rounded-lg border border-border p-3" key={lot.id}><div className="flex flex-wrap items-center justify-between gap-2"><strong>{lot.batchNumber}</strong><div className="flex items-center gap-2"><span>{lot.quantity} {data.unitDefinition?.baseUnit} · {lot.status}{lot.saleBlocked ? " · Sale hold" : ""}</span>{onPrintStickers && <Button size="xs" variant="outline" onClick={() => onPrintStickers({ medicineId: data.medicineId, batchNumber: lot.batchNumber, expiry: lot.printedExpiry || lot.expiryDate.slice(0, 7), sellingPricePaise: Math.round(lot.sellingPrice * 100), mrpPaise: lot.mrp !== undefined ? Math.round(lot.mrp * 100) : undefined, copies: Math.max(1, Math.min(lot.quantity || 1, 25)) })}>Print stickers</Button>}</div></div><p className="text-sm text-text-secondary">Expiry {lot.printedExpiry || dateLabel(lot.expiryDate)} · Selling {money(lot.sellingPrice)} · MRP {lot.mrp === undefined ? "Missing: counter billing blocked" : money(lot.mrp)}{lot.purchaseCost !== undefined ? ` · Cost ${money(lot.purchaseCost)}` : ""}</p></article>)}</div>
       <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || loading} onClick={() => { if (cursor) setCursor(undefined); else void load(); }}>First batch page</Button>{data.nextCursor && <Button size="sm" variant="outline" disabled={busy || loading} onClick={() => setCursor(data.nextCursor!)}>Next batch page</Button>}</div>
       {canAdjust && !pending && <form onSubmit={event => { void count(event); }} className="space-y-3 rounded-lg border border-border p-3"><h3 className="font-semibold">Record a physical count or disposal</h3><p className="text-sm">Count actual base units. Quarantined goods can only be reduced through a referenced disposal; this never releases them for sale.</p>
         {!durable && ready && <Alert variant="warning" title="Local recovery storage required">Allow durable browser storage before submitting a physical adjustment.</Alert>}

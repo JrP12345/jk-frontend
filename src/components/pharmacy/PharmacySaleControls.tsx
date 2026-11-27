@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Badge, Button, Checkbox, Input, Select } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, Input, Select, Spinner } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
@@ -58,7 +58,7 @@ function ControlSession({ medicineId, locationId, onClose, onChanged }: Props) {
       {error && <Alert variant="error" title="Sale controls need attention">{error}</Alert>}
       {notice && <Alert variant="info" title="Sale control saved">{notice}</Alert>}
       <Button size="sm" variant="outline" disabled={busy || loading} onClick={() => { setLoading(true); setData(null); setConfirmed(false); setError(""); setReload(value => value + 1); }}>Reload sale controls</Button>
-      {loading && <p role="status">Loading sale controls…</p>}
+      {loading && <div role="status" className="flex items-center gap-2 py-2 text-xs text-text-secondary"><Spinner size="sm" /><span>Loading sale controls…</span></div>}
       {data && <form onSubmit={save} className="space-y-3"><fieldset disabled={busy || !canManage} className="space-y-3">
         <Select label="Apply to" value={target} options={[{ value: "product", label: "Whole product — all batches" }, ...data.batches.map(lot => ({ value: lot.id, label: `${lot.batchNumber} · ${lot.status}${lot.saleControl?.blocked ? " · On hold" : ""}` }))]} onChange={event => { impactRead(); setImpact(null); setImpactError(""); setImpactBusy(false); setTarget(event.target.value); setConfirmed(false); }} />
         <Badge variant={blocked ? "warning" : "neutral"}>{blocked ? "Sale hold active" : "No sale hold on this selection"}</Badge>

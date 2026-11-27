@@ -79,7 +79,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       title: userFacingError(options.title, variant === "error" ? "Unable to complete the action" : "Notification"),
       description: options.description === undefined ? undefined : userFacingError(options.description, variant === "error" ? "Please try again. If the problem continues, contact support." : "Open the related page for details."),
     };
-    if (variant === "success" || variant === "error") vibrateFeedback(variant);
+    if (variant === "success" || variant === "warning" || variant === "error") vibrateFeedback(variant);
     const requestedDuration = options.duration ?? 4500;
     const duration = requestedDuration >= 0 ? requestedDuration : 4500;
     setToasts(previous => {

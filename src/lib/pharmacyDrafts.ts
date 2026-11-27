@@ -2,7 +2,7 @@ import { validatePharmacyUnits } from "./pharmacyUnits";
 import type { CounterProduct } from "./pharmacyCounter";
 
 export type DraftLine = { lineId: string; product: CounterProduct; packs: string; loose: string; discount: string };
-export type DraftCart = { pickup?: { id: string; revision: number }; lines: DraftLine[]; customerId: string | null; discount: string; billNumber?: number };
+export type DraftCart = { pickup?: { id: string; revision: number; customizable?: boolean }; lines: DraftLine[]; customerId: string | null; discount: string; billNumber?: number };
 export type CounterDraft = { cart: DraftCart; held: DraftCart[] };
 const DATABASE = "ekavyu-pharmacy-drafts", STORE = "drafts", SECRET = "ekavyu-pharmacy-draft-key";
 const LIFETIME = 12 * 60 * 60 * 1000;
@@ -39,8 +39,8 @@ export function cleanCounterDraft(input: unknown): CounterDraft {
     });
     if (new Set(lines.map(line => line.lineId)).size !== lines.length || new Set(lines.map(line => line.product.id)).size !== lines.length) throw Error("Saved cart contains duplicate products");
     if (raw.billNumber !== undefined && (!Number.isSafeInteger(raw.billNumber) || raw.billNumber < 1)) throw Error("Saved bill label needs review");
-    if (raw.pickup && (!/^[a-f\d]{24}$/i.test(raw.pickup.id) || !Number.isSafeInteger(raw.pickup.revision) || raw.pickup.revision < 0 || raw.customerId)) throw Error("Saved pickup source needs review");
-    return { ...(raw.pickup ? { pickup: raw.pickup } : {}), lines, customerId: raw.customerId, discount: raw.discount, ...(raw.billNumber !== undefined ? { billNumber: raw.billNumber } : {}) };
+    if (raw.pickup && (!/^[a-f\d]{24}$/i.test(raw.pickup.id) || !Number.isSafeInteger(raw.pickup.revision) || raw.pickup.revision < 0 || raw.pickup.customizable !== undefined && typeof raw.pickup.customizable !== "boolean" || raw.customerId)) throw Error("Saved pickup source needs review");
+    return { ...(raw.pickup ? { pickup: { id: raw.pickup.id, revision: raw.pickup.revision, ...(raw.pickup.customizable ? { customizable: true } : {}) } } : {}), lines, customerId: raw.customerId, discount: raw.discount, ...(raw.billNumber !== undefined ? { billNumber: raw.billNumber } : {}) };
   }
   if (!value || !Array.isArray(value.held) || value.held.length > 3) throw Error("Saved carts need review");
   return { cart: cart(value.cart), held: value.held.map(cart) };
