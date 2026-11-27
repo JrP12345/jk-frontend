@@ -708,3 +708,16 @@ it("drops cached batch acquisition costs and closes stock details when current s
   fixture.capabilities.mockResolvedValue(response(capabilities([]))); fireEvent.click(refresh);
   await waitFor(() => expect(screen.queryByRole("dialog", { name: "Batches, stock and movement history" })).not.toBeInTheDocument());
 });
+
+it("does not leak inventory header actions onto non-inventory pharmacy tabs like Reports & exports", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, role: "admin", permissions: ["MANAGE_ORGANIZATION", "MANAGE_MEDICINES", "PHARMACY_VIEW_REPORTS"] } });
+  fixture.capabilities.mockResolvedValue(response({ ...capabilities([...pharmacyActions]), actions: { ...capabilities([...pharmacyActions]).actions, viewReports: true }, importKinds: ["catalogue"] }));
+  fixture.get.mockImplementation(async (url: string) => url === "/pharmacy/reports" ? response({ locationId: "clinic", items: [{ kind: "movements", label: "Stock movements" }] }) : response(url.startsWith("/medicines") ? [medicine] : []));
+  mount();
+  await screen.findAllByText(medicine.name);
+  fireEvent.click(screen.getByRole("tab", { name: "Reports & exports" }));
+  await screen.findByLabelText("Operational report");
+  expect(screen.queryByRole("button", { name: "Add medicine" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Import source CSV" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Find in catalogue" })).not.toBeInTheDocument();
+});
